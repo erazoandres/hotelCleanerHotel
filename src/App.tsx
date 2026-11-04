@@ -48,8 +48,14 @@ function UnauthorizedPage() {
         <p className="eyebrow">Acceso restringido</p>
         <h1>Cuenta no autorizada</h1>
         <p className="muted">
-          La cuenta debe tener el rol `hotel_admin` en app_metadata para
-          administrar la operación.
+          El inicio de sesión funcionó, pero esta cuenta todavía no tiene
+          permisos de administrador. El propietario del proyecto debe
+          asignarle el rol hotel_admin desde un entorno confiable.
+        </p>
+        <p className="muted">
+          En el repositorio, sigue la guía “Asignar acceso administrativo” del
+          README. Después, cierra sesión y vuelve a entrar para actualizar los
+          permisos.
         </p>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button className="button button-primary" onClick={() => void signOut()}>

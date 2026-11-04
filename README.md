@@ -15,10 +15,25 @@ El servidor de despliegue debe redirigir las rutas `/app/*` a `index.html` para 
 ## Supabase y acceso
 
 1. Respalda el proyecto Supabase y revisa `schema.sql` antes de ejecutarlo. La migración mueve las claves existentes a una tabla privada con hashes bcrypt, exige regenerar las claves antiguas y elimina la columna de texto plano.
-2. La migración restringe las políticas administrativas a usuarios cuyo `app_metadata.role` sea `hotel_admin`. Asigna ese metadato únicamente desde un entorno confiable con Supabase Auth Admin API; nunca expongas una service-role key en variables `VITE_*` ni en el navegador.
+2. La migración restringe las políticas administrativas a usuarios cuyo `app_metadata.role` sea `hotel_admin`.
 3. Desactiva el registro público de usuarios en Supabase Auth y provisiona las cuentas administrativas fuera del cliente web.
 4. Después de aplicar el esquema y configurar el rol, inicia sesión en la app y usa **Regenerar clave** para cada miembro del personal existente. Las claves antiguas dejan de funcionar después de la migración.
 5. Las claves temporales nuevas se muestran una sola vez. Compártelas mediante un canal seguro.
+
+### Asignar acceso administrativo
+
+El rol se administra con Supabase Auth Admin API; no se puede activar desde el navegador. Desde PowerShell, en la raíz del proyecto:
+
+```powershell
+$env:SUPABASE_URL = "https://TU_PROYECTO.supabase.co"
+$secureKey = Read-Host "Pega la service_role key" -AsSecureString
+$env:SUPABASE_SERVICE_ROLE_KEY = [System.Net.NetworkCredential]::new("", $secureKey).Password
+node scripts/grant-admin-role.mjs correo-del-administrador@hotel.com
+Remove-Item Env:SUPABASE_SERVICE_ROLE_KEY
+$secureKey.Dispose()
+```
+
+Confirma la operación escribiendo `SI`. La clave `service_role` solo se utiliza en este proceso local; no la pongas en `VITE_*`, en archivos del repositorio ni en el navegador. Luego, cierra sesión y vuelve a entrar para renovar el JWT. Asigna el rol solo a cuentas de confianza.
 
 Las funciones RPC de personal de aseo permanecen disponibles para el rol `anon` porque los trabajadores no tienen cuentas administrativas. La clave temporal se genera con alta entropía, se almacena como hash bcrypt y solo permite consultar las habitaciones asignadas o finalizar una asignación. Para despliegues con exposición pública, se recomienda poner esos RPC detrás de una Supabase Edge Function con límites de intentos.
 
