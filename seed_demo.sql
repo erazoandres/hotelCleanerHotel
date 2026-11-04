@@ -28,11 +28,11 @@ INSERT INTO public.habitaciones (
 VALUES
   ('DEMO-101', 'ocupada', 'Huesped Demo 1', NULL, NULL, NULL, NULL, NOW()),
   ('DEMO-102', 'libre', NULL, NULL, NULL, NULL, NULL, NOW()),
-  ('DEMO-103', 'pendiente', 'Huesped Demo 2', 'Salida', 'Preparar cama y revisar bano.', 'DEMO-ASEADOR-01', 'Salida', NOW()),
-  ('DEMO-104', 'limpieza', 'Huesped Demo 3', 'Estadia', 'Solicita toallas limpias.', 'DEMO-ASEADOR-02', 'Estadia', NOW()),
-  ('DEMO-105', 'finalizado', NULL, 'Salida', 'Limpieza de prueba completada.', NULL, NULL, NOW()),
+  ('DEMO-103', 'pendiente', 'Huesped Demo 2', 'Semanal', 'Preparar cama y revisar bano.', 'DEMO-ASEADOR-01', 'Salida', NOW()),
+  ('DEMO-104', 'limpieza', 'Huesped Demo 3', 'Mensual', 'Solicita toallas limpias.', 'DEMO-ASEADOR-02', 'Estadia', NOW()),
+  ('DEMO-105', 'finalizado', NULL, 'Premium', 'Limpieza de prueba completada.', NULL, NULL, NOW()),
   ('DEMO-106', 'ocupada', 'Huesped Demo 4', NULL, NULL, NULL, NULL, NOW()),
-  ('DEMO-107', 'pendiente', 'Huesped Demo 5', 'Profunda', 'Revisar ventanas y balcon.', 'DEMO-ASEADOR-03', 'Profunda', NOW())
+  ('DEMO-107', 'pendiente', 'Huesped Demo 5', 'Premium', 'Revisar ventanas y balcon.', 'DEMO-ASEADOR-03', 'Profunda', NOW())
 ON CONFLICT (id_habitacion) DO UPDATE
 SET estado = EXCLUDED.estado,
     nombre_huesped = EXCLUDED.nombre_huesped,

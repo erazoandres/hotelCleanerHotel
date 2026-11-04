@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useHotelAuth } from "../components/HotelAuth";
+import { FreshlyMark } from "../components/FreshlyBrand";
 import { HotelDataStatus, useHotelData } from "../components/HotelData";
 import {
   addEvent,
@@ -45,6 +46,18 @@ const editableStatuses: RoomStatus[] = [
   "finished",
 ];
 
+const cleaningServicePlans = ["Semanal", "Mensual", "Premium"] as const;
+const roomServiceFilters = cleaningServicePlans.map((plan) => ({
+  label: plan,
+  value: plan.toLocaleLowerCase("es"),
+}));
+type RoomViewMode = "grid" | "rows" | "mosaic";
+const roomViewOptions: { value: RoomViewMode; label: string; icon: string }[] = [
+  { value: "grid", label: "Grilla", icon: "grid_view" },
+  { value: "rows", label: "Filas", icon: "view_agenda" },
+  { value: "mosaic", label: "Mosaico", icon: "dashboard" },
+];
+
 function ActionMessage({
   error,
   success,
@@ -62,30 +75,51 @@ export function DashboardPage() {
   const { session } = useHotelAuth();
   const roomStatuses = Object.values(state.rooms);
   const counts = [
-    { label: "Habitaciones", value: roomStatuses.length },
-    { label: "Ocupadas", value: roomStatuses.filter((status) => status === "occupied").length },
+    { label: "Habitaciones", value: roomStatuses.length, icon: "bed", tone: "sand" },
+    {
+      label: "Ocupadas",
+      value: roomStatuses.filter((status) => status === "occupied").length,
+      icon: "hotel",
+      tone: "rose",
+    },
     {
       label: "Por atender",
       value: roomStatuses.filter((status) => status === "pending" || status === "cleaning").length,
+      icon: "cleaning_services",
+      tone: "gold",
     },
-    { label: "Personal activo", value: state.staff.length },
+    {
+      label: "Personal activo",
+      value: state.staff.length,
+      icon: "groups",
+      tone: "sage",
+    },
   ];
 
   return (
     <div className="page-stack">
-      <div className="page-heading">
+      <section className="dashboard-hero">
         <div>
-          <p className="eyebrow">Centro de operaciones</p>
-          <h1>Resumen del hotel</h1>
-          <p className="muted">Sesión: {session?.user.email ?? "Administrador"}</p>
+          <p className="eyebrow">Centro de operaciones <span className="eyebrow-sparkle" aria-hidden="true">✦</span></p>
+          <h1>Todo en orden,<br />a primera vista.</h1>
+          <p>Un resumen claro para que cada estancia fluya como debe.</p>
         </div>
-        <HotelDataStatus />
-      </div>
+        <div className="dashboard-hero-aside">
+          <span className="hero-orbit hero-orbit-one" aria-hidden="true" />
+          <span className="hero-orbit hero-orbit-two" aria-hidden="true" />
+          <span className="hero-illustration material-symbol" aria-hidden="true">holiday_village</span>
+          <span className="hero-caption">Hospitalidad,<br />con cada detalle.</span>
+          <span className="hero-session">Conectado como {session?.user.email ?? "Administrador"}</span>
+        </div>
+      </section>
+      <div className="dashboard-status"><HotelDataStatus /></div>
       <section className="metric-grid" aria-label="Resumen">
         {counts.map((item) => (
-          <article className="metric-card" key={item.label}>
-            <span>{item.label}</span>
+          <article className={`metric-card metric-${item.tone}`} key={item.label}>
+            <span className="metric-icon material-symbol" aria-hidden="true">{item.icon}</span>
+            <span className="metric-label">{item.label}</span>
             <strong>{item.value}</strong>
+            <span className="metric-note">en este momento</span>
           </article>
         ))}
       </section>
@@ -222,8 +256,16 @@ function RoomCard({ roomId }: { roomId: string }) {
           <input value={guest} onChange={(event) => setGuest(event.target.value)} />
         </label>
         <label>
-          Plan de limpieza
-          <input value={servicePlan} onChange={(event) => setServicePlan(event.target.value)} />
+          Servicio de limpieza
+          <select value={servicePlan} onChange={(event) => setServicePlan(event.target.value)}>
+            <option value="">Sin servicio asignado</option>
+            {!cleaningServicePlans.some((plan) => plan === servicePlan) && servicePlan && (
+              <option value={servicePlan} disabled>{servicePlan} (actual)</option>
+            )}
+            {cleaningServicePlans.map((plan) => (
+              <option key={plan} value={plan}>{plan}</option>
+            ))}
+          </select>
         </label>
         <label>
           Personal asignado
@@ -234,12 +276,6 @@ function RoomCard({ roomId }: { roomId: string }) {
             ))}
           </select>
         </label>
-        {staffId && (
-          <label>
-            Tipo de limpieza
-            <input value={cleaningType} onChange={(event) => setCleaningType(event.target.value)} />
-          </label>
-        )}
         <label className="form-wide">
           Detalles
           <textarea
@@ -259,12 +295,91 @@ function RoomCard({ roomId }: { roomId: string }) {
   );
 }
 
+function RoomPickerCard({
+  roomId,
+  status,
+  guest,
+  servicePlan,
+  cleanerName,
+  onSelect,
+}: {
+  roomId: string;
+  status: RoomStatus;
+  guest: string;
+  servicePlan: string;
+  cleanerName: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button className={`room-picker-card room-picker-card-${status}`} onClick={onSelect} type="button">
+      <span className={`room-picker-icon room-picker-icon-${status}`}>
+        <span className="material-symbol" aria-hidden="true">
+          {status === "occupied" ? "bed" : status === "pending" || status === "cleaning" ? "cleaning_services" : "door_front"}
+        </span>
+      </span>
+      <span className="room-picker-main">
+        <span className="room-picker-heading">
+          <strong>Habitación {roomId}</strong>
+          <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
+        </span>
+        <span className="room-picker-details">
+          {guest || "Sin huésped"}
+          {servicePlan && <span>{servicePlan}</span>}
+          {cleanerName && <span>{cleanerName}</span>}
+        </span>
+      </span>
+      <span className="material-symbol room-picker-arrow" aria-hidden="true">arrow_forward_ios</span>
+    </button>
+  );
+}
+
 export function RoomsPage() {
   const { state, loading, error, refresh } = useHotelData();
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [serviceFilter, setServiceFilter] = useState<string | null>(null);
+  const [roomView, setRoomView] = useState<RoomViewMode>("grid");
   const roomIds = useMemo(
     () => Object.keys(state.rooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [state.rooms],
   );
+  const visibleRoomIds = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return roomIds.filter((roomId) => {
+      const plan = (state.servicePlans[roomId] ?? "").trim().toLocaleLowerCase("es");
+      const matchesService = !serviceFilter || plan === serviceFilter;
+      const matchesSearch = !query || [
+        roomId,
+        state.guests[roomId] ?? "",
+        state.servicePlans[roomId] ?? "",
+        state.assignedCleanings[roomId]?.staffName ?? "",
+      ].some((value) => value.toLocaleLowerCase().includes(query));
+      return matchesService && matchesSearch;
+    });
+  }, [roomIds, search, serviceFilter, state.assignedCleanings, state.guests, state.servicePlans]);
+  const serviceFilterCounts = useMemo(
+    () => Object.fromEntries(
+      roomServiceFilters.map(({ value }) => [
+        value,
+        Object.values(state.servicePlans).filter(
+          (plan) => plan.trim().toLocaleLowerCase("es") === value,
+        ).length,
+      ]),
+    ) as Record<string, number>,
+    [state.servicePlans],
+  );
+  const roomSummary = [
+    { label: "Libres", icon: "door_open", includes: (status: RoomStatus) => status === "free" },
+    { label: "Ocupadas", icon: "bed", includes: (status: RoomStatus) => status === "occupied" },
+    {
+      label: "Por atender",
+      icon: "cleaning_services",
+      includes: (status: RoomStatus) => status === "pending" || status === "cleaning",
+    },
+  ].map((item) => ({
+    ...item,
+    count: Object.values(state.rooms).filter(item.includes).length,
+  }));
   const legacyRoomCount = useMemo(() => {
     try {
       const saved = localStorage.getItem("control-habitaciones-state-v3");
@@ -287,11 +402,27 @@ export function RoomsPage() {
   }, []);
 
   return (
-    <div className="page-stack">
+    <div className="page-stack rooms-page">
       <div className="page-heading">
-        <div><p className="eyebrow">Inventario</p><h1>Habitaciones</h1></div>
-        <button className="button" onClick={() => void refresh()}>Actualizar</button>
+        <div>
+          <p className="eyebrow">Inventario</p>
+          <h1>Habitaciones</h1>
+          <p className="page-description">Cada espacio, su estado y los detalles para atenderlo.</p>
+        </div>
+        <button className="button button-refresh" onClick={() => void refresh()}>
+          <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
+        </button>
       </div>
+      <section className="room-summary" aria-label="Estado de habitaciones">
+        {roomSummary.map((item) => (
+          <div className="room-summary-item" key={item.label}>
+            <span className="material-symbol" aria-hidden="true">{item.icon}</span>
+            <span>{item.label}</span>
+            <strong>{item.count}</strong>
+          </div>
+        ))}
+        <span className="room-summary-total">{roomIds.length} espacios en total</span>
+      </section>
       {error && <p className="form-error" role="alert">{error}</p>}
       {loading && roomIds.length === 0 ? (
         <p className="empty-state">Cargando habitaciones…</p>
@@ -306,9 +437,88 @@ export function RoomsPage() {
             </p>
           )}
         </>
+      ) : selectedRoom && roomIds.includes(selectedRoom) ? (
+        <section className="room-editor-view">
+          <button
+            className="button room-back-button"
+            onClick={() => setSelectedRoom(null)}
+            type="button"
+          >
+            <span className="material-symbol" aria-hidden="true">arrow_back</span>
+            Todas las habitaciones
+          </button>
+          <RoomCard key={selectedRoom} roomId={selectedRoom} />
+        </section>
       ) : (
-        <section className="room-grid">
-          {roomIds.map((roomId) => <RoomCard key={roomId} roomId={roomId} />)}
+        <section className="room-selection">
+          <div className="room-selection-toolbar">
+            <div className="room-selection-controls">
+              <label className="search-field">
+                <span className="search-input-wrap">
+                  <span className="material-symbol" aria-hidden="true">search</span>
+                  <input
+                    aria-label="Buscar habitación"
+                    autoComplete="off"
+                    placeholder="Número, huésped o servicio"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </span>
+              </label>
+              <div className="room-service-filters" role="group" aria-label="Filtrar por servicio de limpieza">
+                <button
+                  aria-pressed={serviceFilter === null}
+                  className={`room-service-filter${serviceFilter === null ? " active" : ""}`}
+                  onClick={() => setServiceFilter(null)}
+                  type="button"
+                >
+                  Todas <span>{roomIds.length}</span>
+                </button>
+                {roomServiceFilters.map(({ label, value }) => (
+                  <button
+                    aria-pressed={serviceFilter === value}
+                    className={`room-service-filter${serviceFilter === value ? " active" : ""}`}
+                    key={value}
+                    onClick={() => setServiceFilter(value)}
+                    type="button"
+                  >
+                    {label} <span>{serviceFilterCounts[value] ?? 0}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="room-view-switch" role="group" aria-label="Vista de habitaciones">
+              {roomViewOptions.map(({ value, label, icon }) => (
+                <button
+                  aria-pressed={roomView === value}
+                  className={`room-view-button${roomView === value ? " active" : ""}`}
+                  key={value}
+                  onClick={() => setRoomView(value)}
+                  type="button"
+                >
+                  <span className="material-symbol" aria-hidden="true">{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {visibleRoomIds.length === 0 ? (
+            <p className="empty-state">No hay habitaciones que coincidan con los filtros seleccionados.</p>
+          ) : (
+            <div className={`room-picker-grid room-picker-grid-${roomView}`}>
+              {visibleRoomIds.map((roomId) => (
+                <RoomPickerCard
+                  key={roomId}
+                  roomId={roomId}
+                  status={state.rooms[roomId] ?? "unknown"}
+                  guest={state.guests[roomId] ?? ""}
+                  servicePlan={state.servicePlans[roomId] ?? ""}
+                  cleanerName={state.assignedCleanings[roomId]?.staffName ?? ""}
+                  onSelect={() => setSelectedRoom(roomId)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
     </div>
@@ -353,8 +563,16 @@ export function CleaningPage() {
   return (
     <div className="page-stack">
       <div className="page-heading">
-        <div><p className="eyebrow">Operación diaria</p><h1>Limpiezas</h1></div>
+        <div>
+          <p className="eyebrow">Operación diaria</p>
+          <h1>Limpiezas</h1>
+          <p className="page-description">Una vista clara de lo que está listo y lo que necesita atención.</p>
+        </div>
         <HotelDataStatus />
+      </div>
+      <div className="cleaning-overview" aria-label="Resumen de limpiezas">
+        <span><i className="overview-dot overview-pending" /> {rooms.filter((room) => state.rooms[room] === "pending").length} pendientes</span>
+        <span><i className="overview-dot overview-active" /> {rooms.filter((room) => state.rooms[room] === "cleaning").length} en curso</span>
       </div>
       <ActionMessage error={error} success={null} />
       {rooms.length === 0 ? (
@@ -389,7 +607,6 @@ export function CleaningPage() {
           })}
         </section>
       )}
-      <Link className="text-link" to="/app/aseo">Abrir acceso para personal de aseo</Link>
     </div>
   );
 }
@@ -410,12 +627,21 @@ export function HistoryPage() {
   return (
     <div className="page-stack">
       <div className="page-heading">
-        <div><p className="eyebrow">Registro de actividad</p><h1>Historial</h1></div>
-        <button className="button" onClick={() => void refresh()}>Actualizar</button>
+        <div>
+          <p className="eyebrow">Registro de actividad</p>
+          <h1>Historial</h1>
+          <p className="page-description">Sigue los movimientos del hotel y encuentra cualquier registro.</p>
+        </div>
+        <button className="button button-refresh" onClick={() => void refresh()}>
+          <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
+        </button>
       </div>
       <label className="search-field">
         Buscar por habitación, acción o responsable
-        <input value={filter} onChange={(event) => setFilter(event.target.value)} />
+        <span className="search-input-wrap">
+          <span className="material-symbol" aria-hidden="true">search</span>
+          <input value={filter} onChange={(event) => setFilter(event.target.value)} />
+        </span>
       </label>
       {error && <p className="form-error" role="alert">{error}</p>}
       {loading && state.events.length === 0 ? (
@@ -451,6 +677,7 @@ export function StaffPage() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
+  const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
   const [accountEmails, setAccountEmails] = useState<Record<string, string>>({});
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [credentialName, setCredentialName] = useState("");
@@ -637,7 +864,11 @@ export function StaffPage() {
   return (
     <div className="page-stack">
       <div className="page-heading">
-        <div><p className="eyebrow">Equipo</p><h1>Personal</h1></div>
+        <div>
+          <p className="eyebrow">Equipo</p>
+          <h1>Personal</h1>
+          <p className="page-description">Un equipo cuidado hace que cada huésped se sienta en casa.</p>
+        </div>
         <HotelDataStatus />
       </div>
       <ActionMessage error={error} success={success} />
@@ -679,47 +910,69 @@ export function StaffPage() {
                   (record) => record.staffId === person.id && !record.checkOut,
                 );
                 return (
-                  <article className="staff-row" key={person.id}>
-                    <div className="staff-identity">
-                      <strong>{person.name}</strong>
-                      <span>{person.contact}</span>
-                      <span>{person.email || "Sin correo asignado"}</span>
-                      <span>{active ? `En turno desde ${formatDate(active.checkIn)}` : "Fuera de turno"}</span>
-                    </div>
-                    <div className="staff-actions">
-                      {!person.hasAccount ? (
-                        <>
-                          <label>
-                            Correo de acceso
-                            <input
-                              autoComplete="email"
-                              type="email"
-                              required
-                              value={accountEmails[person.id] ?? person.email ?? ""}
-                              onChange={(event) => setAccountEmails((current) => ({
-                                ...current,
-                                [person.id]: event.target.value,
-                              }))}
-                            />
-                          </label>
-                          <button className="button button-small" onClick={() => void handleCreateAccount(person)}>
-                            Crear cuenta nueva
+                  <article
+                    className={`staff-row${expandedStaffId === person.id ? " expanded" : ""}`}
+                    key={person.id}
+                  >
+                    <button
+                      aria-controls={`staff-details-${person.id}`}
+                      aria-expanded={expandedStaffId === person.id}
+                      className="staff-card-toggle"
+                      id={`staff-toggle-${person.id}`}
+                      onClick={() => setExpandedStaffId((current) => current === person.id ? null : person.id)}
+                      type="button"
+                    >
+                      <span>{person.name}</span>
+                      <span className="material-symbol" aria-hidden="true">
+                        {expandedStaffId === person.id ? "expand_less" : "expand_more"}
+                      </span>
+                    </button>
+                    <div
+                      aria-labelledby={`staff-toggle-${person.id}`}
+                      className="staff-card-details"
+                      hidden={expandedStaffId !== person.id}
+                      id={`staff-details-${person.id}`}
+                    >
+                      <div className="staff-identity">
+                        <span>{person.contact}</span>
+                        <span>{person.email || "Sin correo asignado"}</span>
+                        <span>{active ? `En turno desde ${formatDate(active.checkIn)}` : "Fuera de turno"}</span>
+                      </div>
+                      <div className="staff-actions">
+                        {!person.hasAccount ? (
+                          <>
+                            <label>
+                              Correo de acceso
+                              <input
+                                autoComplete="email"
+                                type="email"
+                                required
+                                value={accountEmails[person.id] ?? person.email ?? ""}
+                                onChange={(event) => setAccountEmails((current) => ({
+                                  ...current,
+                                  [person.id]: event.target.value,
+                                }))}
+                              />
+                            </label>
+                            <button className="button button-small" onClick={() => void handleCreateAccount(person)}>
+                              Crear cuenta nueva
+                            </button>
+                            <button className="button button-small" onClick={() => void handleLinkAccount(person)}>
+                              Vincular cuenta existente
+                            </button>
+                          </>
+                        ) : (
+                          <button className="button button-small" onClick={() => void handleResetPassword(person.id, person.name)}>
+                            Regenerar contraseña
                           </button>
-                          <button className="button button-small" onClick={() => void handleLinkAccount(person)}>
-                            Vincular cuenta existente
-                          </button>
-                        </>
-                      ) : (
-                        <button className="button button-small" onClick={() => void handleResetPassword(person.id, person.name)}>
-                          Regenerar contraseña
+                        )}
+                        <button className="button button-small" onClick={() => void toggleAttendance(person.id, person.name)}>
+                          {active ? "Registrar salida" : "Registrar entrada"}
                         </button>
-                      )}
-                      <button className="button button-small" onClick={() => void toggleAttendance(person.id, person.name)}>
-                        {active ? "Registrar salida" : "Registrar entrada"}
-                      </button>
-                      <button className="button button-small button-danger" onClick={() => void handleRemove(person.id)}>
-                        Desactivar
-                      </button>
+                        <button className="button button-small button-danger" onClick={() => void handleRemove(person.id)}>
+                          Desactivar
+                        </button>
+                      </div>
                     </div>
                   </article>
                 );
@@ -839,23 +1092,32 @@ export function CleanerPortal() {
   }
 
   return (
-    <main className="auth-page">
+    <main className="auth-page cleaner-auth-page">
       {!profile ? (
         <form className="auth-card" onSubmit={handleLogin}>
+          <div className="auth-brand">
+            <FreshlyMark />
+            <span><strong>Freshly</strong><small>Gestión hotelera</small></span>
+          </div>
           <p className="eyebrow">Acceso de aseo</p>
-          <h1>Mis habitaciones</h1>
+          <h1>Tu jornada, a tu ritmo.</h1>
           <p className="muted">Ingresa el correo y la contraseña de tu cuenta.</p>
           <label>Correo electrónico<input autoComplete="username" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label>Contraseña<input autoComplete="current-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button button-primary" disabled={loading}>{loading ? "Validando…" : "Ingresar"}</button>
-          <Link className="text-link" to="/app/inicio">Volver al acceso administrativo</Link>
         </form>
       ) : (
         <section className="cleaner-page page-stack">
           <div className="page-heading">
-            <div><p className="eyebrow">Acceso de aseo</p><h1>Hola, {profile.nombre}</h1></div>
-            <button className="button" disabled={loading} onClick={() => void signOut()}>Cerrar sesión</button>
+            <div>
+              <p className="eyebrow">Tu jornada</p>
+              <h1>Hola, {profile.nombre}</h1>
+              <p className="page-description">Estas son las habitaciones asignadas para hoy.</p>
+            </div>
+            <button className="button button-refresh" disabled={loading} onClick={() => void signOut()}>
+              <span className="material-symbol" aria-hidden="true">logout</span> Cerrar sesión
+            </button>
           </div>
           {error && <p className="form-error" role="alert">{error}</p>}
           {rooms.length === 0 ? (

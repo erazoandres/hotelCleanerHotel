@@ -9,9 +9,8 @@ type ChatMessage = {
 };
 
 const suggestions = [
-  "¿Cuántas habitaciones están ocupadas?",
-  "¿Qué habitaciones están pendientes?",
-  "¿Qué ocurrió recientemente?",
+  "Habitaciones ocupadas",
+  "Habitaciones pendientes",
 ];
 
 export default function HotelAssistant() {
@@ -103,6 +102,7 @@ export default function HotelAssistant() {
         <section className="assistant-panel" aria-label="Asistente de operaciones">
           <header className="assistant-header">
             <div>
+              <span className="assistant-avatar material-symbol" aria-hidden="true">auto_awesome</span>
               <strong>Asistente del hotel</strong>
               <span>Consultas operativas con IA</span>
             </div>
@@ -163,7 +163,9 @@ export default function HotelAssistant() {
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        {open ? "×" : "✦"}
+        <span className="material-symbol" aria-hidden="true">
+          {open ? "close" : "auto_awesome"}
+        </span>
       </button>
     </>
   );

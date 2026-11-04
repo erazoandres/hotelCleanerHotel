@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseClient } from "../lib/supabase";
+import { FreshlyMark } from "./FreshlyBrand";
 
 interface HotelAuthContextValue {
   session: Session | null;
@@ -147,8 +148,12 @@ export function AdminSignIn() {
   return (
     <main className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
+        <div className="auth-brand">
+          <FreshlyMark />
+          <span><strong>Freshly</strong><small>Gestión hotelera</small></span>
+        </div>
         <p className="eyebrow">Acceso administrativo</p>
-        <h1>Iniciar sesión</h1>
+        <h1>Qué gusto tenerte de vuelta.</h1>
         <p className="muted">
           Usa una cuenta Supabase autorizada como administrador del hotel.
         </p>

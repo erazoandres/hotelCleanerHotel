@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./app.css";
+import "./freshly-theme.css";
 
 const rootElement = document.getElementById("root");
 

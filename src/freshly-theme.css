@@ -1,0 +1,117 @@
+:root {
+  --mist: #bdd1dc;
+  --paper: #cbdde5;
+  --line: #a9c2ce;
+}
+
+.app-shell {
+  background: #bdd1dc;
+}
+
+.workspace {
+  background:
+    radial-gradient(ellipse at 92% 3%, rgb(91 157 185 / 17%), transparent 29rem),
+    linear-gradient(145deg, #c2d7e0, #b5cdd8);
+}
+
+.workspace-header {
+  border-color: #aac3cf;
+  background: rgb(188 211 221 / 97%);
+}
+
+.page-card,
+.room-card,
+.room-picker-card,
+.metric-card,
+.room-selection-controls,
+.room-summary {
+  border-color: #adc5d0;
+  background: linear-gradient(145deg, #ccdee6, #bfd4de);
+  box-shadow: 0 8px 22px rgb(52 94 112 / 13%);
+}
+
+.room-card {
+  border-top-color: #75aabd;
+}
+
+.room-picker-card:hover {
+  border-color: #79aec4;
+  background: linear-gradient(145deg, #d5e5eb, #b8d3df);
+  box-shadow: 0 12px 25px rgb(52 112 139 / 15%);
+}
+
+.room-summary-item {
+  background: #b7d2de;
+}
+
+.room-service-filters button,
+.room-selection-controls .search-input-wrap input,
+input,
+select,
+textarea {
+  border-color: #aac3cf;
+  background: #c0d5df;
+}
+
+.room-service-filters button[aria-pressed="true"] {
+  background: linear-gradient(135deg, #b9d7e2, #a9cbd9);
+}
+
+.room-card input,
+.room-card select,
+.room-card textarea {
+  background: #ccdee6;
+}
+
+.button:not(.button-primary):not(.button-danger) {
+  border-color: #a9c3cf;
+  background: #bfd4de;
+  color: #355f73;
+}
+
+.button:not(.button-primary):not(.button-danger):hover:not(:disabled) {
+  border-color: #82b1c3;
+  background: #afcdd9;
+}
+
+.sidebar {
+  border-color: #a9cddb;
+  background:
+    radial-gradient(ellipse at 92% 8%, rgb(255 255 255 / 28%), transparent 20rem),
+    linear-gradient(160deg, #d7ecf3 0%, #c4e1eb 48%, #b4d8e5 100%);
+}
+
+.sidebar .nav-link-active {
+  border-color: #9dcbdc;
+  background: linear-gradient(105deg, #b4ddea, #c7e9f2);
+  box-shadow: inset 3px 0 #3196b9, 0 5px 13px rgb(64 148 179 / 10%);
+}
+
+.assistant-messages {
+  background: #bdd1dc;
+}
+
+.assistant-message {
+  border-color: #adc5d0;
+  background: #ccdee6;
+}
+
+.assistant-user {
+  border-color: #99c2d2;
+  background: #b8d5e0;
+}
+
+.auth-card,
+.cleaner-page {
+  border-color: #b1c9d4;
+  background: #d3e2e9;
+}
+
+@media (max-width: 1023px) {
+  .sidebar {
+    border-top-color: #a9cddb;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 25%), transparent 26rem),
+      linear-gradient(100deg, #d3e9f1, #bfdfeb 52%, #b1d6e4);
+  }
+}
