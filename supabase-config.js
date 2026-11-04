@@ -24,7 +24,9 @@ window.SUPABASE_CONFIG = {
       window.sbClient = null;
     }
   } else {
-    console.info("[Supabase] Cliente en modo desconectado / fallback local (credenciales pendientes).");
+    if (!window.SUPABASE_CONFIG.url || !window.SUPABASE_CONFIG.anonKey) {
+      console.warn("[Supabase] Configura la URL y la clave publicable del proyecto.");
+    }
     window.sbClient = null;
   }
 })();

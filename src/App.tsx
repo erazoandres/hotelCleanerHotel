@@ -30,9 +30,10 @@ function ConfigurationRequired() {
         <p className="eyebrow">Configuración requerida</p>
         <h1>Conecta Supabase</h1>
         <p className="muted">
-          Define VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en tu entorno. No
-          se iniciará una sesión local simulada ni se guardarán datos sin
-          conexión.
+          No se encontró configuración de Supabase. Revisa las credenciales
+          existentes en supabase-config.js o define VITE_SUPABASE_URL y
+          VITE_SUPABASE_ANON_KEY. No se iniciará una sesión local simulada ni se
+          guardarán datos sin conexión.
         </p>
       </section>
     </main>

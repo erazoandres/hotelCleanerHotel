@@ -5,7 +5,7 @@ Aplicación React + TypeScript + Vite para la operación de habitaciones, limpie
 ## Desarrollo
 
 1. Instala Node.js y npm.
-2. Copia `.env.example` a `.env.local` y define `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` con la URL y la clave publicable del proyecto.
+2. La aplicación reutiliza la URL y clave publicable existentes en `supabase-config.js`. Si prefieres configuración por entorno, copia `.env.example` a `.env.local` y define `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`; estas variables tienen prioridad.
 3. Ejecuta `npm install` y `npm run dev`.
 4. Antes de desplegar, ejecuta `npm run typecheck` y `npm run build`.
 
