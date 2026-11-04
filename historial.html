@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+  <meta content="mobile_tab" name="shell-type"/>
+  <title>Historial - Control de Habitaciones</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "hotel-ocean": "#123a4a",
+            "hotel-ocean-dark": "#0d2c3a",
+            "coral-primary": "#F05D72",
+            "soft-mint": "#3EAC8D",
+            "pastel-mauve": "#9B72CF",
+            "warm-peach": "#F7A072",
+            "surface": "#FAF7F5",
+            "surface-card": "#FFFFFF",
+            "surface-container": "#F0EAE8",
+            "border-soft": "#E8E2DE",
+            "text-main": "#0D2C3A",
+            "text-muted": "#687F86",
+            "status-free-bg": "#E8F8F4",
+            "status-free-fg": "#1C8274",
+            "status-occupied-bg": "#FDF0F3",
+            "status-occupied-fg": "#C83256",
+            "status-cleaning-bg": "#F4EEFD",
+            "status-cleaning-fg": "#7545B0",
+            "status-pending-bg": "#FFF4EC",
+            "status-pending-fg": "#C26227"
+          },
+          fontFamily: {
+            sans: ["Plus Jakarta Sans", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @layer base {
+      html, body {
+        width: 100vw;
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+      body {
+        overscroll-behavior: none;
+      }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+      .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body class="bg-[#faf7f5] text-[#0d2c3a] antialiased min-h-screen flex flex-col font-sans">
+  <!-- Header Superior -->
+  <header class="fixed top-0 w-full z-50 pt-safe bg-[#0d2c3a] text-white shadow-[0_4px_20px_rgba(13,44,58,0.2)]">
+    <div class="h-16 px-4 md:px-8 max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-[#86dfd3]">
+          <span class="material-symbols-outlined text-[22px]">history_edu</span>
+        </div>
+        <div>
+          <span class="font-bold text-[16px] text-white tracking-tight block">Historial &amp; Bitácora</span>
+          <span class="text-[12px] text-[#86dfd3] flex items-center gap-1.5 opacity-90">
+            <span class="w-2 h-2 rounded-full bg-[#3eac8d] inline-block animate-pulse"></span>
+            Movimientos registrados
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="hidden sm:inline-flex text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-white/10 text-white/90 border border-white/10">
+          Operación
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col relative w-full pt-20 pb-28 px-4 md:px-8 max-w-7xl mx-auto">
+    <div class="flex flex-col w-full gap-5">
+
+      <!-- Hero Titular y Contexto -->
+      <section class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-[#176273] flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#26b7a6]"></span>
+            Auditoría de Operaciones
+          </span>
+          <h1 class="text-[24px] sm:text-[28px] font-extrabold text-[#0d2c3a] tracking-tight leading-tight mt-0.5">
+            Registro Cronológico
+          </h1>
+          <p class="text-[13px] text-[#5b737a] mt-0.5">
+            Supervisa limpiezas, check-ins, check-outs y mantenimientos por turno.
+          </p>
+        </div>
+        <div class="flex items-center gap-2 self-start sm:self-auto">
+          <div class="px-3.5 py-1.5 rounded-full bg-[#e8f8f4] text-[#1c8274] font-semibold text-[12px] flex items-center gap-1.5 border border-[#c6ece4]">
+            <span class="material-symbols-outlined text-[16px]">sync</span>
+            <span>Sincronizado</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tarjetas Métricas KPI Dinámicas -->
+      <section class="history-metrics-kpi grid grid-cols-3 gap-2.5 sm:gap-4">
+        <!-- KPI 1: Total Eventos -->
+        <div class="history-kpi-card p-3 sm:p-4 rounded-2xl bg-white border border-[#e5eeed] shadow-[0_4px_16px_-4px_rgba(13,44,58,0.06)] flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#f0faf8] text-[#1c8274] flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px] sm:text-[20px]">history_toggle_off</span>
+            </div>
+            <span class="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#edf5f4] text-[#176273]">Hoy</span>
+          </div>
+          <div>
+            <span class="text-[22px] sm:text-[28px] font-extrabold text-[#0d2c3a] block leading-none mb-1" id="metric-history-total">0</span>
+            <span class="text-[11px] sm:text-[12px] font-medium text-[#687f86] block leading-tight">Eventos Hoy</span>
+          </div>
+        </div>
+
+        <!-- KPI 2: Limpiezas Realizadas -->
+        <div class="history-kpi-card p-3 sm:p-4 rounded-2xl bg-white border border-[#e5eeed] shadow-[0_4px_16px_-4px_rgba(13,44,58,0.06)] flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#f4eefd] text-[#7545b0] flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px] sm:text-[20px]">cleaning_services</span>
+            </div>
+            <span class="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#f4eefd] text-[#7545b0]">Éxito</span>
+          </div>
+          <div>
+            <span class="text-[22px] sm:text-[28px] font-extrabold text-[#0d2c3a] block leading-none mb-1" id="metric-history-clean">0</span>
+            <span class="text-[11px] sm:text-[12px] font-medium text-[#687f86] block leading-tight">Limpiezas</span>
+          </div>
+        </div>
+
+        <!-- KPI 3: Habitaciones con Movimiento -->
+        <div class="history-kpi-card p-3 sm:p-4 rounded-2xl bg-white border border-[#e5eeed] shadow-[0_4px_16px_-4px_rgba(13,44,58,0.06)] flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#fdf0f3] text-[#f05d72] flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px] sm:text-[20px]">hotel</span>
+            </div>
+            <span class="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#fdf0f3] text-[#f05d72]">De 8</span>
+          </div>
+          <div>
+            <span class="text-[22px] sm:text-[28px] font-extrabold text-[#0d2c3a] block leading-none mb-1" id="metric-history-rooms">0</span>
+            <span class="text-[11px] sm:text-[12px] font-medium text-[#687f86] block leading-tight">Habitaciones</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Barra de Filtros y Búsqueda -->
+      <section class="history-toolbar flex flex-col gap-2.5">
+        <!-- Píldoras de Filtro Temporal -->
+        <div class="history-period-filters flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+          <button class="filter-btn h-9 px-4 rounded-full text-[12px] font-bold transition-all duration-200 flex items-center gap-1.5 shadow-sm bg-[#123a4a] text-white active:scale-95" type="button">
+            <span class="material-symbols-outlined text-[15px]">today</span>
+            Hoy
+          </button>
+          <button class="filter-btn h-9 px-4 rounded-full text-[12px] font-bold transition-all duration-200 flex items-center gap-1.5 bg-white text-[#526970] hover:text-[#0d2c3a] border border-[#e1e9e9] shadow-sm active:scale-95" type="button">
+            Ayer
+          </button>
+          <button class="filter-btn h-9 px-4 rounded-full text-[12px] font-bold transition-all duration-200 flex items-center gap-1.5 bg-white text-[#526970] hover:text-[#0d2c3a] border border-[#e1e9e9] shadow-sm active:scale-95" type="button">
+            Esta Semana
+          </button>
+          <button class="filter-btn h-9 px-4 rounded-full text-[12px] font-bold transition-all duration-200 flex items-center gap-1.5 bg-white text-[#526970] hover:text-[#0d2c3a] border border-[#e1e9e9] shadow-sm active:scale-95" type="button">
+            Todos
+          </button>
+        </div>
+      </section>
+
+      <!-- Flujo Cronológico de Tarjetas -->
+      <section class="flex flex-col gap-2.5">
+        <div class="flex items-center justify-between px-0.5">
+          <div class="flex items-center gap-2">
+            <span class="font-headline-sm text-[16px] sm:text-[18px] font-bold text-[#0d2c3a] tracking-tight">Actividad Registrada</span>
+            <span class="history-count text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#eaf4f3] text-[#1b6760]">0 eventos</span>
+          </div>
+          <span class="text-[11px] text-[#6b8288] flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">touch_app</span>
+            Toca una tarjeta para detalles
+          </span>
+        </div>
+
+        <!-- Lista Dinámica de Eventos (Poblada por app.js) -->
+        <div class="flex flex-col gap-2.5 relative" id="room-list">
+          <!-- Las tarjetas de eventos se generan e insertan dinámicamente aquí -->
+        </div>
+
+        <!-- Estado Vacío Elegante -->
+        <div class="hidden flex-col items-center justify-center py-12 px-6 text-center bg-white rounded-3xl border border-dashed border-[#cfe0de] shadow-sm" id="empty-state">
+          <div class="w-16 h-16 rounded-2xl bg-[#f0faf8] flex items-center justify-center mb-3 text-[#1c8274] shadow-sm">
+            <span class="material-symbols-outlined text-[32px]">manage_search</span>
+          </div>
+          <span class="text-[17px] font-bold text-[#0d2c3a] block mb-1">Sin registros en este periodo</span>
+          <span class="text-[13px] text-[#60767c] max-w-sm">No encontramos eventos que coincidan con tus filtros. Prueba seleccionando "Esta Semana", "Todos", o limpiando la barra de búsqueda.</span>
+        </div>
+      </section>
+
+      <!-- Botón de Exportar Reporte -->
+      <section class="history-export flex flex-col sm:flex-row items-center justify-between p-4 rounded-2xl bg-white border border-[#e1e9e9] shadow-sm gap-3 mt-1">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-[#fdf0f3] flex items-center justify-center text-[#f05d72] shrink-0">
+            <span class="material-symbols-outlined text-[22px]">table_view</span>
+          </div>
+          <div>
+            <span class="text-[14px] font-bold text-[#0d2c3a] block">Descargar Bitácora Histórica</span>
+            <span class="text-[12px] text-[#637a81]">Exporta los registros actuales en formato CSV para análisis en Excel u hojas de cálculo.</span>
+          </div>
+        </div>
+        <button class="w-full sm:w-auto h-11 px-5 rounded-xl bg-[#123a4a] hover:bg-[#0d2c3a] text-white text-[12px] font-bold flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all shrink-0" id="export-btn" type="button">
+          <span class="material-symbols-outlined text-[18px]">file_download</span>
+          <span>Exportar CSV</span>
+        </button>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Navegación Móvil (Para preview individual) -->
+  <nav class="fixed bottom-0 w-full z-50 pb-safe px-4 pointer-events-none" data-active-classes="text-coral-primary bg-status-occupied-bg">
+    <div class="max-w-md mx-auto mb-3 pointer-events-auto h-[68px] rounded-3xl bg-white/95 backdrop-blur-xl shadow-[0_12px_32px_-4px_rgba(13,44,58,0.18)] px-2 flex items-center justify-around">
+      <a class="flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-full text-[#687f86] hover:text-[#0d2c3a] transition-colors" data-path="inicio" href="#">
+        <span class="material-symbols-outlined text-[22px]">dashboard</span>
+        <span class="text-[11px] font-semibold mt-0.5">Inicio</span>
+      </a>
+      <a class="flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-full text-[#687f86] hover:text-[#0d2c3a] transition-colors" data-path="habitaciones" href="#">
+        <span class="material-symbols-outlined text-[22px]">bed</span>
+        <span class="text-[11px] font-semibold mt-0.5">Habitaciones</span>
+      </a>
+      <a class="flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-full text-[#687f86] hover:text-[#0d2c3a] transition-colors" data-path="limpiezas" href="#">
+        <span class="material-symbols-outlined text-[22px]">cleaning_services</span>
+        <span class="text-[11px] font-semibold mt-0.5">Limpiezas</span>
+      </a>
+      <a aria-current="page" class="flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-full transition-colors text-[#c83256] bg-[#fdf0f3] font-bold" data-path="historial" href="#">
+        <span class="material-symbols-outlined text-[22px]">history</span>
+        <span class="text-[11px] font-semibold mt-0.5">Historial</span>
+      </a>
+    </div>
+  </nav>
+</body>
+</html>

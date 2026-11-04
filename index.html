@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d2c3a">
+  <title>Control de Habitaciones</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="db.js"></script>
+  <!-- Groq AI Bot -->
+  <script src="groq-config.js"></script>
+  <script src="bot.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { font-family: "DM Sans", sans-serif; background: #e7f0ef; color: #183642; }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    @keyframes soft-glow {
+      0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.7)); }
+      50% { opacity: 0.45; transform: scale(0.9); filter: drop-shadow(0 0 1px rgba(52, 211, 153, 0.2)); }
+    }
+    .status-dot-pulse {
+      animation: soft-glow 2.4s ease-in-out infinite;
+    }
+    #app { height: 100vh; height: 100dvh; }
+    #screen { height: calc(100vh - 5rem - env(safe-area-inset-bottom, 0px)); height: calc(100dvh - 5rem - env(safe-area-inset-bottom, 0px)); min-height: 0; }
+    #screen-frame { display: block; width: 100%; height: 100%; border: 0; }
+    #app > nav {
+      display: flex; justify-content: center; padding: 8px 12px 8px;
+      border: 0; background: transparent; pointer-events: none;
+    }
+    #nav-links {
+      width: 100%; max-width: 520px; height: 64px; gap: 4px; padding: 5px;
+      border: 1px solid #dce8e7; border-radius: 22px;
+      background: rgb(255 255 255 / 94%); box-shadow: 0 8px 26px rgb(13 44 58 / 13%);
+      pointer-events: auto;
+    }
+    #app .nav-link {
+      min-width: 0; min-height: 0; flex: 1; flex-direction: column; gap: 2px;
+      padding: 3px 4px; border-radius: 16px; color: #70868d;
+      background: transparent; transition: background .2s ease, color .2s ease, transform .2s ease;
+    }
+    #app .nav-link:hover { color: #137f82; background: #f0f8f7; }
+    #app .nav-link .material-symbols-outlined {
+      display: grid; width: 30px; height: 29px; place-items: center;
+      border-radius: 11px; font-size: 21px; transition: background .2s ease, color .2s ease;
+    }
+    #app .nav-link span:last-child { font-size: 10px; line-height: 13px; font-weight: 600; }
+    #app .nav-link[aria-current="page"] {
+      color: #0e5c66; background: #e5f5f2; box-shadow: inset 0 0 0 1px #d6eeea;
+    }
+    #app .nav-link[aria-current="page"] .material-symbols-outlined {
+      color: #fff; background: linear-gradient(145deg, #23b6a7, #138994);
+      box-shadow: 0 3px 8px rgb(19 137 148 / 25%);
+    }
+    #app .nav-link[aria-current="page"] span:last-child { font-weight: 800; }
+    @media (min-width: 640px) {
+      #app { width: 100%; max-width: 1440px; height: 100vh; height: 100dvh; margin: 0 auto; background: #eff5f4; box-shadow: 0 0 40px rgb(19 58 74 / 12%); }
+      #screen { height: calc(100vh - 5rem); height: calc(100dvh - 5rem); }
+      #app > nav { padding-top: 8px; padding-bottom: 8px; }
+      #nav-links { max-width: 600px; }
+      #app .nav-link { max-width: 140px; }
+      #app .nav-link span:last-child { font-size: 11px; }
+    }
+    #sidebar-brand { display: none; }
+    @media (min-width: 1024px) {
+      body { padding: 0; background: #e1eceb; }
+      #app {
+        display: grid;
+        grid-template-columns: 248px minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
+        width: 100%;
+        max-width: 1680px;
+        height: 100dvh;
+        overflow: hidden;
+        border: 0;
+        box-shadow: 0 16px 70px rgb(13 44 58 / 18%);
+      }
+      #screen { grid-column: 2; grid-row: 1; height: 100dvh; min-width: 0; }
+      #app > nav {
+        grid-column: 1;
+        grid-row: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2rem;
+        padding: 28px 16px 24px;
+        border-top: 0;
+        border-right: 1px solid rgb(154 211 205 / 18%);
+        background:
+          radial-gradient(ellipse at 12% 0%, rgb(38 183 166 / 18%), transparent 38%),
+          linear-gradient(165deg, #123a4a 0%, #0d2c3a 56%, #092532 100%);
+        box-shadow: 8px 0 30px rgb(13 44 58 / 16%);
+        pointer-events: auto;
+      }
+      #sidebar-brand { display: flex; align-items: center; gap: 12px; padding: 0 10px 24px; border-bottom: 1px solid rgb(154 211 205 / 18%); }
+      #sidebar-brand .brand-mark { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid rgb(122 224 211 / 48%); border-radius: 15px; background: linear-gradient(145deg, #35cbb8, #21aa9e); color: #0d2c3a; box-shadow: 0 8px 18px rgb(8 25 21 / 24%); }
+      #sidebar-brand .brand-title { color: #f0f8f7; font-size: 15px; font-weight: 800; letter-spacing: -.025em; }
+      #sidebar-brand .brand-subtitle { margin-top: 3px; color: #9dc5c7; font-size: 10px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; }
+      #nav-links { width: 100%; max-width: none; height: auto; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+      #app .nav-link { min-width: 0; min-height: 48px; max-width: none; flex: none; flex-direction: row; justify-content: flex-start; gap: 14px; padding: 0 14px; border-radius: 12px; color: #b6d0d2; background: transparent; transition: background .18s ease, color .18s ease, transform .18s ease; }
+      #app .nav-link:hover { transform: translateX(2px); background: rgb(255 255 255 / 8%); color: #80e2d5; }
+      #app .nav-link[aria-current="page"] { color: #0d3844; background: linear-gradient(110deg, #9ce8dc, #68d2c5); box-shadow: inset 3px 0 #d9fffa, 0 6px 16px rgb(8 25 21 / 14%); }
+      #app .nav-link .material-symbols-outlined { display: inline-grid; width: 24px; height: 24px; place-items: center; border-radius: 0; background: transparent; box-shadow: none; font-size: 22px; }
+      #app .nav-link[aria-current="page"] .material-symbols-outlined { color: inherit; background: transparent; box-shadow: none; }
+      #app .nav-link span:last-child { font-size: 13px; font-weight: 600; }
+      #app .nav-link[aria-current="page"] span:last-child { font-weight: 800; }
+      #theme-toggle { align-self: stretch; justify-content: flex-start; margin-top: auto; }
+    }
+    @media (max-width: 1023px) {
+      #app > nav { background: transparent; }
+      #sidebar-brand { display: none; }
+    }
+    #theme-toggle {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      min-width: 42px; min-height: 42px; padding: 0 12px; border: 1px solid rgb(182 208 210 / 22%);
+      border-radius: 14px; background: rgb(255 255 255 / 7%); color: #b6d0d2;
+      font: 600 12px "DM Sans", sans-serif; cursor: pointer; pointer-events: auto;
+      transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    #theme-toggle:hover { transform: translateY(-1px); border-color: rgb(182 208 210 / 45%); background: rgb(255 255 255 / 12%); color: #f0f8f7; }
+    #theme-toggle .material-symbols-outlined { font-size: 19px; }
+    @media (max-width: 1023px) {
+      #theme-toggle {
+        position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+        z-index: 60; width: 42px; height: 42px; min-height: 42px; padding: 0; border-color: #dce8e7;
+        border-radius: 50%; background: rgb(255 255 255 / 96%); color: #41616a;
+        box-shadow: 0 4px 14px rgb(13 44 58 / 14%);
+      }
+      #theme-toggle:hover { background: #fff; color: #137f82; }
+      #theme-toggle .theme-toggle-label { display: none; }
+    }
+    html[data-theme="dark"] body { background: #10191e; color: #e4edef; }
+    html[data-theme="dark"] #app { background: #10191e !important; }
+    html[data-theme="dark"] #nav-links {
+      border-color: #34444b; background: rgb(27 39 45 / 96%); box-shadow: 0 8px 26px rgb(0 0 0 / 28%);
+    }
+    html[data-theme="dark"] #app .nav-link { color: #a7b9bf; }
+    html[data-theme="dark"] #app .nav-link:hover { color: #83e0d4; background: #27363c; }
+    html[data-theme="dark"] #app .nav-link[aria-current="page"] { color: #a6eee3; background: #273d40; box-shadow: inset 0 0 0 1px #365b5a; }
+    html[data-theme="dark"] #app .nav-link[aria-current="page"] .material-symbols-outlined { color: #102a2f; }
+    html[data-theme="dark"] #theme-toggle { border-color: #42545b; background: #26363d; color: #c3d3d7; }
+    html[data-theme="dark"] #theme-toggle:hover { border-color: #5a777b; background: #30434a; color: #fff; }
+    html[data-theme="dark"] #auth-screen .bg-white\/95 { background-color: rgb(28 41 47 / 96%) !important; }
+    html[data-theme="dark"] #auth-screen h2 { color: #e8f1f2; }
+    html[data-theme="dark"] #auth-screen input { border-color: #40545b; background: #17252b; color: #e8f1f2; }
+    html[data-theme="dark"] #auth-screen .border-\[\#e9efee\] { border-color: #405057; }
+    html[data-theme="dark"] #auth-screen .text-\[\#49656e\],
+    html[data-theme="dark"] #auth-screen .text-\[\#71868c\] { color: #a7b8bd; }
+  </style>
+</head>
+<body>
+  <div id="app" class="flex h-full flex-col overflow-hidden bg-[#eff5f4]">
+    <main id="screen" class="min-h-0 flex-1 relative">
+      <iframe id="frame-inicio" class="screen-frame absolute inset-0 w-full h-full border-0" src="inicio.html" title="Inicio"></iframe>
+      <iframe id="frame-habitaciones" class="screen-frame absolute inset-0 w-full h-full border-0 hidden" src="habitaciones.html" title="Habitaciones"></iframe>
+      <iframe id="frame-limpiezas" class="screen-frame absolute inset-0 w-full h-full border-0 hidden" src="limpiezas.html" title="Limpiezas"></iframe>
+      <iframe id="frame-historial" class="screen-frame absolute inset-0 w-full h-full border-0 hidden" src="historial.html" title="Historial"></iframe>
+      <iframe id="frame-personal" class="screen-frame absolute inset-0 w-full h-full border-0 hidden" src="personal.html" title="Personal"></iframe>
+    </main>
+    <nav aria-label="Navegación principal" class="safe-bottom z-50 shrink-0">
+      <div id="sidebar-brand">
+        <span class="brand-mark material-symbols-outlined" aria-hidden="true">hotel</span>
+        <div class="flex-1">
+          <span class="brand-title block">Control Hotelero</span>
+          <span class="brand-subtitle block">Panel de operaciones</span>
+          <div id="supabase-status-badge" class="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-[#7fa3a6] tracking-wide transition-all">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#7fa3a6]/60"></span>
+            <span>Verificando...</span>
+          </div>
+        </div>
+      </div>
+      <div id="nav-links" class="mx-auto flex items-center justify-around">
+        <a href="#inicio" data-screen="inicio" aria-current="page" class="nav-link flex items-center justify-center">
+          <span class="material-symbols-outlined text-[23px]">dashboard</span><span class="text-[10px] font-bold">Inicio</span>
+        </a>
+        <a href="#habitaciones" data-screen="habitaciones" class="nav-link flex items-center justify-center">
+          <span class="material-symbols-outlined text-[23px]">bed</span><span class="text-[10px] font-medium">Habitaciones</span>
+        </a>
+        <a href="#limpiezas" data-screen="limpiezas" class="nav-link flex items-center justify-center">
+          <span class="material-symbols-outlined text-[23px]">cleaning_services</span><span class="text-[10px] font-medium">Limpiezas</span>
+        </a>
+        <a href="#historial" data-screen="historial" class="nav-link flex items-center justify-center">
+          <span class="material-symbols-outlined text-[23px]">history</span><span class="text-[10px] font-medium">Historial</span>
+        </a>
+        <a href="#personal" data-screen="personal" class="nav-link flex items-center justify-center">
+          <span class="material-symbols-outlined text-[23px]">groups</span><span class="text-[10px] font-medium">Personal</span>
+        </a>
+        <button id="open-bot-btn" type="button" class="nav-link flex items-center justify-center text-[#23b6a7] hover:text-[#138994] transition-transform active:scale-95">
+          <span class="material-symbols-outlined text-[23px]">smart_toy</span><span class="text-[10px] font-medium">IA Bot</span>
+        </button>
+        <button id="logout-btn" type="button" title="Cerrar sesión" class="nav-link flex items-center justify-center text-[#70868d] hover:text-[#e77988] transition-colors active:scale-95">
+          <span class="material-symbols-outlined text-[23px]">logout</span><span class="text-[10px] font-medium">Salir</span>
+        </button>
+      </div>
+      <button id="theme-toggle" type="button" aria-label="Activar modo oscuro" aria-pressed="false" title="Activar modo oscuro">
+        <span class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
+        <span class="theme-toggle-label">Modo oscuro</span>
+      </button>
+    </nav>
+  </div>
+
+  <section id="cleaner-screen" class="hidden fixed inset-0 z-[210] flex min-h-0 flex-col bg-[#eff5f4] text-[#183642]" aria-label="Habitaciones asignadas al aseador">
+    <header class="shrink-0 bg-gradient-to-r from-[#0d2c3a] to-[#176273] px-5 py-4 text-white shadow-lg">
+      <div class="mx-auto flex w-full max-w-3xl items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[.14em] text-[#a8e8df]">Personal de aseo</p>
+          <h1 class="mt-1 text-lg font-extrabold" id="cleaner-name">Mis habitaciones</h1>
+        </div>
+        <button id="cleaner-logout" type="button" class="rounded-xl border border-white/20 px-3 py-2 text-sm font-bold text-white transition hover:bg-white/10">
+          Salir
+        </button>
+      </div>
+    </header>
+    <main class="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+      <div class="mx-auto w-full max-w-3xl">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <p class="text-sm text-[#526c73]">Habitaciones asignadas a tu turno</p>
+          <button id="cleaner-refresh" type="button" class="inline-flex items-center gap-1 rounded-xl bg-white px-3 py-2 text-sm font-bold text-[#176273] shadow-sm">
+            <span class="material-symbols-outlined text-lg">refresh</span> Actualizar
+          </button>
+        </div>
+        <p id="cleaner-feedback" class="mb-3 hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="status"></p>
+        <div id="cleaner-room-list" class="grid gap-3 sm:grid-cols-2"></div>
+        <div id="cleaner-empty" class="hidden rounded-2xl border border-dashed border-[#b9cecc] bg-white px-5 py-10 text-center">
+          <span class="material-symbols-outlined text-4xl text-[#8ba6a8]">task_alt</span>
+          <p class="mt-2 font-bold">No tienes habitaciones asignadas</p>
+          <p class="mt-1 text-sm text-[#71868c]">Las nuevas asignaciones aparecerán aquí.</p>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- PANTALLA DE LOGIN ELEGANTE Y MODERNA -->
+  <div id="auth-screen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gradient-to-br from-[#092532] via-[#0d2c3a] to-[#123a4a] transition-all duration-300">
+    <!-- Círculos decorativos de fondo con desenfoque -->
+    <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#26b7a6]/15 blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#138994]/20 blur-3xl pointer-events-none"></div>
+
+    <div class="relative w-full max-w-sm p-8 bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_20px_70px_rgba(0,0,0,0.35)] border border-white/40">
+      
+      <!-- Brand & Icono -->
+      <div class="text-center mb-6">
+        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-[#123a4a] to-[#26b7a6] flex items-center justify-center text-white shadow-lg shadow-[#26b7a6]/20">
+          <span class="material-symbols-outlined text-[28px]">lock</span>
+        </div>
+        <h2 class="text-[20px] font-extrabold text-[#0d2c3a] tracking-tight">Acceso Seguro</h2>
+        <p class="text-[12px] text-[#71868c] mt-0.5">Sistema de control hotelero</p>
+      </div>
+
+      <!-- Alerta de Error -->
+      <div id="auth-error" class="hidden mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[12px] flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] shrink-0">error</span>
+        <span id="auth-error-text">Credenciales incorrectas</span>
+      </div>
+
+      <!-- Formulario de Login -->
+      <form id="auth-form" class="space-y-4">
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-[#49656e] mb-1.5" for="auth-email">Teléfono o correo electrónico</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-2.5 text-[#8fa7ad] text-[19px]">mail</span>
+            <input 
+              id="auth-email" 
+              type="text"
+              required 
+              autocomplete="username"
+              placeholder="Teléfono de aseo o correo de administración"
+              class="w-full h-11 pl-10 pr-3 rounded-xl bg-[#f2f7f6] text-[#0d2c3a] text-[13px] border border-[#d6e3e1] focus:outline-none focus:border-[#26b7a6] focus:bg-white transition-all font-medium"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-[#49656e] mb-1.5">Contraseña</label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-2.5 text-[#8fa7ad] text-[19px]">key</span>
+            <input 
+              id="auth-password" 
+              type="password" 
+              required 
+              placeholder="••••••••" 
+              class="w-full h-11 pl-10 pr-10 rounded-xl bg-[#f2f7f6] text-[#0d2c3a] text-[13px] border border-[#d6e3e1] focus:outline-none focus:border-[#26b7a6] focus:bg-white transition-all font-medium"
+            />
+            <button 
+              type="button" 
+              id="auth-toggle-pwd" 
+              class="absolute right-3 top-2.5 text-[#8fa7ad] hover:text-[#0d2c3a] transition-colors">
+              <span class="material-symbols-outlined text-[19px]">visibility</span>
+            </button>
+          </div>
+        </div>
+
+        <button 
+          id="auth-submit-btn" 
+          type="submit" 
+          class="w-full h-11 mt-2 rounded-xl bg-gradient-to-r from-[#123a4a] to-[#176273] hover:from-[#0d2c3a] hover:to-[#123a4a] text-white font-bold text-[13px] shadow-lg shadow-[#123a4a]/25 flex items-center justify-center gap-2 active:scale-95 transition-all">
+          <span>Ingresar al Sistema</span>
+          <span class="material-symbols-outlined text-[17px]">arrow_forward</span>
+        </button>
+      </form>
+
+      <!-- Pie de Seguridad -->
+      <div class="mt-6 pt-4 border-t border-[#e9efee] flex items-center justify-center gap-1.5 text-[11px] text-[#71868c]">
+        <span class="material-symbols-outlined text-[14px] text-emerald-600">verified_user</span>
+        <span>Aseo: teléfono y clave de 5 caracteres</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL / WIDGET FLOTANTE CHATBOT IA -->
+  <div id="bot-modal" class="fixed inset-0 sm:inset-auto sm:right-6 sm:bottom-6 sm:top-auto sm:left-auto z-[150] flex flex-col justify-end sm:justify-start pointer-events-none transition-all duration-300 hidden">
+    <!-- Overlay sutil solo en pantallas móviles -->
+    <div id="bot-backdrop" class="fixed inset-0 bg-[#0d2c3a]/30 backdrop-blur-[2px] sm:hidden pointer-events-auto"></div>
+
+    <!-- Contenedor del Chat (Widget Flotante tipo Intercom/Copilot) -->
+    <div class="relative flex flex-col w-full sm:w-[410px] h-[82vh] sm:h-[580px] bg-white rounded-t-3xl sm:rounded-2xl shadow-[0_12px_45px_rgba(13,44,58,0.28)] overflow-hidden border border-[#d6e5e3] pointer-events-auto transform transition-all duration-200">
+      
+      <!-- Header del Bot -->
+      <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-r from-[#123a4a] via-[#154e5e] to-[#176273] text-white select-none">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#23b6a7] to-[#80e2d5] flex items-center justify-center shadow-sm">
+            <span class="material-symbols-outlined text-[#0d2c3a] text-[18px]">smart_toy</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-[13px] leading-tight">Asistente IA</h3>
+              <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#23b6a7]/25 text-[#a4ede4] border border-[#23b6a7]/40">GROQ</span>
+            </div>
+            <p class="text-[10px] text-[#9fc7c9] flex items-center gap-1 mt-0.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> En línea • Datos operativos
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <button id="close-bot-btn" type="button" title="Cerrar asistente" class="w-7 h-7 rounded-lg flex items-center justify-center text-[#c2e2e0] hover:text-white hover:bg-white/10 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Área de mensajes -->
+      <div id="bot-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8fbfa] text-[12.5px] overscroll-contain">
+        <!-- Mensaje de bienvenida inicial -->
+        <div class="flex gap-2.5 max-w-[90%]">
+          <div class="w-6 h-6 rounded-lg bg-[#23b6a7]/20 flex items-center justify-center text-[#176273] shrink-0 mt-0.5">
+            <span class="material-symbols-outlined text-[14px]">smart_toy</span>
+          </div>
+          <div class="p-3 rounded-2xl rounded-tl-none bg-white text-[#183642] shadow-sm border border-[#e2eceb] leading-relaxed">
+            <p>¡Hola! Soy tu asistente de operaciones. Puedes preguntarme el estado de cualquier habitación, huéspedes o personal en turno.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sugerencias rápidas (Chips) -->
+      <div id="bot-quick-chips" class="px-3 py-1.5 bg-[#f0f6f5] border-t border-[#e8f0ef] flex items-center gap-1.5 overflow-x-auto text-[11px] text-[#47676e] scrollbar-none">
+        <button type="button" class="bot-chip px-2.5 py-1 rounded-full bg-white border border-[#d6e4e2] hover:border-[#23b6a7] hover:text-[#176273] whitespace-nowrap transition-all shadow-2xs">¿Ocupación hoy?</button>
+        <button type="button" class="bot-chip px-2.5 py-1 rounded-full bg-white border border-[#d6e4e2] hover:border-[#23b6a7] hover:text-[#176273] whitespace-nowrap transition-all shadow-2xs">Habitaciones libres</button>
+        <button type="button" class="bot-chip px-2.5 py-1 rounded-full bg-white border border-[#d6e4e2] hover:border-[#23b6a7] hover:text-[#176273] whitespace-nowrap transition-all shadow-2xs">Personal en turno</button>
+      </div>
+
+      <!-- Input de mensaje -->
+      <form id="bot-form" class="p-2.5 bg-white border-t border-[#e2eceb] flex items-center gap-2">
+        <input 
+          id="bot-input" 
+          type="text" 
+          placeholder="Pregunta algo sobre el hotel..." 
+          autocomplete="off"
+          class="flex-1 h-9 px-3 rounded-xl bg-[#f0f5f4] text-[#183642] text-[12.5px] border border-[#d6e3e1] focus:outline-none focus:border-[#23b6a7] focus:bg-white transition-all font-medium placeholder:text-[#8ea2a7]"
+        />
+        <button 
+          type="submit" 
+          title="Enviar consulta"
+          class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#123a4a] to-[#176273] text-white flex items-center justify-center shadow-sm hover:from-[#0d2c3a] hover:to-[#123a4a] active:scale-95 transition-all shrink-0">
+          <span class="material-symbols-outlined text-[17px]">send</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- BOTÓN FLOTANTE BURBUJA (ASISTENTE MINIMIZADO) -->
+  <button 
+    id="bot-floating-trigger" 
+    type="button" 
+    title="Abrir Asistente IA" 
+    class="fixed right-6 bottom-24 sm:bottom-8 z-[140] w-16 h-16 rounded-full bg-gradient-to-tr from-[#123a4a] via-[#154e5e] to-[#23b6a7] text-white shadow-[0_10px_35px_rgba(18,58,74,0.45)] hover:shadow-[0_14px_40px_rgba(35,182,167,0.55)] hover:scale-105 active:scale-95 flex items-center justify-center transition-all duration-300 border-2 border-white/40 group">
+    <!-- Indicador de estado en línea -->
+    <span class="absolute top-0 right-0 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white status-dot-pulse"></span>
+    <span class="material-symbols-outlined text-[32px] group-hover:rotate-12 transition-transform duration-300 text-[#f0f8f7]">smart_toy</span>
+  </button>
+
+  <script src="app.js"></script>
+</body>
+</html>
