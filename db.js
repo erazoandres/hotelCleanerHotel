@@ -53,7 +53,7 @@ window.HotelDB = (function() {
         { data: novelties, error: errNov }
       ] = await Promise.all([
         sb.from("habitaciones").select("*"),
-        sb.from("personal").select("*").eq("activo", true),
+        sb.from("personal").select("id_personal, nombre, contacto, activo, creado_en").eq("activo", true),
         sb.from("asignaciones_habitacion").select("*").order("asignado_en", { ascending: false }),
         sb.from("eventos").select("*").order("creado_en", { ascending: false }).limit(100),
         sb.from("trabajos_limpieza").select("*").order("creado_en", { ascending: false }),
@@ -232,21 +232,21 @@ window.HotelDB = (function() {
     if (!window.crypto?.getRandomValues) throw new Error("Este navegador no permite generar una clave segura.");
 
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const maxByte = Math.floor(256 / alphabet.length) * alphabet.length;
     let password = "";
-    while (password.length < 5) {
-      const randomBytes = new Uint8Array(8);
+    while (password.length < 16) {
+      const randomBytes = new Uint8Array(16 - password.length);
       window.crypto.getRandomValues(randomBytes);
       randomBytes.forEach(byte => {
-        if (byte < 248 && password.length < 5) password += alphabet[byte % alphabet.length];
+        if (byte < maxByte && password.length < 16) password += alphabet[byte % alphabet.length];
       });
     }
 
-    const { error } = await sb.from("personal").insert({
-      id_personal: person.id,
-      nombre: person.name,
-      contacto: person.contact,
-      password,
-      activo: true
+    const { error } = await sb.rpc("crear_aseador", {
+      p_id_personal: person.id,
+      p_nombre: person.name,
+      p_contacto: person.contact,
+      p_password: password
     });
     if (error) throw error;
     return password;

@@ -4,7 +4,6 @@
 CREATE TABLE IF NOT EXISTS public.personal (
   id_personal TEXT PRIMARY KEY,
   nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
-  password TEXT,
   contacto TEXT NOT NULL CHECK (
     contacto ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
     OR (
@@ -16,7 +15,56 @@ CREATE TABLE IF NOT EXISTS public.personal (
   creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE public.personal ADD COLUMN IF NOT EXISTS password TEXT;
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+CREATE TABLE IF NOT EXISTS public.personal_credenciales (
+  id_personal TEXT PRIMARY KEY
+    REFERENCES public.personal(id_personal) ON DELETE CASCADE,
+  password_hash TEXT NOT NULL,
+  requiere_rotacion BOOLEAN NOT NULL DEFAULT FALSE,
+  actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.personal_credenciales
+  ADD COLUMN IF NOT EXISTS requiere_rotacion BOOLEAN NOT NULL DEFAULT FALSE;
+
+DO $$
+DECLARE
+  crypto_schema TEXT;
+BEGIN
+  SELECT n.nspname
+  INTO crypto_schema
+  FROM pg_extension AS e
+  JOIN pg_namespace AS n ON n.oid = e.extnamespace
+  WHERE e.extname = 'pgcrypto';
+
+  IF crypto_schema IS NULL THEN
+    RAISE EXCEPTION 'La extensión pgcrypto no está disponible.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'personal'
+      AND column_name = 'password'
+  ) THEN
+    EXECUTE format(
+      'INSERT INTO public.personal_credenciales (id_personal, password_hash, requiere_rotacion)
+       SELECT id_personal,
+              %1$I.crypt(COALESCE(NULLIF(password, ''''), encode(%1$I.gen_random_bytes(18), ''hex'')),
+                         %1$I.gen_salt(''bf'', 12)),
+              TRUE
+       FROM public.personal
+       ON CONFLICT (id_personal) DO UPDATE
+       SET requiere_rotacion = TRUE',
+      crypto_schema
+    );
+    ALTER TABLE public.personal DROP COLUMN password;
+  END IF;
+END;
+$$;
 
 CREATE TABLE IF NOT EXISTS public.habitaciones (
   id_habitacion TEXT PRIMARY KEY,
@@ -115,13 +163,15 @@ RETURNS TABLE (id_personal TEXT, nombre TEXT)
 LANGUAGE SQL
 STABLE
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
   WITH coincidencias AS (
     SELECT p.id_personal, p.nombre
     FROM public.personal AS p
+    JOIN public.personal_credenciales AS c USING (id_personal)
     WHERE p.activo IS TRUE
-      AND p.password = p_password
+      AND c.password_hash = crypt(p_password, c.password_hash)
+      AND c.requiere_rotacion IS FALSE
       AND length(regexp_replace(COALESCE(p_telefono, ''), '[^0-9]', '', 'g')) >= 7
       AND regexp_replace(p.contacto, '[^0-9]', '', 'g') =
           regexp_replace(COALESCE(p_telefono, ''), '[^0-9]', '', 'g')
@@ -131,12 +181,66 @@ AS $$
   WHERE (SELECT count(*) FROM coincidencias) = 1;
 $$;
 
+CREATE OR REPLACE FUNCTION public.crear_aseador(
+  p_id_personal TEXT,
+  p_nombre TEXT,
+  p_contacto TEXT,
+  p_password TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, extensions, public, pg_temp
+AS $$
+BEGIN
+  IF COALESCE(auth.jwt() -> 'app_metadata' ->> 'role', '') <> 'hotel_admin' THEN
+    RAISE EXCEPTION 'Permiso denegado.';
+  END IF;
+  IF length(p_password) < 12 THEN
+    RAISE EXCEPTION 'La clave temporal debe tener al menos 12 caracteres.';
+  END IF;
+
+  INSERT INTO public.personal (id_personal, nombre, contacto, activo)
+  VALUES (p_id_personal, p_nombre, p_contacto, TRUE);
+
+  INSERT INTO public.personal_credenciales (id_personal, password_hash)
+  VALUES (p_id_personal, crypt(p_password, gen_salt('bf', 12)));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.regenerar_clave_aseador(p_id_personal TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, extensions, public, pg_temp
+AS $$
+DECLARE
+  v_password TEXT := encode(gen_random_bytes(18), 'hex');
+BEGIN
+  IF COALESCE(auth.jwt() -> 'app_metadata' ->> 'role', '') <> 'hotel_admin' THEN
+    RAISE EXCEPTION 'Permiso denegado.';
+  END IF;
+
+  UPDATE public.personal_credenciales
+  SET password_hash = crypt(v_password, gen_salt('bf', 12)),
+      requiere_rotacion = FALSE,
+      actualizado_en = NOW()
+  WHERE id_personal = p_id_personal;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No se encontró la ficha de credenciales del aseador.';
+  END IF;
+
+  RETURN v_password;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.autenticar_aseador(p_telefono TEXT, p_password TEXT)
 RETURNS TABLE (id_personal TEXT, nombre TEXT)
 LANGUAGE SQL
 STABLE
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
   SELECT a.id_personal, a.nombre
   FROM public.buscar_aseador(p_telefono, p_password) AS a;
@@ -154,7 +258,7 @@ RETURNS TABLE (
 LANGUAGE SQL
 STABLE
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
   SELECT h.id_habitacion, h.estado, h.nombre_huesped, h.plan_limpieza,
          h.detalles_limpieza, h.tipo_limpieza_asignada
@@ -171,7 +275,7 @@ CREATE OR REPLACE FUNCTION public.finalizar_habitacion_aseador(
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
   v_id_personal TEXT;
@@ -215,12 +319,17 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.buscar_aseador(TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.buscar_aseador(TEXT, TEXT) FROM anon, authenticated;
 REVOKE ALL ON FUNCTION public.autenticar_aseador(TEXT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.habitaciones_aseador(TEXT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.finalizar_habitacion_aseador(TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.crear_aseador(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.regenerar_clave_aseador(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.autenticar_aseador(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.habitaciones_aseador(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.finalizar_habitacion_aseador(TEXT, TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.crear_aseador(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.regenerar_clave_aseador(TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.registrar_cambio_asignacion_habitacion()
 RETURNS TRIGGER
@@ -268,24 +377,57 @@ ALTER TABLE public.asistencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.eventos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trabajos_limpieza ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.novedades ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.personal_credenciales ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.es_administrador_hotel()
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT COALESCE(auth.jwt() -> 'app_metadata' ->> 'role' = 'hotel_admin', FALSE);
+$$;
+
+REVOKE ALL ON FUNCTION public.es_administrador_hotel() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.es_administrador_hotel() TO authenticated;
 
 DO $$
 DECLARE
   nombre_tabla TEXT;
+  nombre_politica TEXT;
 BEGIN
   FOREACH nombre_tabla IN ARRAY ARRAY[
     'personal', 'habitaciones', 'asignaciones_habitacion', 'asistencias',
     'eventos', 'trabajos_limpieza', 'novedades'
   ]
   LOOP
-    EXECUTE format('DROP POLICY IF EXISTS "Usuarios autenticados gestionan %s" ON public.%I', nombre_tabla, nombre_tabla);
+    FOR nombre_politica IN
+      SELECT policyname
+      FROM pg_policies
+      WHERE schemaname = 'public' AND tablename = nombre_tabla
+    LOOP
+      EXECUTE format(
+        'DROP POLICY %I ON public.%I',
+        nombre_politica, nombre_tabla
+      );
+    END LOOP;
     EXECUTE format(
-      'CREATE POLICY "Usuarios autenticados gestionan %s" ON public.%I FOR ALL TO authenticated USING (true) WITH CHECK (true)',
+      'CREATE POLICY "Administradores gestionan %s" ON public.%I FOR ALL TO authenticated USING (public.es_administrador_hotel()) WITH CHECK (public.es_administrador_hotel())',
       nombre_tabla, nombre_tabla
     );
   END LOOP;
 END;
 $$;
+
+DROP POLICY IF EXISTS "Usuarios autenticados gestionan personal_credenciales"
+  ON public.personal_credenciales;
+REVOKE ALL ON public.personal_credenciales FROM PUBLIC, anon, authenticated;
+
+REVOKE ALL ON public.personal, public.habitaciones,
+  public.asignaciones_habitacion, public.asistencias, public.eventos,
+  public.trabajos_limpieza, public.novedades FROM PUBLIC, anon;
+REVOKE ALL ON SEQUENCE public.asignaciones_habitacion_id_asignacion_seq,
+  public.eventos_id_evento_seq, public.trabajos_limpieza_id_trabajo_seq
+  FROM PUBLIC, anon;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.personal, public.habitaciones,
   public.asignaciones_habitacion, public.asistencias, public.eventos,
