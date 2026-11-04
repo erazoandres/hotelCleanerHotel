@@ -14,6 +14,7 @@ import {
 import type { RemoteHotelState } from "../types/hotel";
 
 const emptyState: RemoteHotelState = {
+  warnings: [],
   rooms: {},
   guests: {},
   servicePlans: {},
@@ -52,8 +53,11 @@ export function HotelDataProvider({ children }: { children: ReactNode }) {
     try {
       const nextState = await fetchRemoteState();
       setState(nextState);
-      setError(null);
-      setConnection("Conectado");
+      const warning = nextState.warnings.length
+        ? `Las habitaciones se cargaron, pero hay datos que no pudieron leerse:\n${nextState.warnings.join("\n")}`
+        : null;
+      setError(warning);
+      setConnection(warning ? "Conectado parcialmente" : "Conectado");
       return true;
     } catch (loadError: unknown) {
       const message = errorMessage(loadError);
@@ -120,14 +124,20 @@ export function HotelDataStatus() {
     return <p className="status-badge">Conectando con Supabase…</p>;
   }
   return (
-    <div className="status-row">
-      <p className={error ? "status-badge status-error" : "status-badge"}>
-        {connection}
-      </p>
-      {error && (
+    <div className="status-stack">
+      <div className="status-row">
+        <p className={error ? "status-badge status-error" : "status-badge"}>
+          {connection}
+        </p>
         <button className="button button-small" onClick={() => void refresh()}>
-          Reintentar
+          Actualizar
         </button>
+      </div>
+      {error && (
+        <details className="data-warning">
+          <summary>Ver problemas de lectura</summary>
+          <pre>{error}</pre>
+        </details>
       )}
     </div>
   );

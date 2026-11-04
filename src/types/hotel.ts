@@ -81,6 +81,7 @@ export interface HotelEvent {
 }
 
 export interface RemoteHotelState {
+  warnings: string[];
   rooms: Record<string, RoomStatus>;
   guests: Record<string, string>;
   servicePlans: Record<string, string>;

@@ -31,6 +31,7 @@ const statusFromDatabase: Record<string, RoomStatus> = {
 
 export async function fetchRemoteState(): Promise<RemoteHotelState> {
   const supabase = getSupabaseClient();
+  const warnings: string[] = [];
   const [
     { data: rooms, error: roomsError },
     { data: staff, error: staffError },
@@ -65,29 +66,38 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
       .order("creado_en", { ascending: false }),
   ]);
 
-  const queryError =
-    roomsError ??
-    staffError ??
-    assignmentsError ??
-    eventsError ??
-    cleaningWorkError ??
-    attendanceError ??
-    noveltiesError;
-  if (queryError) {
-    throw new Error(`No se pudieron cargar los datos del hotel: ${queryError.message}`);
+  if (roomsError) {
+    throw new Error(`No se pudieron cargar las habitaciones: ${roomsError.message}`);
   }
+  const availableRows = <T,>(
+    label: string,
+    data: T[] | null,
+    error: { message: string } | null,
+  ): T[] => {
+    if (error) {
+      warnings.push(`${label}: ${error.message}`);
+      return [];
+    }
+    return data ?? [];
+  };
+  const staffRows = availableRows("Personal", staff, staffError);
+  const assignmentRows = availableRows("Asignaciones", assignments, assignmentsError);
+  const eventRows = availableRows("Historial", events, eventsError);
+  const cleaningRows = availableRows("Trabajos de limpieza", cleaningWork, cleaningWorkError);
+  const attendanceRows = availableRows("Asistencias", attendance, attendanceError);
+  const noveltyRows = availableRows("Novedades", novelties, noveltiesError);
 
-  const staffRows = staff ?? [];
   const staffById = new Map(
     staffRows.map((person) => [person.id_personal, person]),
   );
   const state: RemoteHotelState = {
+    warnings,
     rooms: {},
     guests: {},
     servicePlans: {},
     cleaningDetails: {},
     assignedCleanings: {},
-    roomAssignments: (assignments ?? []).map((assignment) => ({
+    roomAssignments: assignmentRows.map((assignment) => ({
       id: assignment.id_asignacion,
       roomId: assignment.id_habitacion,
       staffId: assignment.id_personal,
@@ -95,21 +105,21 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
       assignedAt: assignment.asignado_en,
       unassignedAt: assignment.liberado_en,
     })),
-    cleaningWork: (cleaningWork ?? []).map((work) => ({
+    cleaningWork: cleaningRows.map((work) => ({
       staffId: work.id_personal,
       staffName: work.nombre_personal,
       room: work.id_habitacion,
       cleaningType: work.tipo_limpieza,
       time: work.creado_en,
     })),
-    attendance: (attendance ?? []).map((record) => ({
+    attendance: attendanceRows.map((record) => ({
       id: record.id_asistencia,
       staffId: record.id_personal,
       staffName: record.nombre_personal,
       checkIn: record.entrada,
       checkOut: record.salida,
     })),
-    novelties: (novelties ?? []).map((novelty) => ({
+    novelties: noveltyRows.map((novelty) => ({
       id: novelty.id_novedad,
       staffId: novelty.id_personal,
       staffName: novelty.nombre_personal,
@@ -125,7 +135,7 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
       name: person.nombre,
       contact: person.contacto,
     })),
-    events: (events ?? []).map((event) => ({
+    events: eventRows.map((event) => ({
       room: event.id_habitacion,
       status: statusFromDatabase[event.estado] ?? "unknown",
       action: event.accion,

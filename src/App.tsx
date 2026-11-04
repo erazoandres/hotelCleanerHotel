@@ -14,6 +14,7 @@ import {
   StaffPage,
 } from "./pages/HotelPages";
 import { isSupabaseConfigured } from "./lib/supabase";
+import HotelAssistant from "./components/HotelAssistant";
 
 const sections = [
   { path: "/app/inicio", label: "Inicio", icon: "space_dashboard" },
@@ -118,6 +119,7 @@ function AdminApplication() {
             <Route path="*" element={<Navigate to="/app/inicio" replace />} />
           </Routes>
         </main>
+        <HotelAssistant />
       </div>
     </HotelDataProvider>
   );

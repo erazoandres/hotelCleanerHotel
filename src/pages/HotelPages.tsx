@@ -259,6 +259,26 @@ export function RoomsPage() {
     () => Object.keys(state.rooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [state.rooms],
   );
+  const legacyRoomCount = useMemo(() => {
+    try {
+      const saved = localStorage.getItem("control-habitaciones-state-v3");
+      if (!saved) return 0;
+      const previousState: unknown = JSON.parse(saved);
+      if (
+        !previousState ||
+        typeof previousState !== "object" ||
+        !("rooms" in previousState) ||
+        !previousState.rooms ||
+        typeof previousState.rooms !== "object"
+      ) {
+        return 0;
+      }
+      return Object.keys(previousState.rooms).length;
+    } catch (storageError: unknown) {
+      console.warn("No se pudo comprobar el estado local de la versión anterior.", storageError);
+      return 0;
+    }
+  }, []);
 
   return (
     <div className="page-stack">
@@ -270,7 +290,16 @@ export function RoomsPage() {
       {loading && roomIds.length === 0 ? (
         <p className="empty-state">Cargando habitaciones…</p>
       ) : roomIds.length === 0 ? (
-        <p className="empty-state">No hay habitaciones registradas en Supabase.</p>
+        <>
+          <p className="empty-state">Supabase respondió sin errores, pero no devolvió habitaciones. Revisa si la tabla habitaciones tiene registros o si están protegidos por sus políticas RLS.</p>
+          {legacyRoomCount > 0 && (
+            <p className="legacy-warning" role="status">
+              También hay {legacyRoomCount} habitaciones guardadas en el navegador
+              por la versión anterior. Esos datos locales no se han importado ni
+              mezclado con Supabase.
+            </p>
+          )}
+        </>
       ) : (
         <section className="room-grid">
           {roomIds.map((roomId) => <RoomCard key={roomId} roomId={roomId} />)}
