@@ -1,23 +1,68 @@
 -- Base de datos del control de habitaciones.
 -- Compatible con la aplicacion React y Supabase.
--- No borra tablas ni datos. Para empezar vacio, crea un proyecto Supabase nuevo.
+-- No borra habitaciones ni registros operativos. El acceso del personal ahora
+-- utiliza cuentas de Supabase con correo y contrasena.
 
-CREATE SCHEMA IF NOT EXISTS extensions;
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+-- Algunos proyectos restaurados o personalizados no tienen el esquema public.
+CREATE SCHEMA IF NOT EXISTS public;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 -- Personal del hotel.
 CREATE TABLE IF NOT EXISTS public.personal (
   id_personal TEXT PRIMARY KEY,
   nombre TEXT NOT NULL,
   contacto TEXT NOT NULL,
+  correo TEXT,
+  auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE public.personal
+  ADD COLUMN IF NOT EXISTS correo TEXT;
+ALTER TABLE public.personal
+  ADD COLUMN IF NOT EXISTS auth_user_id UUID;
+ALTER TABLE public.personal
   ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE public.personal
   ADD COLUMN IF NOT EXISTS creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.personal'::regclass
+      AND conname = 'personal_auth_user_id_fkey'
+  ) THEN
+    ALTER TABLE public.personal
+      ADD CONSTRAINT personal_auth_user_id_fkey
+      FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+  END IF;
+END;
+$$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS personal_correo_unico
+  ON public.personal (lower(correo))
+  WHERE correo IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS personal_auth_user_id_unico
+  ON public.personal (auth_user_id)
+  WHERE auth_user_id IS NOT NULL;
+
+-- Elimina cualquier clave antigua que haya quedado en texto plano.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'personal'
+      AND column_name = 'password'
+  ) THEN
+    ALTER TABLE public.personal DROP COLUMN password;
+  END IF;
+END;
+$$;
 
 -- Habitaciones, estado actual, huesped y personal asignado.
 CREATE TABLE IF NOT EXISTS public.habitaciones (
@@ -142,60 +187,6 @@ CREATE TABLE IF NOT EXISTS public.novedades (
 CREATE INDEX IF NOT EXISTS novedades_personal_fecha
   ON public.novedades (id_personal, fecha DESC);
 
--- Claves del personal: solo se guarda el hash, nunca la clave original.
-CREATE TABLE IF NOT EXISTS public.personal_credenciales (
-  id_personal TEXT PRIMARY KEY
-    REFERENCES public.personal(id_personal) ON DELETE CASCADE,
-  password_hash TEXT NOT NULL,
-  requiere_rotacion BOOLEAN NOT NULL DEFAULT FALSE,
-  actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-ALTER TABLE public.personal_credenciales
-  ADD COLUMN IF NOT EXISTS requiere_rotacion BOOLEAN NOT NULL DEFAULT FALSE;
-
--- Si ya existia public.personal.password, migra las claves a hashes y obliga a
--- regenerarlas antes de permitir otro inicio de sesion del personal.
-DO $$
-DECLARE
-  esquema_crypto TEXT;
-BEGIN
-  SELECT n.nspname
-  INTO esquema_crypto
-  FROM pg_extension e
-  JOIN pg_namespace n ON n.oid = e.extnamespace
-  WHERE e.extname = 'pgcrypto';
-
-  IF esquema_crypto IS NULL THEN
-    RAISE EXCEPTION 'No se pudo habilitar la extension pgcrypto.';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'personal'
-      AND column_name = 'password'
-  ) THEN
-    EXECUTE format(
-      'INSERT INTO public.personal_credenciales
-         (id_personal, password_hash, requiere_rotacion)
-       SELECT id_personal,
-         %1$I.crypt(
-           COALESCE(NULLIF(password, ''''), %1$I.encode(%1$I.gen_random_bytes(18), ''hex'')),
-           %1$I.gen_salt(''bf'', 12)
-         ),
-         TRUE
-       FROM public.personal
-       ON CONFLICT (id_personal) DO UPDATE
-         SET requiere_rotacion = TRUE',
-      esquema_crypto
-    );
-    ALTER TABLE public.personal DROP COLUMN password;
-  END IF;
-END;
-$$;
-
 -- Comprueba el rol guardado por el administrador en app_metadata de Supabase.
 CREATE OR REPLACE FUNCTION public.es_administrador_hotel()
 RETURNS BOOLEAN
@@ -208,113 +199,32 @@ AS $$
   );
 $$;
 
--- Comprueba el telefono y la clave del personal. Esta funcion interna no se
--- puede llamar directamente desde el navegador.
-CREATE OR REPLACE FUNCTION public.buscar_aseador(
-  p_telefono TEXT,
-  p_password TEXT
-)
+-- Retira el inicio de sesion anterior basado en telefono y claves locales.
+DROP FUNCTION IF EXISTS public.autenticar_aseador(TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.habitaciones_aseador(TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.finalizar_habitacion_aseador(TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.crear_aseador(TEXT, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.regenerar_clave_aseador(TEXT);
+DROP FUNCTION IF EXISTS public.buscar_aseador(TEXT, TEXT);
+DROP TABLE IF EXISTS public.personal_credenciales;
+
+-- Devuelve el perfil asociado al usuario Supabase autenticado.
+CREATE OR REPLACE FUNCTION public.perfil_aseador()
 RETURNS TABLE (id_personal TEXT, nombre TEXT)
 LANGUAGE SQL
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, extensions, public, pg_temp
+SET search_path = pg_catalog, public, auth, pg_temp
 AS $$
-  WITH coincidencias AS (
-    SELECT p.id_personal, p.nombre
-    FROM public.personal p
-    JOIN public.personal_credenciales c USING (id_personal)
-    WHERE p.activo IS TRUE
-      AND c.requiere_rotacion IS FALSE
-      AND c.password_hash = crypt(p_password, c.password_hash)
-      AND length(regexp_replace(COALESCE(p_telefono, ''), '[^0-9]', '', 'g')) >= 7
-      AND regexp_replace(p.contacto, '[^0-9]', '', 'g') =
-          regexp_replace(COALESCE(p_telefono, ''), '[^0-9]', '', 'g')
-  )
-  SELECT c.id_personal, c.nombre
-  FROM coincidencias c
-  WHERE (SELECT count(*) FROM coincidencias) = 1;
+  SELECT p.id_personal, p.nombre
+  FROM public.personal p
+  WHERE p.auth_user_id = auth.uid()
+    AND p.activo IS TRUE
+    AND auth.jwt() -> 'app_metadata' ->> 'role' = 'hotel_cleaner';
 $$;
 
--- El administrador crea una ficha y una clave temporal.
-CREATE OR REPLACE FUNCTION public.crear_aseador(
-  p_id_personal TEXT,
-  p_nombre TEXT,
-  p_contacto TEXT,
-  p_password TEXT
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = pg_catalog, extensions, public, pg_temp
-AS $$
-BEGIN
-  IF NOT public.es_administrador_hotel() THEN
-    RAISE EXCEPTION 'Solo un administrador puede crear personal.';
-  END IF;
-  IF length(p_password) < 12 THEN
-    RAISE EXCEPTION 'La clave temporal debe tener al menos 12 caracteres.';
-  END IF;
-  IF length(regexp_replace(COALESCE(p_contacto, ''), '[^0-9]', '', 'g')) < 7 THEN
-    RAISE EXCEPTION 'El telefono no es valido.';
-  END IF;
-
-  INSERT INTO public.personal (id_personal, nombre, contacto, activo)
-  VALUES (p_id_personal, trim(p_nombre), trim(p_contacto), TRUE);
-
-  INSERT INTO public.personal_credenciales (id_personal, password_hash)
-  VALUES (p_id_personal, crypt(p_password, gen_salt('bf', 12)));
-END;
-$$;
-
--- El administrador crea una clave nueva para un trabajador.
-CREATE OR REPLACE FUNCTION public.regenerar_clave_aseador(p_id_personal TEXT)
-RETURNS TEXT
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = pg_catalog, extensions, public, pg_temp
-AS $$
-DECLARE
-  nueva_clave TEXT := encode(gen_random_bytes(18), 'hex');
-BEGIN
-  IF NOT public.es_administrador_hotel() THEN
-    RAISE EXCEPTION 'Solo un administrador puede cambiar la clave.';
-  END IF;
-
-  UPDATE public.personal_credenciales
-  SET password_hash = crypt(nueva_clave, gen_salt('bf', 12)),
-      requiere_rotacion = FALSE,
-      actualizado_en = NOW()
-  WHERE id_personal = p_id_personal;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'No se encontraron credenciales para este trabajador.';
-  END IF;
-
-  RETURN nueva_clave;
-END;
-$$;
-
--- Inicio de sesion del personal de aseo.
-CREATE OR REPLACE FUNCTION public.autenticar_aseador(
-  p_telefono TEXT,
-  p_password TEXT
-)
-RETURNS TABLE (id_personal TEXT, nombre TEXT)
-LANGUAGE SQL
-STABLE
-SECURITY DEFINER
-SET search_path = pg_catalog, extensions, public, pg_temp
-AS $$
-  SELECT a.id_personal, a.nombre
-  FROM public.buscar_aseador(p_telefono, p_password) a;
-$$;
-
--- Devuelve solo las habitaciones asignadas al trabajador autenticado.
-CREATE OR REPLACE FUNCTION public.habitaciones_aseador(
-  p_telefono TEXT,
-  p_password TEXT
-)
+-- Devuelve solo las habitaciones del trabajador autenticado.
+CREATE OR REPLACE FUNCTION public.habitaciones_aseador()
 RETURNS TABLE (
   id_habitacion TEXT,
   estado TEXT,
@@ -326,36 +236,40 @@ RETURNS TABLE (
 LANGUAGE SQL
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, extensions, public, pg_temp
+SET search_path = pg_catalog, public, auth, pg_temp
 AS $$
   SELECT h.id_habitacion, h.estado, h.nombre_huesped, h.plan_limpieza,
          h.detalles_limpieza, h.tipo_limpieza_asignada
-  FROM public.buscar_aseador(p_telefono, p_password) a
-  JOIN public.habitaciones h ON h.id_personal_asignado = a.id_personal
+  FROM public.personal p
+  JOIN public.habitaciones h ON h.id_personal_asignado = p.id_personal
+  WHERE p.auth_user_id = auth.uid()
+    AND p.activo IS TRUE
+    AND auth.jwt() -> 'app_metadata' ->> 'role' = 'hotel_cleaner'
   ORDER BY h.id_habitacion;
 $$;
 
 -- El trabajador solo puede finalizar una habitacion que tiene asignada.
 CREATE OR REPLACE FUNCTION public.finalizar_habitacion_aseador(
-  p_telefono TEXT,
-  p_password TEXT,
   p_id_habitacion TEXT
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, extensions, public, pg_temp
+SET search_path = pg_catalog, public, auth, pg_temp
 AS $$
 DECLARE
   trabajador RECORD;
   tipo TEXT;
 BEGIN
-  SELECT a.id_personal, a.nombre
+  SELECT p.id_personal, p.nombre
   INTO trabajador
-  FROM public.buscar_aseador(p_telefono, p_password) a;
+  FROM public.personal p
+  WHERE p.auth_user_id = auth.uid()
+    AND p.activo IS TRUE
+    AND auth.jwt() -> 'app_metadata' ->> 'role' = 'hotel_cleaner';
 
   IF trabajador.id_personal IS NULL THEN
-    RAISE EXCEPTION 'Telefono o clave incorrectos.';
+    RAISE EXCEPTION 'No hay una cuenta de aseo activa asociada a esta sesion.';
   END IF;
 
   UPDATE public.habitaciones h
@@ -436,7 +350,6 @@ ALTER TABLE public.asistencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.eventos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trabajos_limpieza ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.novedades ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.personal_credenciales ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE
@@ -467,7 +380,6 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON public.personal_credenciales FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON public.personal, public.habitaciones,
   public.asignaciones_habitacion, public.asistencias, public.eventos,
   public.trabajos_limpieza, public.novedades
@@ -481,28 +393,17 @@ GRANT USAGE, SELECT ON SEQUENCE
   public.trabajos_limpieza_id_trabajo_seq
   TO authenticated;
 
-REVOKE ALL ON FUNCTION public.buscar_aseador(TEXT, TEXT)
-  FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.es_administrador_hotel() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.es_administrador_hotel() TO authenticated;
 
-REVOKE ALL ON FUNCTION public.crear_aseador(TEXT, TEXT, TEXT, TEXT)
-  FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.regenerar_clave_aseador(TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.autenticar_aseador(TEXT, TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.habitaciones_aseador(TEXT, TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.finalizar_habitacion_aseador(TEXT, TEXT, TEXT)
-  FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.crear_aseador(TEXT, TEXT, TEXT, TEXT)
+REVOKE ALL ON FUNCTION public.perfil_aseador() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.habitaciones_aseador() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.finalizar_habitacion_aseador(TEXT)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.perfil_aseador() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.habitaciones_aseador() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.finalizar_habitacion_aseador(TEXT)
   TO authenticated;
-GRANT EXECUTE ON FUNCTION public.regenerar_clave_aseador(TEXT)
-  TO authenticated;
-GRANT EXECUTE ON FUNCTION public.autenticar_aseador(TEXT, TEXT)
-  TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.habitaciones_aseador(TEXT, TEXT)
-  TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.finalizar_habitacion_aseador(TEXT, TEXT, TEXT)
-  TO anon, authenticated;
 
 -- Permite que la app reciba cambios en tiempo real cuando existe la publicacion.
 DO $$

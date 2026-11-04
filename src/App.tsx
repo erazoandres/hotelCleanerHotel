@@ -58,6 +58,9 @@ function UnauthorizedPage() {
           README. Después, cierra sesión y vuelve a entrar para actualizar los
           permisos.
         </p>
+        <Link className="text-link" to="/app/aseo">
+          Ir al acceso de aseo
+        </Link>
         {error && <p className="form-error" role="alert">{error}</p>}
         <button className="button button-primary" onClick={() => void signOut()}>
           Cerrar sesión

@@ -13,6 +13,8 @@ export interface Database {
           id_personal: string;
           nombre: string;
           contacto: string;
+          correo: string | null;
+          auth_user_id: string | null;
           activo: boolean;
           creado_en: string;
         },
@@ -94,12 +96,12 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
-      autenticar_aseador: {
-        Args: { p_telefono: string; p_password: string };
+      perfil_aseador: {
+        Args: Record<PropertyKey, never>;
         Returns: { id_personal: string; nombre: string }[];
       };
       habitaciones_aseador: {
-        Args: { p_telefono: string; p_password: string };
+        Args: Record<PropertyKey, never>;
         Returns: {
           id_habitacion: string;
           estado: string;
@@ -110,25 +112,8 @@ export interface Database {
         }[];
       };
       finalizar_habitacion_aseador: {
-        Args: {
-          p_telefono: string;
-          p_password: string;
-          p_id_habitacion: string;
-        };
+        Args: { p_id_habitacion: string };
         Returns: boolean;
-      };
-      crear_aseador: {
-        Args: {
-          p_id_personal: string;
-          p_nombre: string;
-          p_contacto: string;
-          p_password: string;
-        };
-        Returns: undefined;
-      };
-      regenerar_clave_aseador: {
-        Args: { p_id_personal: string };
-        Returns: string;
       };
     };
     Enums: Record<string, never>;

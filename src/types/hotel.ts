@@ -10,6 +10,8 @@ export interface StaffMember {
   id: string;
   name: string;
   contact: string;
+  email: string | null;
+  hasAccount: boolean;
 }
 
 export interface CleanerProfile {

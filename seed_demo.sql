@@ -1,11 +1,11 @@
 -- Datos de demostracion para probar la aplicacion.
 -- Ejecutar despues de schema.sql desde Supabase SQL Editor.
 -- Solo crea o actualiza registros cuyos identificadores comienzan con DEMO.
--- Acceso de prueba para los tres aseadores:
--- Telefono: 3000000001 / Clave: DemoAseo-2026!
--- Telefono: 3000000002 / Clave: DemoAseo-2026!
--- Telefono: 3000000003 / Clave: DemoAseo-2026!
--- No uses estas claves en un entorno real.
+-- No crea cuentas ni contrasenas. En la app, abre Personal y usa
+-- "Crear acceso" para vincular un correo real a cada trabajador demo.
+
+CREATE SCHEMA IF NOT EXISTS public;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 BEGIN;
 
@@ -18,18 +18,6 @@ ON CONFLICT (id_personal) DO UPDATE
 SET nombre = EXCLUDED.nombre,
     contacto = EXCLUDED.contacto,
     activo = EXCLUDED.activo;
-
-INSERT INTO public.personal_credenciales (
-  id_personal, password_hash, requiere_rotacion, actualizado_en
-)
-VALUES
-  ('DEMO-ASEADOR-01', extensions.crypt('DemoAseo-2026!', extensions.gen_salt('bf', 12)), FALSE, NOW()),
-  ('DEMO-ASEADOR-02', extensions.crypt('DemoAseo-2026!', extensions.gen_salt('bf', 12)), FALSE, NOW()),
-  ('DEMO-ASEADOR-03', extensions.crypt('DemoAseo-2026!', extensions.gen_salt('bf', 12)), FALSE, NOW())
-ON CONFLICT (id_personal) DO UPDATE
-SET password_hash = EXCLUDED.password_hash,
-    requiere_rotacion = FALSE,
-    actualizado_en = NOW();
 
 -- Las asignaciones se registran automaticamente en el historial.
 INSERT INTO public.habitaciones (

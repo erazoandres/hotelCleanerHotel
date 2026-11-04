@@ -5,10 +5,15 @@ import { HotelDataStatus, useHotelData } from "../components/HotelData";
 import {
   addEvent,
   addNovelty,
+  createCleanerAccount,
   createStaff,
+  createStaffWithExistingAccount,
   finishCleanerRoom,
+  getCleanerProfile,
   getCleanerRooms,
+  linkCleanerAccount,
   loginCleaner,
+  logoutCleaner,
   resetCleanerPassword,
   removeStaff,
   saveAttendance,
@@ -20,6 +25,7 @@ import type {
   CleanerRoom,
   HotelEvent,
   RoomStatus,
+  StaffMember,
 } from "../types/hotel";
 
 const statusLabels: Record<RoomStatus, string> = {
@@ -444,6 +450,8 @@ export function StaffPage() {
   const { state, refresh } = useHotelData();
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  const [email, setEmail] = useState("");
+  const [accountEmails, setAccountEmails] = useState<Record<string, string>>({});
   const [newPassword, setNewPassword] = useState<string | null>(null);
   const [credentialName, setCredentialName] = useState("");
   const [noveltyStaffId, setNoveltyStaffId] = useState("");
@@ -462,12 +470,40 @@ export function StaffPage() {
         id: crypto.randomUUID(),
         name: name.trim(),
         contact: contact.trim(),
+        email: email.trim().toLowerCase(),
+        hasAccount: false,
       });
       setNewPassword(password);
-      setCredentialName(name.trim());
+      setCredentialName(`${name.trim()} (${email.trim().toLowerCase()})`);
       setName("");
       setContact("");
+      setEmail("");
       setSuccess("Registro creado. Copia la clave temporal; solo se mostrará una vez.");
+      await refresh();
+    } catch (createError: unknown) {
+      setError(messageOf(createError));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateWithExistingAccount() {
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const person: StaffMember = {
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        contact: contact.trim(),
+        email: email.trim().toLowerCase(),
+        hasAccount: false,
+      };
+      await createStaffWithExistingAccount(person);
+      setName("");
+      setContact("");
+      setEmail("");
+      setSuccess("Ficha creada y cuenta existente vinculada. El trabajador debe iniciar sesión nuevamente.");
       await refresh();
     } catch (createError: unknown) {
       setError(messageOf(createError));
@@ -547,16 +583,54 @@ export function StaffPage() {
   }
 
   async function handleResetPassword(personId: string, personName: string) {
-    if (!window.confirm(`¿Generar una nueva clave temporal para ${personName}?`)) return;
+    if (!window.confirm(`¿Generar una nueva contraseña temporal para ${personName}?`)) return;
     setError(null);
     setSuccess(null);
     try {
       const password = await resetCleanerPassword(personId);
       setCredentialName(personName);
       setNewPassword(password);
-      setSuccess("Nueva clave temporal generada. La clave anterior ya no es válida.");
+      setSuccess("Nueva contraseña temporal generada. La anterior ya no es válida.");
     } catch (resetError: unknown) {
       setError(messageOf(resetError));
+    }
+  }
+
+  async function handleCreateAccount(person: StaffMember) {
+    const accountEmail = accountEmails[person.id]?.trim().toLowerCase();
+    if (!accountEmail) {
+      setError("Escribe el correo de la cuenta del trabajador.");
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    try {
+      const password = await createCleanerAccount(person.id, accountEmail);
+      setCredentialName(`${person.name} (${accountEmail})`);
+      setNewPassword(password);
+      setSuccess("Acceso creado. Comparte el correo y la contraseña temporal de forma segura.");
+      setAccountEmails((current) => ({ ...current, [person.id]: "" }));
+      await refresh();
+    } catch (accountError: unknown) {
+      setError(messageOf(accountError));
+    }
+  }
+
+  async function handleLinkAccount(person: StaffMember) {
+    const accountEmail = accountEmails[person.id]?.trim().toLowerCase();
+    if (!accountEmail) {
+      setError("Escribe el correo de la cuenta existente.");
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    try {
+      await linkCleanerAccount(person.id, accountEmail);
+      setSuccess(`Cuenta vinculada. ${person.name} debe cerrar sesión e ingresar de nuevo con ${accountEmail}.`);
+      setAccountEmails((current) => ({ ...current, [person.id]: "" }));
+      await refresh();
+    } catch (accountError: unknown) {
+      setError(messageOf(accountError));
     }
   }
 
@@ -569,7 +643,7 @@ export function StaffPage() {
       <ActionMessage error={error} success={success} />
       {newPassword && (
         <section className="credential-notice" aria-live="polite">
-          <strong>Clave temporal para {credentialName || "el personal"} — compartir una sola vez</strong>
+          <strong>Contraseña temporal para {credentialName || "el personal"} — compartir una sola vez</strong>
           <code>{newPassword}</code>
           <button className="button button-small" onClick={() => setNewPassword(null)}>
             Ocultar clave
@@ -581,8 +655,17 @@ export function StaffPage() {
           <div><p className="eyebrow">Nuevo registro</p><h2>Agregar personal</h2></div>
           <label>Nombre completo<input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
           <label>Teléfono<input required maxLength={30} type="tel" value={contact} onChange={(event) => setContact(event.target.value)} /></label>
+          <label>Correo de acceso<input required autoComplete="email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <button className="button button-primary" disabled={saving}>
-            {saving ? "Guardando…" : "Crear ficha y clave"}
+            {saving ? "Guardando…" : "Crear ficha y cuenta nueva"}
+          </button>
+          <button
+            className="button"
+            disabled={saving}
+            onClick={() => void handleCreateWithExistingAccount()}
+            type="button"
+          >
+            Vincular cuenta Supabase existente
           </button>
         </form>
         <section className="page-card">
@@ -600,14 +683,39 @@ export function StaffPage() {
                     <div className="staff-identity">
                       <strong>{person.name}</strong>
                       <span>{person.contact}</span>
+                      <span>{person.email || "Sin correo asignado"}</span>
                       <span>{active ? `En turno desde ${formatDate(active.checkIn)}` : "Fuera de turno"}</span>
                     </div>
                     <div className="staff-actions">
+                      {!person.hasAccount ? (
+                        <>
+                          <label>
+                            Correo de acceso
+                            <input
+                              autoComplete="email"
+                              type="email"
+                              required
+                              value={accountEmails[person.id] ?? person.email ?? ""}
+                              onChange={(event) => setAccountEmails((current) => ({
+                                ...current,
+                                [person.id]: event.target.value,
+                              }))}
+                            />
+                          </label>
+                          <button className="button button-small" onClick={() => void handleCreateAccount(person)}>
+                            Crear cuenta nueva
+                          </button>
+                          <button className="button button-small" onClick={() => void handleLinkAccount(person)}>
+                            Vincular cuenta existente
+                          </button>
+                        </>
+                      ) : (
+                        <button className="button button-small" onClick={() => void handleResetPassword(person.id, person.name)}>
+                          Regenerar contraseña
+                        </button>
+                      )}
                       <button className="button button-small" onClick={() => void toggleAttendance(person.id, person.name)}>
                         {active ? "Registrar salida" : "Registrar entrada"}
-                      </button>
-                      <button className="button button-small" onClick={() => void handleResetPassword(person.id, person.name)}>
-                        Regenerar clave
                       </button>
                       <button className="button button-small button-danger" onClick={() => void handleRemove(person.id)}>
                         Desactivar
@@ -650,7 +758,7 @@ export function StaffPage() {
 }
 
 export function CleanerPortal() {
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<CleanerProfile | null>(null);
   const [rooms, setRooms] = useState<CleanerRoom[]>([]);
@@ -658,23 +766,39 @@ export function CleanerPortal() {
   const [loading, setLoading] = useState(false);
   const [busyRoom, setBusyRoom] = useState<string | null>(null);
 
-  async function loadRooms(currentPhone: string, currentPassword: string) {
-    const assignedRooms = await getCleanerRooms(currentPhone, currentPassword);
+  async function loadRooms() {
+    const assignedRooms = await getCleanerRooms();
     setRooms(assignedRooms);
   }
+
+  useEffect(() => {
+    let active = true;
+    void getCleanerProfile()
+      .then(async (currentProfile) => {
+        if (!active || !currentProfile) return;
+        setProfile(currentProfile);
+        const assignedRooms = await getCleanerRooms();
+        if (active) setRooms(assignedRooms);
+      })
+      .catch((profileError: unknown) => {
+        if (active) setError(messageOf(profileError));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const authenticated = await loginCleaner(phone.trim(), password);
-      if (!authenticated) {
-        setError("Teléfono o clave incorrectos.");
-        return;
-      }
+      const authenticated = await loginCleaner(email.trim(), password);
       setProfile(authenticated);
-      await loadRooms(phone.trim(), password);
+      await loadRooms();
     } catch (loginError: unknown) {
       setError(messageOf(loginError));
       setProfile(null);
@@ -688,8 +812,8 @@ export function CleanerPortal() {
     setBusyRoom(roomId);
     setError(null);
     try {
-      await finishCleanerRoom(phone.trim(), password, roomId);
-      await loadRooms(phone.trim(), password);
+      await finishCleanerRoom(roomId);
+      await loadRooms();
     } catch (finishError: unknown) {
       setError(messageOf(finishError));
     } finally {
@@ -697,12 +821,21 @@ export function CleanerPortal() {
     }
   }
 
-  function signOut() {
+  async function signOut() {
+    setLoading(true);
+    try {
+      await logoutCleaner();
+    } catch (logoutError: unknown) {
+      setError(messageOf(logoutError));
+      setLoading(false);
+      return;
+    }
     setProfile(null);
     setRooms([]);
-    setPhone("");
+    setEmail("");
     setPassword("");
     setError(null);
+    setLoading(false);
   }
 
   return (
@@ -711,9 +844,9 @@ export function CleanerPortal() {
         <form className="auth-card" onSubmit={handleLogin}>
           <p className="eyebrow">Acceso de aseo</p>
           <h1>Mis habitaciones</h1>
-          <p className="muted">Ingresa el teléfono y la clave temporal que te entregó el administrador.</p>
-          <label>Teléfono<input autoComplete="tel" required type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></label>
-          <label>Clave<input autoComplete="current-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          <p className="muted">Ingresa el correo y la contraseña de tu cuenta.</p>
+          <label>Correo electrónico<input autoComplete="username" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+          <label>Contraseña<input autoComplete="current-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button button-primary" disabled={loading}>{loading ? "Validando…" : "Ingresar"}</button>
           <Link className="text-link" to="/app/inicio">Volver al acceso administrativo</Link>
@@ -722,7 +855,7 @@ export function CleanerPortal() {
         <section className="cleaner-page page-stack">
           <div className="page-heading">
             <div><p className="eyebrow">Acceso de aseo</p><h1>Hola, {profile.nombre}</h1></div>
-            <button className="button" onClick={signOut}>Cerrar sesión</button>
+            <button className="button" disabled={loading} onClick={() => void signOut()}>Cerrar sesión</button>
           </div>
           {error && <p className="form-error" role="alert">{error}</p>}
           {rooms.length === 0 ? (

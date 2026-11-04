@@ -4,7 +4,7 @@ El archivo [`schema.sql`](./schema.sql) crea las tablas y permisos que usa la ap
 
 - `habitaciones`: estado y datos de cada habitación.
 - `personal`: trabajadores del hotel.
-- `personal_credenciales`: claves protegidas del personal de aseo.
+- cuentas de Supabase para el acceso del personal con correo y contraseña.
 - `asignaciones_habitacion`: historial de asignaciones.
 - `asistencias`: entradas y salidas.
 - `trabajos_limpieza`: limpiezas finalizadas.
@@ -14,10 +14,14 @@ El archivo [`schema.sql`](./schema.sql) crea las tablas y permisos que usa la ap
 ## Pasos
 
 1. En Supabase, abre **SQL Editor** y crea una consulta nueva.
-2. Copia el contenido completo de `schema.sql` y ejecútalo.
-3. La consulta crea y ajusta tablas sin borrar tablas ni datos operativos existentes. Si encuentra claves antiguas en texto plano, las convierte a hashes, quita esa columna insegura y exige regenerarlas. Si quieres una base totalmente vacía, crea un proyecto nuevo de Supabase y ejecuta el SQL allí.
+2. Copia el contenido completo de `schema.sql` y ejecútalo. El script también crea el esquema `public` si no existe y concede acceso de esquema a los roles de Supabase que usa la aplicación.
+3. La consulta crea y ajusta tablas sin borrar habitaciones ni registros operativos. Elimina las claves antiguas de aseo y la tabla de hashes que ya no se usa; el personal necesitará una cuenta nueva de correo y contraseña. Si quieres una base totalmente vacía, crea un proyecto nuevo de Supabase y ejecuta el SQL allí.
 4. Asigna el rol `hotel_admin` a la cuenta administrativa usando los pasos de `README.md`; luego cierra sesión y vuelve a entrar.
-5. Si el personal ya existía, abre **Personal** y usa **Regenerar clave** para cada trabajador antes de que vuelva a iniciar sesión.
+5. Despliega la función para administrar cuentas del personal: `npx supabase functions deploy staff-account`.
+6. Abre **Personal**. En las fichas anteriores, vincula una cuenta Supabase existente por correo o crea una nueva. Las altas nuevas piden el correo junto al nombre y teléfono.
+7. Para las cuentas nuevas, comparte con cada trabajador el correo y la contraseña temporal mostrada una sola vez. Las cuentas vinculadas conservan su contraseña actual. Si alguien pierde su contraseña, usa **Regenerar contraseña**.
+
+El personal inicia sesión desde **Acceso de aseo** usando ese correo y contraseña. Las cuentas se crean en Supabase Auth por la función administrativa; no habilites el registro público para esta operación.
 
 El SQL crea las tablas, pero no inventa números de habitación ni agrega registros de ejemplo. Para agregar una habitación real, ejecuta una fila por habitación y reemplaza el número:
 
@@ -31,4 +35,4 @@ La versión anterior también podía guardar información solo en el navegador. 
 
 ## Datos de demostración
 
-Para poblar las tablas con habitaciones, personal y movimientos de prueba, ejecuta [`seed_demo.sql`](./seed_demo.sql) desde **Supabase SQL Editor**, después de `schema.sql`. El script se puede ejecutar más de una vez y usa identificadores `DEMO-` para sus datos. Incluye tres accesos de aseo de prueba; sus teléfonos y clave están indicados al inicio del archivo. No uses esas credenciales en producción.
+Para poblar las tablas con habitaciones, personal y movimientos de prueba, ejecuta [`seed_demo.sql`](./seed_demo.sql) desde **Supabase SQL Editor**, después de `schema.sql`. El script se puede ejecutar más de una vez y usa identificadores `DEMO-` para sus datos. No crea cuentas de acceso; en la app, ve a **Personal** y crea el acceso de cada trabajador demo usando un correo real. La contraseña temporal se muestra una sola vez.

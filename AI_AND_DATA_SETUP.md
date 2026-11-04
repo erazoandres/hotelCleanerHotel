@@ -24,3 +24,13 @@ El cliente web invoca `supabase/functions/hotel-chat/index.ts`. La función vali
 4. Entra de nuevo a la app, abre el botón flotante del asistente y prueba una consulta de ocupación.
 
 No agregues la clave de Groq a `VITE_*`, al código del cliente, `groq-config.js` ni al repositorio. La función requiere una sesión con el rol `hotel_admin`.
+
+## Cuentas del personal
+
+La función `staff-account` crea y administra cuentas de aseo con correo y contraseña. El esquema debe estar actualizado con `schema.sql` antes de usarla. Despliégala desde la raíz del proyecto:
+
+```powershell
+supabase functions deploy staff-account
+```
+
+La función valida la sesión `hotel_admin` y usa la clave de servicio integrada de Supabase únicamente en el servidor. No copies esa clave a la aplicación. Después, abre **Personal** para crear accesos o vincular cuentas existentes. La persona iniciará sesión con el correo y contraseña de su cuenta Supabase.

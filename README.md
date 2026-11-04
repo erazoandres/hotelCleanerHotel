@@ -14,11 +14,12 @@ El servidor de despliegue debe redirigir las rutas `/app/*` a `index.html` para 
 
 ## Supabase y acceso
 
-1. Respalda el proyecto Supabase y revisa `schema.sql` antes de ejecutarlo. La migración mueve las claves existentes a una tabla privada con hashes bcrypt, exige regenerar las claves antiguas y elimina la columna de texto plano.
-2. La migración restringe las políticas administrativas a usuarios cuyo `app_metadata.role` sea `hotel_admin`.
+1. Respalda el proyecto Supabase y revisa `schema.sql` antes de ejecutarlo. La migración conserva las habitaciones y registros operativos, añade la vinculación a cuentas de Supabase y retira el acceso de aseo anterior por teléfono.
+2. La migración restringe las políticas administrativas a usuarios cuyo `app_metadata.role` sea `hotel_admin`; el personal de aseo usa cuentas con `app_metadata.role = hotel_cleaner`.
 3. Desactiva el registro público de usuarios en Supabase Auth y provisiona las cuentas administrativas fuera del cliente web.
-4. Después de aplicar el esquema y configurar el rol, inicia sesión en la app y usa **Regenerar clave** para cada miembro del personal existente. Las claves antiguas dejan de funcionar después de la migración.
-5. Las claves temporales nuevas se muestran una sola vez. Compártelas mediante un canal seguro.
+4. Después de aplicar el esquema, despliega la función de gestión de cuentas con `supabase functions deploy staff-account`.
+5. Inicia sesión como administrador, abre **Personal** y crea una cuenta nueva o vincula la cuenta Supabase existente de cada trabajador mediante su correo.
+6. El personal entra por **Acceso de aseo** usando el correo y la contraseña de su cuenta. Las contraseñas temporales nuevas se muestran una sola vez; compártelas mediante un canal seguro.
 
 ### Asignar acceso administrativo
 
@@ -39,6 +40,6 @@ try {
 
 Confirma la operación escribiendo `SI`. La clave `service_role` solo se utiliza en este proceso local; no la pongas en `VITE_*`, en archivos del repositorio ni en el navegador. Luego, cierra sesión y vuelve a entrar para renovar el JWT. Asigna el rol solo a cuentas de confianza.
 
-Las funciones RPC de personal de aseo permanecen disponibles para el rol `anon` porque los trabajadores no tienen cuentas administrativas. La clave temporal se genera con alta entropía, se almacena como hash bcrypt y solo permite consultar las habitaciones asignadas o finalizar una asignación. Para despliegues con exposición pública, se recomienda poner esos RPC detrás de una Supabase Edge Function con límites de intentos.
+Las cuentas nuevas se crean por medio de una Edge Function protegida; la clave de servicio de Supabase nunca se entrega al navegador. Las funciones RPC del portal de aseo requieren una sesión autenticada y solo permiten consultar las habitaciones asignadas al trabajador o finalizar una asignación propia.
 
 El asistente de IA anterior no se incluye en el cliente React: una clave de proveedor de IA no debe almacenarse ni enviarse desde el navegador. Para recuperarlo se requiere un endpoint server-side protegido.

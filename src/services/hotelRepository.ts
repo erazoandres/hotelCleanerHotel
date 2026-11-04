@@ -44,7 +44,7 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
     supabase.from("habitaciones").select("*"),
     supabase
       .from("personal")
-      .select("id_personal, nombre, contacto, activo, creado_en")
+      .select("id_personal, nombre, contacto, correo, auth_user_id, activo, creado_en")
       .eq("activo", true),
     supabase
       .from("asignaciones_habitacion")
@@ -134,6 +134,8 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
       id: person.id_personal,
       name: person.nombre,
       contact: person.contacto,
+      email: person.correo,
+      hasAccount: Boolean(person.auth_user_id),
     })),
     events: eventRows.map((event) => ({
       room: event.id_habitacion,
@@ -242,85 +244,161 @@ export async function addCleaningWork(work: CleaningWork): Promise<void> {
 
 function createTemporaryPassword(): string {
   const alphabet =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
   const maxByte = Math.floor(256 / alphabet.length) * alphabet.length;
   const password: string[] = [];
 
-  while (password.length < 16) {
-    const bytes = new Uint8Array(16 - password.length);
+  while (password.length < 20) {
+    const bytes = new Uint8Array(20 - password.length);
     if (!globalThis.crypto?.getRandomValues) {
       throw new Error("Este navegador no permite generar una clave segura.");
     }
     globalThis.crypto.getRandomValues(bytes);
     for (const byte of bytes) {
       if (byte < maxByte) password.push(alphabet[byte % alphabet.length]);
-      if (password.length === 16) break;
+      if (password.length === 20) break;
     }
   }
   return password.join("");
 }
 
-export async function createStaff(person: StaffMember): Promise<string> {
+async function invokeStaffAccount<T>(
+  body: Record<string, string>,
+): Promise<T> {
   const supabase = getSupabaseClient();
-  const digits = person.contact.replace(/\D/g, "");
-  if (digits.length < 7) throw new Error("El personal debe tener un teléfono válido.");
-  const password = createTemporaryPassword();
-
-  const { error } = await supabase.rpc("crear_aseador", {
-    p_id_personal: person.id,
-    p_nombre: person.name,
-    p_contacto: person.contact,
-    p_password: password,
+  const { data, error } = await supabase.functions.invoke<T>("staff-account", {
+    body,
   });
-  if (error) throw new Error(`No se pudo crear el registro de personal: ${error.message}`);
-  return password;
-}
-
-export async function resetCleanerPassword(staffId: string): Promise<string> {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc("regenerar_clave_aseador", {
-    p_id_personal: staffId,
-  });
-  if (error) throw new Error(`No se pudo regenerar la clave: ${error.message}`);
-  if (!data) throw new Error("Supabase no devolvió la nueva clave.");
+  if (error) {
+    let detail = error.message;
+    if (error.context instanceof Response) {
+      try {
+        const response = await error.context.clone().json() as { error?: string };
+        if (response.error) detail = response.error;
+      } catch {
+        // Use the function error when the response is not JSON.
+      }
+    }
+    throw new Error(detail);
+  }
+  if (!data) throw new Error("El servidor no devolvió los datos de la cuenta.");
   return data;
 }
 
-export async function loginCleaner(
-  phone: string,
-  password: string,
-): Promise<CleanerProfile | null> {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc("autenticar_aseador", {
-    p_telefono: phone,
-    p_password: password,
+export async function createStaff(
+  person: StaffMember,
+): Promise<string> {
+  const digits = person.contact.replace(/\D/g, "");
+  if (digits.length < 7) throw new Error("El personal debe tener un teléfono válido.");
+  const password = createTemporaryPassword();
+  await invokeStaffAccount<{ id_personal: string }>({
+    action: "create_staff",
+    id_personal: person.id,
+    nombre: person.name,
+    contacto: person.contact,
+    correo: person.email ?? "",
+    password,
   });
-  if (error) throw new Error(`No se pudo iniciar sesión: ${error.message}`);
+  return password;
+}
+
+export async function createStaffWithExistingAccount(
+  person: StaffMember,
+): Promise<void> {
+  const digits = person.contact.replace(/\D/g, "");
+  if (digits.length < 7) throw new Error("El personal debe tener un teléfono válido.");
+  if (!person.email) throw new Error("Escribe el correo de la cuenta Supabase existente.");
+  await invokeStaffAccount<{ id_personal: string }>({
+    action: "create_staff_link_account",
+    id_personal: person.id,
+    nombre: person.name,
+    contacto: person.contact,
+    correo: person.email.trim().toLowerCase(),
+  });
+}
+
+export async function createCleanerAccount(
+  staffId: string,
+  email: string,
+): Promise<string> {
+  const password = createTemporaryPassword();
+  await invokeStaffAccount<{ id_personal: string }>({
+    action: "create_account",
+    id_personal: staffId,
+    correo: email.trim(),
+    password,
+  });
+  return password;
+}
+
+export async function linkCleanerAccount(
+  staffId: string,
+  email: string,
+): Promise<void> {
+  await invokeStaffAccount<{ id_personal: string }>({
+    action: "link_account",
+    id_personal: staffId,
+    correo: email.trim(),
+  });
+}
+
+export async function resetCleanerPassword(staffId: string): Promise<string> {
+  const password = createTemporaryPassword();
+  await invokeStaffAccount<{ id_personal: string }>({
+    action: "reset_password",
+    id_personal: staffId,
+    password,
+  });
+  return password;
+}
+
+export async function loginCleaner(email: string, password: string): Promise<CleanerProfile> {
+  const supabase = getSupabaseClient();
+  const { data: sessionData, error: loginError } =
+    await supabase.auth.signInWithPassword({ email: email.trim(), password });
+  if (loginError) throw new Error("Correo o contraseña incorrectos.");
+  if (sessionData.user.app_metadata.role !== "hotel_cleaner") {
+    await supabase.auth.signOut();
+    throw new Error("Esta cuenta no tiene acceso al portal de aseo.");
+  }
+
+  const { data, error } = await supabase.rpc("perfil_aseador");
+  if (error) throw new Error(`No se pudo cargar el perfil: ${error.message}`);
+  if (data.length !== 1) {
+    await supabase.auth.signOut();
+    throw new Error("No se encontró una ficha activa asociada a esta cuenta.");
+  }
+  return data[0];
+}
+
+export async function getCleanerProfile(): Promise<CleanerProfile | null> {
+  const supabase = getSupabaseClient();
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw new Error(`No se pudo consultar la sesión: ${sessionError.message}`);
+  if (sessionData.session?.user.app_metadata.role !== "hotel_cleaner") return null;
+
+  const { data, error } = await supabase.rpc("perfil_aseador");
+  if (error) throw new Error(`No se pudo cargar el perfil: ${error.message}`);
   return data.length === 1 ? data[0] : null;
 }
 
-export async function getCleanerRooms(
-  phone: string,
-  password: string,
-): Promise<CleanerRoom[]> {
+export async function logoutCleaner(): Promise<void> {
+  const { error } = await getSupabaseClient().auth.signOut();
+  if (error) throw new Error(`No se pudo cerrar sesión: ${error.message}`);
+}
+
+export async function getCleanerRooms(): Promise<CleanerRoom[]> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc("habitaciones_aseador", {
-    p_telefono: phone,
-    p_password: password,
-  });
+  const { data, error } = await supabase.rpc("habitaciones_aseador");
   if (error) throw new Error(`No se pudieron cargar las habitaciones: ${error.message}`);
   return data;
 }
 
 export async function finishCleanerRoom(
-  phone: string,
-  password: string,
   roomId: string,
 ): Promise<void> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.rpc("finalizar_habitacion_aseador", {
-    p_telefono: phone,
-    p_password: password,
     p_id_habitacion: String(roomId),
   });
   if (error) throw new Error(`No se pudo finalizar la habitación: ${error.message}`);
@@ -328,23 +406,10 @@ export async function finishCleanerRoom(
 }
 
 export async function removeStaff(id: string): Promise<void> {
-  const supabase = getSupabaseClient();
-  const { error: assignmentsError } = await supabase
-    .from("habitaciones")
-    .update({
-      id_personal_asignado: null,
-      tipo_limpieza_asignada: null,
-    })
-    .eq("id_personal_asignado", id);
-  if (assignmentsError) {
-    throw new Error(`No se pudieron liberar las habitaciones: ${assignmentsError.message}`);
-  }
-
-  const { error } = await supabase
-    .from("personal")
-    .update({ activo: false })
-    .eq("id_personal", id);
-  if (error) throw new Error(`No se pudo desactivar al personal: ${error.message}`);
+  await invokeStaffAccount<{ id_personal: string }>({
+    action: "deactivate_staff",
+    id_personal: id,
+  });
 }
 
 export async function saveAttendance(record: AttendanceRecord): Promise<void> {
