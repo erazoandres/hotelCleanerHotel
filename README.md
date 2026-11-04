@@ -27,10 +27,14 @@ El rol se administra con Supabase Auth Admin API; no se puede activar desde el n
 ```powershell
 $env:SUPABASE_URL = "https://TU_PROYECTO.supabase.co"
 $secureKey = Read-Host "Pega la service_role key" -AsSecureString
-$env:SUPABASE_SERVICE_ROLE_KEY = [System.Net.NetworkCredential]::new("", $secureKey).Password
-node scripts/grant-admin-role.mjs correo-del-administrador@hotel.com
-Remove-Item Env:SUPABASE_SERVICE_ROLE_KEY
-$secureKey.Dispose()
+try {
+  $env:SUPABASE_SERVICE_ROLE_KEY = [System.Net.NetworkCredential]::new("", $secureKey).Password
+  node scripts/grant-admin-role.mjs correo-del-administrador@hotel.com
+} finally {
+  Remove-Item Env:SUPABASE_SERVICE_ROLE_KEY -ErrorAction SilentlyContinue
+  Remove-Item Env:SUPABASE_URL -ErrorAction SilentlyContinue
+  $secureKey.Dispose()
+}
 ```
 
 Confirma la operación escribiendo `SI`. La clave `service_role` solo se utiliza en este proceso local; no la pongas en `VITE_*`, en archivos del repositorio ni en el navegador. Luego, cierra sesión y vuelve a entrar para renovar el JWT. Asigna el rol solo a cuentas de confianza.

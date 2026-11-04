@@ -28,3 +28,7 @@ ON CONFLICT (id_habitacion) DO NOTHING;
 ```
 
 La versión anterior también podía guardar información solo en el navegador. Esos datos locales no se copian automáticamente a Supabase; hay que volver a registrar las habitaciones en la base de datos.
+
+## Datos de demostración
+
+Para poblar las tablas con habitaciones, personal y movimientos de prueba, ejecuta [`seed_demo.sql`](./seed_demo.sql) desde **Supabase SQL Editor**, después de `schema.sql`. El script se puede ejecutar más de una vez y usa identificadores `DEMO-` para sus datos. Incluye tres accesos de aseo de prueba; sus teléfonos y clave están indicados al inicio del archivo. No uses esas credenciales en producción.
