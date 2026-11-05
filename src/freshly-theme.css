@@ -3668,37 +3668,56 @@ textarea {
 }
 
 .staff-compact-date-range {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-}
-
-.staff-compact-date-range label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 7px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.staff-date-icon {
+  font-size: 13px;
   color: #64748b;
+  flex-shrink: 0;
 }
 
 .staff-compact-date-range input[type="date"] {
   border: none;
   background: transparent;
   padding: 0;
+  margin: 0;
   font-size: 11px;
   font-family: inherit;
   color: #0f172a;
   outline: none;
+  width: 96px;
+  height: 100%;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+}
+
+.staff-compact-date-range input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  opacity: 0.55;
+  font-size: 11px;
+  transform: scale(0.85);
+}
+
+.staff-compact-date-range input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 .date-arrow {
   color: #94a3b8;
   font-size: 11px;
+  user-select: none;
+  flex-shrink: 0;
 }
 
 .staff-csv-btn {
@@ -4267,6 +4286,238 @@ textarea {
 .staff-avatar-setting-check {
   font-size: 16px !important;
   color: #aae0f5 !important;
+}
+
+/* ==========================================================================
+   Clickable Assignee Links to Staff Profile Panel
+   ========================================================================== */
+
+.room-picker-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px 2px 4px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  max-width: 100%;
+}
+
+.room-picker-assignee:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 8%);
+}
+
+.room-picker-assignee:active {
+  transform: translateY(0);
+}
+
+.room-picker-assignee:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 1px;
+}
+
+.room-picker-assignee-avatar {
+  flex-shrink: 0;
+}
+
+.staff-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.staff-inline-link:hover {
+  color: #0284c7;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.staff-inline-link:active {
+  opacity: 0.75;
+}
+
+.staff-inline-link:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.inline-link-icon {
+  display: none;
+}
+
+/* ==========================================================================
+   Staff Report Filter Bar & Status Badges
+   ========================================================================== */
+
+.staff-report-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 4px 0 2px;
+}
+
+.staff-report-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.staff-report-filter-label .material-symbol {
+  font-size: 14px;
+  color: #3b82f6;
+}
+
+.staff-report-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.staff-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.staff-filter-pill:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.staff-filter-pill.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgb(15 23 42 / 16%);
+}
+
+.filter-pill-badge {
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.staff-filter-pill.active .filter-pill-badge {
+  background: rgb(255 255 255 / 22%);
+  color: #ffffff;
+}
+
+.filter-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-emerald {
+  background: #10b981;
+}
+
+.dot-amber {
+  background: #f59e0b;
+}
+
+.dot-blue {
+  background: #3b82f6;
+}
+
+.dot-purple {
+  background: #8b5cf6;
+}
+
+/* Status Badges in Table */
+.staff-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.staff-status-badge.status-completed {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #dcfce7;
+}
+
+.staff-status-badge.status-in_progress {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fef3c7;
+}
+
+.status-dot-mini {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot-mini.dot-emerald {
+  background: #10b981;
+}
+
+.status-dot-mini.dot-amber {
+  background: #f59e0b;
+}
+
+.status-dot-mini.pulse {
+  animation: mini-pulse 1.8s infinite;
+}
+
+@keyframes mini-pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.2); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 

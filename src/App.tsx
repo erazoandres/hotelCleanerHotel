@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
   AdminSignIn,
@@ -78,6 +79,85 @@ function AdminApplication() {
   const location = useLocation();
   const activeSection = sections.find((section) => section.path === location.pathname);
 
+  // Preserve scroll Y position across section changes
+  const scrollYRef = useRef(0);
+  const isNavigatingRef = useRef(false);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Disable automatic scroll restoration and continuously track scroll position
+  useEffect(() => {
+    if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    const onScroll = () => {
+      if (!isNavigatingRef.current) {
+        scrollYRef.current = window.scrollY;
+        // Keep main container tall enough so unexpected collapses never snap scroll to 0
+        if (mainRef.current) {
+          const needed = window.scrollY + window.innerHeight;
+          if (mainRef.current.offsetHeight < needed) {
+            mainRef.current.style.minHeight = `${needed}px`;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // When pathname changes (switching between sections), seamlessly maintain the exact scroll Y
+  useLayoutEffect(() => {
+    const targetY = scrollYRef.current;
+    isNavigatingRef.current = true;
+
+    if (mainRef.current) {
+      const requiredHeight = targetY + window.innerHeight;
+      mainRef.current.style.minHeight = `${requiredHeight}px`;
+    }
+
+    window.scrollTo({
+      top: targetY,
+      left: 0,
+      behavior: "instant" as ScrollBehavior,
+    });
+
+    const raf1 = requestAnimationFrame(() => {
+      window.scrollTo({
+        top: targetY,
+        left: 0,
+        behavior: "instant" as ScrollBehavior,
+      });
+
+      const raf2 = requestAnimationFrame(() => {
+        window.scrollTo({
+          top: targetY,
+          left: 0,
+          behavior: "instant" as ScrollBehavior,
+        });
+        isNavigatingRef.current = false;
+      });
+
+      return () => cancelAnimationFrame(raf2);
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      isNavigatingRef.current = false;
+    };
+  }, [location.pathname]);
+
+  const handleNavClick = () => {
+    scrollYRef.current = window.scrollY;
+    if (mainRef.current) {
+      const minH = window.scrollY + window.innerHeight;
+      if (mainRef.current.offsetHeight < minH) {
+        mainRef.current.style.minHeight = `${minH}px`;
+      }
+    }
+  };
+
   if (location.pathname === "/app/aseo") return <CleanerPortal />;
   if (loading) {
     return <main className="auth-page"><p className="muted">Verificando sesión…</p></main>;
@@ -89,7 +169,13 @@ function AdminApplication() {
     <HotelDataProvider>
       <div className="app-shell">
         <aside className="sidebar">
-          <Link className="brand" to="/app/inicio" aria-label="Freshly, inicio">
+          <Link
+            className="brand"
+            to="/app/inicio"
+            aria-label="Freshly, inicio"
+            onPointerDown={handleNavClick}
+            onClick={handleNavClick}
+          >
             <FreshlyMark />
             <span className="brand-copy">
               <strong>Freshly</strong>
@@ -105,6 +191,8 @@ function AdminApplication() {
                   isActive ? "nav-link nav-link-active" : "nav-link"
                 }
                 to={section.path}
+                onPointerDown={handleNavClick}
+                onClick={handleNavClick}
               >
                 <span className="material-symbol" aria-hidden="true">{section.icon}</span>
                 <span>{section.label}</span>
@@ -147,7 +235,7 @@ function AdminApplication() {
               }).format(new Date())}
             </span>
           </header>
-          <main className="main-content">
+          <main className="main-content" ref={mainRef}>
             <Routes>
               <Route path="/" element={<Navigate to="/app/inicio" replace />} />
               <Route path="/app/inicio" element={<DashboardPage />} />

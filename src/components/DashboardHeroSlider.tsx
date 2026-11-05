@@ -16,13 +16,11 @@ export interface BannerSlideData {
 }
 
 interface DashboardHeroSliderProps {
-  userEmail?: string;
   customSlides?: BannerSlideData[];
   autoplayIntervalMs?: number;
 }
 
 export function DashboardHeroSlider({
-  userEmail = "Administrador",
   customSlides,
   autoplayIntervalMs = 5000,
 }: DashboardHeroSliderProps) {
@@ -183,11 +181,6 @@ export function DashboardHeroSlider({
                     <span className="hero-status-dot" aria-hidden="true" />
                     <span>{slide.statChipText}</span>
                   </div>
-                </div>
-
-                <div className="hero-session-pill">
-                  <span className="material-symbol" aria-hidden="true">account_circle</span>
-                  <span>{userEmail}</span>
                 </div>
               </div>
             </section>

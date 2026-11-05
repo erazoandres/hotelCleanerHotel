@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useHotelAuth } from "../components/HotelAuth";
 import { FreshlyMark } from "../components/FreshlyBrand";
 import { HotelDataStatus, useHotelData } from "../components/HotelData";
@@ -32,6 +32,8 @@ import type {
 interface StaffReportRow {
   timestamp: string;
   category: "Jornada" | "Habitación terminada" | "Asignación";
+  status: "completed" | "in_progress";
+  statusLabel: string;
   room: string;
   detail: string;
   hours: number | null;
@@ -74,6 +76,7 @@ function ActionMessage({
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const { state, refresh } = useHotelData();
   const { session } = useHotelAuth();
   const [matrixFilter, setMatrixFilter] = useState<"all" | "free" | "occupied" | "pending" | "cleaning" | "finished">("all");
@@ -266,7 +269,7 @@ export function DashboardPage() {
 
   return (
     <div className="page-stack dashboard-page">
-      <DashboardHeroSlider userEmail={session?.user.email ?? "Administrador"} />
+      <DashboardHeroSlider />
 
       {/* Operational pulse & live status strip */}
       <div className="dashboard-status-strip">
@@ -732,7 +735,31 @@ export function DashboardPage() {
                   <div className="matrix-detail-item">
                     <span className="matrix-detail-label">Aseador Asignado</span>
                     <strong className="matrix-detail-value">
-                      {state.assignedCleanings[selectedModalRoom]?.staffName || "Sin asignar"}
+                      {state.assignedCleanings[selectedModalRoom]?.staffName ? (
+                        <button
+                          type="button"
+                          className="staff-inline-link"
+                          onClick={() => {
+                            const staffId = state.assignedCleanings[selectedModalRoom]?.staffId;
+                            const staffName = state.assignedCleanings[selectedModalRoom]?.staffName;
+                            if (staffId) {
+                              navigate(`/app/personal?id=${encodeURIComponent(staffId)}`);
+                            } else if (staffName) {
+                              navigate(`/app/personal?name=${encodeURIComponent(staffName)}`);
+                            }
+                          }}
+                          title={`Ver ficha del personal: ${state.assignedCleanings[selectedModalRoom]?.staffName}`}
+                        >
+                          <ModernAvatar3D
+                            name={state.assignedCleanings[selectedModalRoom]?.staffName || ""}
+                            size={16}
+                            alt=""
+                          />
+                          <span>{state.assignedCleanings[selectedModalRoom]?.staffName}</span>
+                        </button>
+                      ) : (
+                        "Sin asignar"
+                      )}
                     </strong>
                   </div>
                   <div className="matrix-detail-item">
@@ -815,7 +842,7 @@ export function DashboardPage() {
                 </div>
 
                 <div className="matrix-modal-footer">
-                  <Link to="/rooms" className="button button-secondary matrix-modal-editor-btn">
+                  <Link to="/app/habitaciones" className="button button-secondary matrix-modal-editor-btn">
                     <span className="material-symbol" aria-hidden="true">open_in_new</span>
                     Editor Completo
                   </Link>
@@ -1198,6 +1225,7 @@ function RoomPickerCard({
   guest,
   servicePlan,
   cleanerName,
+  cleanerId,
   onSelect,
 }: {
   roomId: string;
@@ -1205,12 +1233,30 @@ function RoomPickerCard({
   guest: string;
   servicePlan: string;
   cleanerName: string;
+  cleanerId?: string | null;
   onSelect: () => void;
 }) {
+  const navigate = useNavigate();
+  const { state } = useHotelData();
   const photoIndex = Array.from(roomId).reduce(
     (total, character) => total + character.charCodeAt(0),
     0,
   ) % roomPhotos.length;
+
+  const handleAssigneeClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const targetStaff = state.staff.find(
+      (s) => (cleanerId && s.id === cleanerId) || s.name.trim().toLowerCase() === cleanerName.trim().toLowerCase(),
+    );
+    if (targetStaff) {
+      navigate(`/app/personal?id=${encodeURIComponent(targetStaff.id)}`);
+    } else if (cleanerId) {
+      navigate(`/app/personal?id=${encodeURIComponent(cleanerId)}`);
+    } else {
+      navigate(`/app/personal?name=${encodeURIComponent(cleanerName)}`);
+    }
+  };
 
   return (
     <button className={`room-picker-card room-picker-card-${status}`} onClick={onSelect} type="button">
@@ -1247,7 +1293,18 @@ function RoomPickerCard({
               {servicePlan || "Sin servicio"}
             </span>
             {cleanerName && (
-              <span className="room-picker-assignee" title={cleanerName}>
+              <span
+                className="room-picker-assignee"
+                title={`Ver ficha del personal: ${cleanerName}`}
+                role="button"
+                tabIndex={0}
+                onClick={handleAssigneeClick}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    handleAssigneeClick(e);
+                  }
+                }}
+              >
                 <ModernAvatar3D
                   name={cleanerName}
                   size={18}
@@ -1399,6 +1456,7 @@ export function RoomsPage() {
                   guest={state.guests[roomId] ?? ""}
                   servicePlan={state.servicePlans[roomId] ?? ""}
                   cleanerName={state.assignedCleanings[roomId]?.staffName ?? ""}
+                  cleanerId={state.assignedCleanings[roomId]?.staffId ?? null}
                   onSelect={() => setSelectedRoom(roomId)}
                 />
               ))}
@@ -1421,6 +1479,7 @@ export function RoomsPage() {
 }
 
 export function CleaningPage() {
+  const navigate = useNavigate();
   const { state, refresh } = useHotelData();
   const { session } = useHotelAuth();
   const [error, setError] = useState<string | null>(null);
@@ -1690,7 +1749,34 @@ export function CleaningPage() {
                       <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
                     </div>
                     <dl className="details-list cleaning-details">
-                      <div><dt>Aseador/a</dt><dd>{assignment?.staffName || "Sin asignar"}</dd></div>
+                      <div>
+                        <dt>Aseador/a</dt>
+                        <dd>
+                          {assignment?.staffName ? (
+                            <button
+                              type="button"
+                              className="staff-inline-link"
+                              onClick={() => {
+                                if (assignment.staffId) {
+                                  navigate(`/app/personal?id=${encodeURIComponent(assignment.staffId)}`);
+                                } else {
+                                  navigate(`/app/personal?name=${encodeURIComponent(assignment.staffName)}`);
+                                }
+                              }}
+                              title={`Ver ficha del personal: ${assignment.staffName}`}
+                            >
+                              <ModernAvatar3D
+                                name={assignment.staffName}
+                                size={16}
+                                alt={`Avatar 3D de ${assignment.staffName}`}
+                              />
+                              <span>{assignment.staffName}</span>
+                            </button>
+                          ) : (
+                            "Sin asignar"
+                          )}
+                        </dd>
+                      </div>
                       <div><dt>Plan</dt><dd>{servicePlan || "No especificado"}</dd></div>
                       <div>
                         <dt>Fecha limpieza</dt>
@@ -1834,12 +1920,16 @@ export function HistoryPage() {
 
 export function StaffPage() {
   const { state, refresh } = useHotelData();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const staffParamId = searchParams.get("id") || searchParams.get("staff");
+  const staffParamName = searchParams.get("name");
+
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
   const [staffFilter, setStaffFilter] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(() => staffParamId ?? null);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editContact, setEditContact] = useState("");
@@ -1853,15 +1943,25 @@ export function StaffPage() {
   });
   const [reportEnd, setReportEnd] = useState(() => localDateValue(new Date()));
   const [reportNow, setReportNow] = useState(() => Date.now());
+  const [reportFilter, setReportFilter] = useState<"all" | "finished" | "in_progress" | "shifts" | "assignments">("all");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (selectedStaffId && !state.staff.some((person) => person.id === selectedStaffId)) {
+    if (staffParamId) {
+      if (state.staff.some((person) => person.id === staffParamId)) {
+        setSelectedStaffId(staffParamId);
+      }
+    } else if (staffParamName) {
+      const match = state.staff.find((person) => person.name.trim().toLowerCase() === staffParamName.trim().toLowerCase());
+      if (match) {
+        setSelectedStaffId(match.id);
+      }
+    } else if (selectedStaffId && !state.staff.some((person) => person.id === selectedStaffId)) {
       setSelectedStaffId(null);
     }
-  }, [selectedStaffId, state.staff]);
+  }, [staffParamId, staffParamName, selectedStaffId, state.staff]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setReportNow(Date.now()), 60_000);
@@ -1897,9 +1997,12 @@ export function StaffPage() {
         reportPeriod.end,
       );
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+      const isOngoing = !attendance.checkOut;
       rows.push({
         timestamp: new Date(start).toISOString(),
         category: "Jornada",
+        status: isOngoing ? "in_progress" : "completed",
+        statusLabel: isOngoing ? "En curso" : "Completada",
         room: "—",
         detail: `Entrada ${formatDate(attendance.checkIn)} · salida ${attendance.checkOut ? formatDate(attendance.checkOut) : "en curso"}`,
         hours: (end - start) / 3_600_000,
@@ -1917,6 +2020,8 @@ export function StaffPage() {
       rows.push({
         timestamp: work.time,
         category: "Habitación terminada",
+        status: "completed",
+        statusLabel: "Terminada",
         room: work.room,
         detail: work.cleaningType || "Limpieza",
         hours: null,
@@ -1932,9 +2037,12 @@ export function StaffPage() {
       const start = Math.max(assignedAt, reportPeriod.start);
       const end = Math.min(releasedAt, reportPeriod.end);
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+      const isCurrent = !assignment.unassignedAt;
       rows.push({
         timestamp: new Date(start).toISOString(),
         category: "Asignación",
+        status: isCurrent ? "in_progress" : "completed",
+        statusLabel: isCurrent ? "Activa" : "Finalizada",
         room: assignment.roomId,
         detail: `${assignment.cleaningType || "Sin tipo de limpieza"} · desde ${formatDate(assignment.assignedAt)} · hasta ${assignment.unassignedAt ? formatDate(assignment.unassignedAt) : "activa"}`,
         hours: null,
@@ -1950,6 +2058,21 @@ export function StaffPage() {
     state.cleaningWork,
     state.roomAssignments,
   ]);
+
+  const finishedCount = useMemo(() => reportRows.filter((r) => r.category === "Habitación terminada").length, [reportRows]);
+  const inProgressCount = useMemo(() => reportRows.filter((r) => r.status === "in_progress").length, [reportRows]);
+  const shiftsCount = useMemo(() => reportRows.filter((r) => r.category === "Jornada").length, [reportRows]);
+  const assignmentsCount = useMemo(() => reportRows.filter((r) => r.category === "Asignación").length, [reportRows]);
+
+  const filteredReportRows = useMemo(() => {
+    if (reportFilter === "all") return reportRows;
+    if (reportFilter === "finished") return reportRows.filter((r) => r.category === "Habitación terminada");
+    if (reportFilter === "in_progress") return reportRows.filter((r) => r.status === "in_progress");
+    if (reportFilter === "shifts") return reportRows.filter((r) => r.category === "Jornada");
+    if (reportFilter === "assignments") return reportRows.filter((r) => r.category === "Asignación");
+    return reportRows;
+  }, [reportRows, reportFilter]);
+
   const reportHours = reportRows.reduce((total, row) => total + (row.hours ?? 0), 0);
   const visibleStaff = state.staff.filter((person) => {
     const query = staffFilter.trim().toLocaleLowerCase("es");
@@ -2040,21 +2163,24 @@ export function StaffPage() {
       setError("El periodo seleccionado no es válido.");
       return;
     }
-    const headers = ["Personal", "Desde", "Hasta", "Actividad", "Fecha", "Habitación", "Detalle", "Horas trabajadas"];
-    const csvRows = reportRows.map((row) => [
+    const headers = ["Personal", "Desde", "Hasta", "Actividad", "Estado", "Fecha", "Habitación", "Detalle", "Horas trabajadas"];
+    const exportRows = filteredReportRows;
+    const csvRows = exportRows.map((row) => [
       person.name,
       reportStart,
       reportEnd,
       row.category,
+      row.statusLabel,
       row.timestamp,
       row.room,
       row.detail,
       row.hours === null ? "" : row.hours.toFixed(2),
     ]);
+    const filteredHours = exportRows.reduce((acc, row) => acc + (row.hours ?? 0), 0);
     const csv = [
       headers,
       ...csvRows,
-      ["", "", "", "Total del periodo", "", "", "", reportHours.toFixed(2)],
+      ["", "", "", "Total", "", "", "", "", filteredHours.toFixed(2)],
     ]
       .map((row) => row.map(csvCell).join(","))
       .join("\r\n");
@@ -2116,6 +2242,7 @@ export function StaffPage() {
               className="button staff-back-button"
               onClick={() => {
                 setSelectedStaffId(null);
+                setSearchParams({});
                 setEditingStaffId(null);
                 setError(null);
                 setSuccess(null);
@@ -2281,16 +2408,21 @@ export function StaffPage() {
                   </div>
 
                   <div className="staff-report-toolbar">
-                    <div className="staff-compact-date-range">
-                      <label>
-                        <span>Desde</span>
-                        <input type="date" value={reportStart} onChange={(event) => setReportStart(event.target.value)} />
-                      </label>
+                    <div className="staff-compact-date-range" title="Rango de fechas">
+                      <span className="material-symbol staff-date-icon" aria-hidden="true">date_range</span>
+                      <input
+                        type="date"
+                        aria-label="Fecha inicial"
+                        value={reportStart}
+                        onChange={(event) => setReportStart(event.target.value)}
+                      />
                       <span className="date-arrow" aria-hidden="true">→</span>
-                      <label>
-                        <span>Hasta</span>
-                        <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} />
-                      </label>
+                      <input
+                        type="date"
+                        aria-label="Fecha final"
+                        value={reportEnd}
+                        onChange={(event) => setReportEnd(event.target.value)}
+                      />
                     </div>
 
                     <button
@@ -2306,12 +2438,89 @@ export function StaffPage() {
                   </div>
                 </div>
 
+                {/* Filter bar by status */}
+                <div className="staff-report-filter-bar">
+                  <span className="staff-report-filter-label">
+                    <span className="material-symbol" aria-hidden="true">filter_list</span>
+                    Filtrar por estado:
+                  </span>
+                  <div className="staff-report-pills" role="tablist" aria-label="Filtrar actividad por estado">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={reportFilter === "all"}
+                      className={`staff-filter-pill ${reportFilter === "all" ? "active" : ""}`}
+                      onClick={() => setReportFilter("all")}
+                    >
+                      <span>Todos</span>
+                      <span className="filter-pill-badge">{reportRows.length}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={reportFilter === "finished"}
+                      className={`staff-filter-pill ${reportFilter === "finished" ? "active" : ""}`}
+                      onClick={() => setReportFilter("finished")}
+                    >
+                      <span className="filter-dot dot-emerald" aria-hidden="true" />
+                      <span>Terminadas</span>
+                      <span className="filter-pill-badge">{finishedCount}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={reportFilter === "in_progress"}
+                      className={`staff-filter-pill ${reportFilter === "in_progress" ? "active" : ""}`}
+                      onClick={() => setReportFilter("in_progress")}
+                    >
+                      <span className="filter-dot dot-amber" aria-hidden="true" />
+                      <span>En curso</span>
+                      <span className="filter-pill-badge">{inProgressCount}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={reportFilter === "shifts"}
+                      className={`staff-filter-pill ${reportFilter === "shifts" ? "active" : ""}`}
+                      onClick={() => setReportFilter("shifts")}
+                    >
+                      <span className="filter-dot dot-blue" aria-hidden="true" />
+                      <span>Jornadas</span>
+                      <span className="filter-pill-badge">{shiftsCount}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={reportFilter === "assignments"}
+                      className={`staff-filter-pill ${reportFilter === "assignments" ? "active" : ""}`}
+                      onClick={() => setReportFilter("assignments")}
+                    >
+                      <span className="filter-dot dot-purple" aria-hidden="true" />
+                      <span>Asignaciones</span>
+                      <span className="filter-pill-badge">{assignmentsCount}</span>
+                    </button>
+                  </div>
+                </div>
+
                 {!reportPeriod ? (
                   <p className="form-error" role="alert">Selecciona un periodo válido: la fecha inicial debe ser anterior a la final.</p>
-                ) : reportRows.length === 0 ? (
+                ) : filteredReportRows.length === 0 ? (
                   <div className="staff-report-empty-compact">
-                    <span className="material-symbol" aria-hidden="true">event_busy</span>
-                    <p>No hay actividad registrada en este periodo para {selectedStaff.name}.</p>
+                    <span className="material-symbol" aria-hidden="true">filter_list_off</span>
+                    <p>
+                      {reportRows.length === 0
+                        ? `No hay actividad registrada en este periodo para ${selectedStaff.name}.`
+                        : "No hay registros con el estado seleccionado en este periodo."}
+                    </p>
+                    {reportRows.length > 0 && reportFilter !== "all" && (
+                      <button
+                        type="button"
+                        className="button button-small button-ghost"
+                        onClick={() => setReportFilter("all")}
+                      >
+                        Ver todos ({reportRows.length})
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="staff-report-table-wrap">
@@ -2320,18 +2529,25 @@ export function StaffPage() {
                         <tr>
                           <th>Fecha y Hora</th>
                           <th>Actividad</th>
+                          <th>Estado</th>
                           <th>Habitación</th>
                           <th>Detalle</th>
                           <th className="align-right">Horas</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {reportRows.map((row, index) => (
+                        {filteredReportRows.map((row, index) => (
                           <tr key={`${row.category}-${row.timestamp}-${row.room}-${index}`}>
                             <td className="cell-date">{formatDate(row.timestamp)}</td>
                             <td>
                               <span className={`staff-activity-tag cat-${row.category.toLowerCase().replace(/\s+/g, '-')}`}>
                                 {row.category}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`staff-status-badge status-${row.status}`}>
+                                <span className={`status-dot-mini ${row.status === "in_progress" ? "dot-amber pulse" : "dot-emerald"}`} aria-hidden="true" />
+                                {row.statusLabel}
                               </span>
                             </td>
                             <td className="cell-room">{row.room !== "—" ? `Hab. ${row.room}` : "—"}</td>
@@ -2432,6 +2648,7 @@ export function StaffPage() {
                         key={person.id}
                         onClick={() => {
                           setSelectedStaffId(person.id);
+                          setSearchParams({ id: person.id });
                           setEditingStaffId(null);
                           setError(null);
                           setSuccess(null);
