@@ -777,7 +777,7 @@ export function HistoryPage() {
   });
 
   return (
-    <div className="page-stack">
+    <div className="page-stack history-page">
       <div className="page-heading">
         <div>
           <p className="eyebrow">Registro de actividad</p>
@@ -788,17 +788,35 @@ export function HistoryPage() {
           <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
         </button>
       </div>
-      <label className="search-field">
-        Buscar por habitación, acción o responsable
-        <span className="search-input-wrap">
-          <span className="material-symbol" aria-hidden="true">search</span>
-          <input
-            placeholder="Introduce nombre de personal, habitación o fecha (dd/mm/aa)"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-          />
-        </span>
-      </label>
+      <div className="room-selection-toolbar">
+        <div className="room-selection-controls">
+          <label className="search-field">
+            <span className="search-input-wrap">
+              <span className="material-symbol" aria-hidden="true">search</span>
+              <input
+                aria-label="Buscar en historial"
+                autoComplete="off"
+                placeholder="Introduce nombre de personal, habitación o fecha (dd/mm/aa)"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+              />
+              {filter && (
+                <button
+                  type="button"
+                  className="search-clear-button"
+                  aria-label="Limpiar búsqueda"
+                  onClick={() => setFilter("")}
+                >
+                  <span className="material-symbol" aria-hidden="true">close</span>
+                </button>
+              )}
+            </span>
+          </label>
+        </div>
+        <p className="room-results-count">
+          {events.length} {events.length === 1 ? "registro" : "registros"}
+        </p>
+      </div>
       {error && <p className="form-error" role="alert">{error}</p>}
       {loading && state.events.length === 0 ? (
         <p className="empty-state">Cargando historial…</p>

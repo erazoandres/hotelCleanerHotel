@@ -896,7 +896,8 @@ textarea {
 
 .room-selection-toolbar,
 .rooms-page .room-selection-toolbar,
-.cleaning-page .room-selection-toolbar {
+.cleaning-page .room-selection-toolbar,
+.history-page .room-selection-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -910,7 +911,8 @@ textarea {
 
 .room-selection-controls,
 .rooms-page .room-selection-controls,
-.cleaning-page .room-selection-controls {
+.cleaning-page .room-selection-controls,
+.history-page .room-selection-controls {
   display: flex;
   align-items: center;
   min-width: 0;
@@ -922,7 +924,8 @@ textarea {
 
 .room-selection-controls .search-field,
 .rooms-page .room-selection-controls .search-field,
-.cleaning-page .room-selection-controls .search-field {
+.cleaning-page .room-selection-controls .search-field,
+.history-page .room-selection-controls .search-field {
   width: min(100%, 480px);
   max-width: 480px;
   flex: 1 1 auto;
@@ -934,7 +937,8 @@ textarea {
 
 .room-selection-controls .search-input-wrap,
 .rooms-page .room-selection-controls .search-input-wrap,
-.cleaning-page .room-selection-controls .search-input-wrap {
+.cleaning-page .room-selection-controls .search-input-wrap,
+.history-page .room-selection-controls .search-input-wrap {
   position: relative;
   display: block;
   width: 100%;
@@ -942,7 +946,8 @@ textarea {
 
 .room-selection-controls .search-input-wrap .material-symbol,
 .rooms-page .room-selection-controls .search-input-wrap .material-symbol,
-.cleaning-page .room-selection-controls .search-input-wrap .material-symbol {
+.cleaning-page .room-selection-controls .search-input-wrap .material-symbol,
+.history-page .room-selection-controls .search-input-wrap .material-symbol {
   position: absolute;
   top: 50%;
   left: 12px;
@@ -954,7 +959,8 @@ textarea {
 
 .room-selection-controls .search-input-wrap input,
 .rooms-page .room-selection-controls .search-input-wrap input,
-.cleaning-page .room-selection-controls .search-input-wrap input {
+.cleaning-page .room-selection-controls .search-input-wrap input,
+.history-page .room-selection-controls .search-input-wrap input {
   width: 100%;
   min-height: 40px;
   padding-left: 38px;
@@ -971,13 +977,15 @@ textarea {
 
 .room-selection-controls .search-input-wrap input::placeholder,
 .rooms-page .room-selection-controls .search-input-wrap input::placeholder,
-.cleaning-page .room-selection-controls .search-input-wrap input::placeholder {
+.cleaning-page .room-selection-controls .search-input-wrap input::placeholder,
+.history-page .room-selection-controls .search-input-wrap input::placeholder {
   color: #8fa2ab;
 }
 
 .room-selection-controls .search-input-wrap input:focus,
 .rooms-page .room-selection-controls .search-input-wrap input:focus,
-.cleaning-page .room-selection-controls .search-input-wrap input:focus {
+.cleaning-page .room-selection-controls .search-input-wrap input:focus,
+.history-page .room-selection-controls .search-input-wrap input:focus {
   border-color: #83aebb;
   outline: 3px solid rgb(75 143 168 / 12%);
   background: #fff !important;
@@ -1015,7 +1023,8 @@ textarea {
 
 .room-results-count,
 .rooms-page .room-results-count,
-.cleaning-page .room-results-count {
+.cleaning-page .room-results-count,
+.history-page .room-results-count {
   margin: 0;
   color: #73838a;
   font-size: 11px;
@@ -1026,14 +1035,16 @@ textarea {
 @media (max-width: 640px) {
   .room-selection-toolbar,
   .rooms-page .room-selection-toolbar,
-  .cleaning-page .room-selection-toolbar {
+  .cleaning-page .room-selection-toolbar,
+.history-page .room-selection-toolbar {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
   }
 
   .room-selection-controls .search-field,
   .rooms-page .room-selection-controls .search-field,
-  .cleaning-page .room-selection-controls .search-field {
+  .cleaning-page .room-selection-controls .search-field,
+.history-page .room-selection-controls .search-field {
     width: 100%;
     max-width: none;
   }
@@ -1534,4 +1545,9 @@ textarea {
   .rooms-page .room-picker-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+
+.history-page {
+  gap: 18px;
 }
