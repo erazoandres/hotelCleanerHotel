@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import { useHotelAuth } from "../components/HotelAuth";
 import { FreshlyMark } from "../components/FreshlyBrand";
 import { HotelDataStatus, useHotelData } from "../components/HotelData";
+import { DashboardHeroSlider } from "../components/DashboardHeroSlider";
 import {
   addEvent,
   createStaff,
   finishCleanerRoom,
+  startCleanerRoom,
   getCleanerHistory,
   getCleanerProfile,
   getCleanerRooms,
@@ -71,143 +73,908 @@ function ActionMessage({
 }
 
 export function DashboardPage() {
-  const { state } = useHotelData();
+  const { state, refresh } = useHotelData();
   const { session } = useHotelAuth();
-  const roomStatuses = Object.values(state.rooms);
+  const [matrixFilter, setMatrixFilter] = useState<"all" | "free" | "occupied" | "pending" | "cleaning" | "finished">("all");
+  const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
+  const [selectedModalRoom, setSelectedModalRoom] = useState<string | null>(null);
+  const [modalBusy, setModalBusy] = useState(false);
+  const [modalFeedback, setModalFeedback] = useState<string | null>(null);
+
+  const getRoomStatusIcon = (st: RoomStatus) => {
+    switch (st) {
+      case "free":
+        return "bed";
+      case "finished":
+        return "task_alt";
+      case "occupied":
+        return "hotel";
+      case "pending":
+        return "schedule";
+      case "cleaning":
+        return "cleaning_services";
+      default:
+        return "door_front";
+    }
+  };
+
+  const isVipRoom = (plan?: string) => {
+    if (!plan) return false;
+    const p = plan.toLowerCase();
+    return p.includes("premium") || p.includes("vip") || p.includes("suite");
+  };
+
+  const handleQuickStatusChange = async (roomId: string, newStatus: RoomStatus) => {
+    setModalBusy(true);
+    setModalFeedback(null);
+    try {
+      await updateRoom(roomId, { status: newStatus });
+      await addEvent({
+        room: roomId,
+        status: newStatus,
+        action: `Estado cambiado a ${statusLabels[newStatus]} desde mapa`,
+        guest: state.guests[roomId] || null,
+        actor: session?.user.email ?? "Administrador",
+        cleanerId: state.assignedCleanings[roomId]?.staffId || null,
+        cleaningType: null,
+        time: new Date().toISOString(),
+      });
+      setModalFeedback(`¡Habitación ${roomId} actualizada a "${statusLabels[newStatus]}"!`);
+      if (refresh) await refresh();
+      setTimeout(() => setModalFeedback(null), 3000);
+    } catch (err: unknown) {
+      setModalFeedback(err instanceof Error ? err.message : "Error al actualizar la habitación");
+    } finally {
+      setModalBusy(false);
+    }
+  };
+
+  const roomIds = useMemo(
+    () => Object.keys(state.rooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    [state.rooms],
+  );
+  const totalRooms = roomIds.length;
+  const occupiedCount = roomIds.filter((id) => state.rooms[id] === "occupied").length;
+  const freeCount = roomIds.filter((id) => state.rooms[id] === "free" || state.rooms[id] === "finished").length;
+  const pendingCount = roomIds.filter((id) => state.rooms[id] === "pending").length;
+  const cleaningCount = roomIds.filter((id) => state.rooms[id] === "cleaning").length;
+  const turnoverCount = pendingCount + cleaningCount;
+
+  const occupancyRate = totalRooms > 0 ? Math.round((occupiedCount / totalRooms) * 100) : 0;
+  const freeRate = totalRooms > 0 ? Math.round((freeCount / totalRooms) * 100) : 0;
+  const turnoverRate = totalRooms > 0 ? Math.max(0, 100 - occupancyRate - freeRate) : 0;
+
+  // Active staff on shift
+  const activeStaffCount = state.attendance.filter((a) => !a.checkOut).length;
+  const roomsPerActiveStaff = activeStaffCount > 0 ? (turnoverCount / activeStaffCount).toFixed(1) : String(turnoverCount);
+
+  // Operational health calculation (100 - penalties for overdue & unassigned)
   const today = localDateValue(new Date());
   const nextWeekDate = new Date();
   nextWeekDate.setDate(nextWeekDate.getDate() + 7);
   const nextWeek = localDateValue(nextWeekDate);
-  const scheduledRooms = Object.entries(state.scheduledCleaningDates)
-    .filter(([roomId, date]) => Boolean(date && state.rooms[roomId]))
-    .map(([roomId, date]) => ({
-      roomId,
-      date,
-      status: state.rooms[roomId],
-      cleaner: state.assignedCleanings[roomId]?.staffName || "Sin asignar",
-    }))
-    .sort((a, b) => {
-      const aOverdue = a.date < today && a.status !== "finished";
-      const bOverdue = b.date < today && b.status !== "finished";
-      if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
-      return a.date.localeCompare(b.date)
-        || a.roomId.localeCompare(b.roomId, undefined, { numeric: true });
-    });
+
+  const scheduledRooms = useMemo(() => {
+    return Object.entries(state.scheduledCleaningDates)
+      .filter(([roomId, date]) => Boolean(date && state.rooms[roomId]))
+      .map(([roomId, date]) => ({
+        roomId,
+        date,
+        status: state.rooms[roomId],
+        cleaner: state.assignedCleanings[roomId]?.staffName || "Sin asignar",
+      }))
+      .sort((a, b) => {
+        const aOverdue = a.date < today && a.status !== "finished";
+        const bOverdue = b.date < today && b.status !== "finished";
+        if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+        return a.date.localeCompare(b.date)
+          || a.roomId.localeCompare(b.roomId, undefined, { numeric: true });
+      });
+  }, [state.rooms, state.scheduledCleaningDates, state.assignedCleanings, today]);
+
   const overdueCount = scheduledRooms.filter(
     (room) => room.date < today && room.status !== "finished",
   ).length;
   const upcomingCount = scheduledRooms.filter(
     (room) => room.date >= today && room.date <= nextWeek && room.status !== "finished",
   ).length;
-  const counts = [
-    { label: "Habitaciones", value: roomStatuses.length, icon: "bed", tone: "sand" },
-    {
-      label: "Ocupadas",
-      value: roomStatuses.filter((status) => status === "occupied").length,
-      icon: "hotel",
-      tone: "rose",
-    },
-    {
-      label: "Por atender",
-      value: roomStatuses.filter((status) => status === "pending" || status === "cleaning").length,
-      icon: "cleaning_services",
-      tone: "gold",
-    },
-    {
-      label: "Personal activo",
-      value: state.staff.length,
-      icon: "groups",
-      tone: "sage",
-    },
-  ];
+
+  const operationalHealth = Math.max(70, Math.min(100, Math.round(100 - (overdueCount * 6) - (pendingCount * 2))));
+
+  // Group rooms by floors
+  const floors = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const id of roomIds) {
+      const floorNum = id.length >= 3 ? id.slice(0, -2) : "1";
+      const key = `Piso ${floorNum}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(id);
+    }
+    return map;
+  }, [roomIds]);
+
+  // Hourly operational activity distribution from events
+  const activityHours = useMemo(() => {
+    const blocks = [
+      { label: "07:00 - 11:00", name: "Apertura / Check-outs", count: 0 },
+      { label: "11:00 - 15:00", name: "Pico de Limpieza", count: 0 },
+      { label: "15:00 - 19:00", name: "Check-ins / Entregas", count: 0 },
+      { label: "19:00 - 23:00", name: "Cierre de Jornada", count: 0 },
+    ];
+    for (const ev of state.events) {
+      const d = new Date(ev.time);
+      if (!Number.isNaN(d.getTime())) {
+        const h = d.getHours();
+        if (h >= 7 && h < 11) blocks[0].count++;
+        else if (h >= 11 && h < 15) blocks[1].count++;
+        else if (h >= 15 && h < 19) blocks[2].count++;
+        else if (h >= 19 && h < 23) blocks[3].count++;
+      }
+    }
+    const maxCount = Math.max(...blocks.map((b) => b.count), 1);
+    return { blocks, maxCount };
+  }, [state.events]);
+
+  // Service plan distribution
+  const serviceDistribution = useMemo(() => {
+    let semanal = 0;
+    let mensual = 0;
+    let premium = 0;
+    let other = 0;
+    for (const id of roomIds) {
+      const plan = (state.servicePlans[id] ?? "").toLowerCase();
+      if (plan.includes("semanal")) semanal++;
+      else if (plan.includes("mensual")) mensual++;
+      else if (plan.includes("premium")) premium++;
+      else other++;
+    }
+    const semPct = totalRooms > 0 ? Math.round((semanal / totalRooms) * 100) : 0;
+    const menPct = totalRooms > 0 ? Math.round((mensual / totalRooms) * 100) : 0;
+    const prePct = totalRooms > 0 ? Math.round((premium / totalRooms) * 100) : 0;
+    const othPct = Math.max(0, 100 - semPct - menPct - prePct);
+    return {
+      semanal,
+      mensual,
+      premium,
+      other,
+      semPct,
+      menPct,
+      prePct,
+      othPct,
+    };
+  }, [roomIds, state.servicePlans, totalRooms]);
+
+  // Donut SVG circumference calculation (r = 50, C = 2 * PI * 50 = 314.159)
+  const donutRadius = 50;
+  const donutCircumference = 2 * Math.PI * donutRadius; // 314.159
+  const occStroke = (occupancyRate / 100) * donutCircumference;
+  const freeStroke = (freeRate / 100) * donutCircumference;
+  const turnStroke = (turnoverRate / 100) * donutCircumference;
+
+  // Filtered rooms for floor matrix
+  const matrixFilterFn = (id: string) => {
+    const s = state.rooms[id] || "free";
+    if (matrixFilter === "all") return true;
+    if (matrixFilter === "free") return s === "free";
+    if (matrixFilter === "occupied") return s === "occupied";
+    if (matrixFilter === "pending") return s === "pending";
+    if (matrixFilter === "cleaning") return s === "cleaning";
+    if (matrixFilter === "finished") return s === "finished";
+    return true;
+  };
 
   return (
-    <div className="page-stack">
-      <section className="dashboard-hero">
-        <div>
-          <p className="eyebrow">Centro de operaciones <span className="eyebrow-sparkle" aria-hidden="true">✦</span></p>
-          <h1>Todo en orden,<br />a primera vista.</h1>
-          <p>Un resumen claro para que cada estancia fluya como debe.</p>
+    <div className="page-stack dashboard-page">
+      <DashboardHeroSlider userEmail={session?.user.email ?? "Administrador"} />
+
+      {/* Operational pulse & live status strip */}
+      <div className="dashboard-status-strip">
+        <div className="dashboard-live-badge">
+          <span className="dashboard-pulse-dot" aria-hidden="true" />
+          <span>Operación en Vivo</span>
+          <span className="dashboard-dot-separator" aria-hidden="true">•</span>
+          <strong>{totalRooms} habitaciones monitoreadas</strong>
         </div>
-        <div className="dashboard-hero-aside">
-          <span className="hero-orbit hero-orbit-one" aria-hidden="true" />
-          <span className="hero-orbit hero-orbit-two" aria-hidden="true" />
-          <span className="hero-illustration material-symbol" aria-hidden="true">holiday_village</span>
-          <span className="hero-caption">Hospitalidad,<br />con cada detalle.</span>
-          <span className="hero-session">Conectado como {session?.user.email ?? "Administrador"}</span>
+        <div className="dashboard-health-badge">
+          <span className="material-symbol" aria-hidden="true">verified</span>
+          <span>Índice Operativo: <strong>{operationalHealth}% Óptimo</strong></span>
         </div>
+        <div className="dashboard-connection-pill">
+          <HotelDataStatus showStatus={false} />
+        </div>
+      </div>
+
+      {/* Graphical KPI Cards with SVG Mini-Rings */}
+      <section className="dashboard-visual-kpis" aria-label="Indicadores gráficos clave">
+        <article className="dashboard-kpi-card kpi-occupancy">
+          <div className="kpi-card-header">
+            <span className="kpi-label">Ocupación Actual</span>
+            <span className="kpi-icon-pill coral"><span className="material-symbol" aria-hidden="true">hotel</span></span>
+          </div>
+          <div className="kpi-card-body">
+            <div className="kpi-metric-main">
+              <strong>{occupancyRate}%</strong>
+              <span>{occupiedCount} de {totalRooms} habitaciones</span>
+            </div>
+            <div className="kpi-mini-ring" aria-hidden="true">
+              <svg viewBox="0 0 36 36" className="kpi-ring-svg">
+                <circle cx="18" cy="18" r="14" fill="none" stroke="#fce4e8" strokeWidth="3.5" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="14"
+                  fill="none"
+                  stroke="#f05d72"
+                  strokeWidth="3.5"
+                  strokeDasharray={`${(occupancyRate / 100) * 87.96} 87.96`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 18 18)"
+                />
+              </svg>
+            </div>
+          </div>
+          <div className="kpi-card-footer">
+            <span className="kpi-trend-pill">Capacidad: {occupiedCount}/{totalRooms} habs</span>
+          </div>
+        </article>
+
+        <article className="dashboard-kpi-card kpi-ready">
+          <div className="kpi-card-header">
+            <span className="kpi-label">Disponibles / Listas</span>
+            <span className="kpi-icon-pill mint"><span className="material-symbol" aria-hidden="true">door_open</span></span>
+          </div>
+          <div className="kpi-card-body">
+            <div className="kpi-metric-main">
+              <strong>{freeCount}</strong>
+              <span>{freeRate}% listas para check-in</span>
+            </div>
+            <div className="kpi-mini-ring" aria-hidden="true">
+              <svg viewBox="0 0 36 36" className="kpi-ring-svg">
+                <circle cx="18" cy="18" r="14" fill="none" stroke="#d5ede7" strokeWidth="3.5" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="14"
+                  fill="none"
+                  stroke="#26b7a6"
+                  strokeWidth="3.5"
+                  strokeDasharray={`${(freeRate / 100) * 87.96} 87.96`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 18 18)"
+                />
+              </svg>
+            </div>
+          </div>
+          <div className="kpi-card-footer">
+            <span className="kpi-trend-pill green">Entrega Inmediata</span>
+          </div>
+        </article>
+
+        <article className="dashboard-kpi-card kpi-turnover">
+          <div className="kpi-card-header">
+            <span className="kpi-label">En Rotación / Aseo</span>
+            <span className="kpi-icon-pill purple"><span className="material-symbol" aria-hidden="true">cleaning_services</span></span>
+          </div>
+          <div className="kpi-card-body">
+            <div className="kpi-metric-main">
+              <strong>{turnoverCount}</strong>
+              <span>{pendingCount} por asear · {cleaningCount} en curso</span>
+            </div>
+            <div className="kpi-mini-ring" aria-hidden="true">
+              <svg viewBox="0 0 36 36" className="kpi-ring-svg">
+                <circle cx="18" cy="18" r="14" fill="none" stroke="#ede7fa" strokeWidth="3.5" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="14"
+                  fill="none"
+                  stroke="#8d73ff"
+                  strokeWidth="3.5"
+                  strokeDasharray={`${(turnoverRate / 100) * 87.96} 87.96`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 18 18)"
+                />
+              </svg>
+            </div>
+          </div>
+          <div className="kpi-card-footer">
+            <span className={`kpi-trend-pill ${pendingCount > 0 ? "amber" : "neutral"}`}>
+              {pendingCount > 0 ? `${pendingCount} pendientes` : "Sin retrasos"}
+            </span>
+          </div>
+        </article>
+
+        <article className="dashboard-kpi-card kpi-staff">
+          <div className="kpi-card-header">
+            <span className="kpi-label">Personal en Turno</span>
+            <span className="kpi-icon-pill sage"><span className="material-symbol" aria-hidden="true">badge</span></span>
+          </div>
+          <div className="kpi-card-body">
+            <div className="kpi-metric-main">
+              <strong>{activeStaffCount} <small>/ {state.staff.length}</small></strong>
+              <span>Carga: {roomsPerActiveStaff} hab / camarista</span>
+            </div>
+            <div className="kpi-mini-ring" aria-hidden="true">
+              <svg viewBox="0 0 36 36" className="kpi-ring-svg">
+                <circle cx="18" cy="18" r="14" fill="none" stroke="#e0e8ee" strokeWidth="3.5" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="14"
+                  fill="none"
+                  stroke="#3d6c80"
+                  strokeWidth="3.5"
+                  strokeDasharray={`${state.staff.length > 0 ? (activeStaffCount / state.staff.length) * 87.96 : 0} 87.96`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 18 18)"
+                />
+              </svg>
+            </div>
+          </div>
+          <div className="kpi-card-footer">
+            <span className="kpi-trend-pill">
+              {activeStaffCount > 0 ? "Turno activo" : "Sin ingresos hoy"}
+            </span>
+          </div>
+        </article>
       </section>
-      <div className="dashboard-status"><HotelDataStatus showStatus={false} /></div>
-      <section className="metric-grid" aria-label="Resumen">
-        {counts.map((item) => (
-          <article className={`metric-card metric-${item.tone}`} key={item.label}>
-            <span className="metric-icon material-symbol" aria-hidden="true">{item.icon}</span>
-            <span className="metric-label">{item.label}</span>
-            <strong>{item.value}</strong>
-            <span className="metric-note">en este momento</span>
-          </article>
-        ))}
-      </section>
-      <section className="page-card dashboard-schedule">
-        <div className="section-heading dashboard-schedule-heading">
-          <div>
-            <p className="eyebrow">Planificación</p>
-            <h2>Agenda de limpieza</h2>
-            <p>Fechas próximas y tareas que requieren atención.</p>
+
+      {/* Main Graphical Grid (2 Columns: Donut Gauge + Spatial Floor Matrix) */}
+      <section className="dashboard-graphic-row">
+        {/* Widget 1: Donut SVG Chart */}
+        <article className="dashboard-card dashboard-donut-card">
+          <div className="dashboard-card-head">
+            <div>
+              <p className="dashboard-widget-eyebrow">Radar de Capacidad</p>
+              <h2 className="dashboard-widget-title">Distribución de Ocupación</h2>
+            </div>
+            <span className="dashboard-badge-pill">Inventario Real</span>
           </div>
-          <Link className="text-link" to="/app/habitaciones">
-            Administrar fechas <span className="material-symbol" aria-hidden="true">arrow_forward</span>
-          </Link>
-        </div>
-        <div className="dashboard-schedule-summary" aria-label="Resumen de agenda">
-          <div className={overdueCount ? "is-overdue" : ""}>
-            <strong>{overdueCount}</strong>
-            <span>Vencidas</span>
+
+          <div className="dashboard-donut-content">
+            <div className="dashboard-donut-visual">
+              <svg viewBox="0 0 140 140" className="donut-svg-main">
+                <circle
+                  cx="70"
+                  cy="70"
+                  r={donutRadius}
+                  fill="none"
+                  stroke="#edf2f5"
+                  strokeWidth="15"
+                />
+                {/* Ocupadas */}
+                {occStroke > 0 && (
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r={donutRadius}
+                    fill="none"
+                    stroke="#f05d72"
+                    strokeWidth="15"
+                    strokeDasharray={`${occStroke} ${donutCircumference - occStroke}`}
+                    strokeDashoffset={-donutCircumference * 0.25}
+                    strokeLinecap="round"
+                    className="donut-segment"
+                  />
+                )}
+                {/* Libres */}
+                {freeStroke > 0 && (
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r={donutRadius}
+                    fill="none"
+                    stroke="#26b7a6"
+                    strokeWidth="15"
+                    strokeDasharray={`${freeStroke} ${donutCircumference - freeStroke}`}
+                    strokeDashoffset={-(donutCircumference * 0.25 + occStroke)}
+                    strokeLinecap="round"
+                    className="donut-segment"
+                  />
+                )}
+                {/* Rotación */}
+                {turnStroke > 0 && (
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r={donutRadius}
+                    fill="none"
+                    stroke="#8d73ff"
+                    strokeWidth="15"
+                    strokeDasharray={`${turnStroke} ${donutCircumference - turnStroke}`}
+                    strokeDashoffset={-(donutCircumference * 0.25 + occStroke + freeStroke)}
+                    strokeLinecap="round"
+                    className="donut-segment"
+                  />
+                )}
+              </svg>
+              <div className="donut-center-readout">
+                <strong>{occupancyRate}%</strong>
+                <span>Ocupadas</span>
+              </div>
+            </div>
+
+            <div className="dashboard-donut-legend">
+              <div className="donut-legend-row">
+                <span className="legend-indicator coral" />
+                <span className="legend-title">Ocupadas</span>
+                <strong className="legend-count">{occupiedCount} habs</strong>
+                <span className="legend-pct">{occupancyRate}%</span>
+              </div>
+              <div className="donut-legend-progress">
+                <span className="donut-progress-bar coral" style={{ width: `${occupancyRate}%` }} />
+              </div>
+
+              <div className="donut-legend-row">
+                <span className="legend-indicator mint" />
+                <span className="legend-title">Listas / Libres</span>
+                <strong className="legend-count">{freeCount} habs</strong>
+                <span className="legend-pct">{freeRate}%</span>
+              </div>
+              <div className="donut-legend-progress">
+                <span className="donut-progress-bar mint" style={{ width: `${freeRate}%` }} />
+              </div>
+
+              <div className="donut-legend-row">
+                <span className="legend-indicator purple" />
+                <span className="legend-title">En Rotación</span>
+                <strong className="legend-count">{turnoverCount} habs</strong>
+                <span className="legend-pct">{turnoverRate}%</span>
+              </div>
+              <div className="donut-legend-progress">
+                <span className="donut-progress-bar purple" style={{ width: `${turnoverRate}%` }} />
+              </div>
+            </div>
           </div>
-          <div>
-            <strong>{upcomingCount}</strong>
-            <span>Próximos 7 días</span>
+        </article>
+
+        {/* Widget 2: Spatial Floor Map Matrix */}
+        <article className="dashboard-card dashboard-matrix-card">
+          <div className="dashboard-card-head">
+            <div>
+              <p className="dashboard-widget-eyebrow">Mapa Espacial</p>
+              <h2 className="dashboard-widget-title">Distribución por Pisos</h2>
+            </div>
+            <div className="dashboard-matrix-filters" role="tablist">
+              <button
+                type="button"
+                className={`matrix-filter-pill ${matrixFilter === "all" ? "active" : ""}`}
+                onClick={() => setMatrixFilter("all")}
+              >
+                Todas ({totalRooms})
+              </button>
+              <button
+                type="button"
+                className={`matrix-filter-pill ${matrixFilter === "free" ? "active" : ""}`}
+                onClick={() => setMatrixFilter("free")}
+              >
+                Libres
+              </button>
+              <button
+                type="button"
+                className={`matrix-filter-pill ${matrixFilter === "occupied" ? "active" : ""}`}
+                onClick={() => setMatrixFilter("occupied")}
+              >
+                Ocupadas
+              </button>
+              <button
+                type="button"
+                className={`matrix-filter-pill ${matrixFilter === "pending" ? "active" : ""}`}
+                onClick={() => setMatrixFilter("pending")}
+              >
+                Pendiente
+              </button>
+              <button
+                type="button"
+                className={`matrix-filter-pill ${matrixFilter === "cleaning" ? "active" : ""}`}
+                onClick={() => setMatrixFilter("cleaning")}
+              >
+                En limpieza
+              </button>
+              <button
+                type="button"
+                className={`matrix-filter-pill ${matrixFilter === "finished" ? "active" : ""}`}
+                onClick={() => setMatrixFilter("finished")}
+              >
+                Finalizada
+              </button>
+            </div>
           </div>
-          <div>
-            <strong>{scheduledRooms.length}</strong>
-            <span>Con fecha asignada</span>
-          </div>
-        </div>
-        {scheduledRooms.length === 0 ? (
-          <p className="empty-state dashboard-schedule-empty">
-            Aún no hay fechas programadas. Asigna una fecha desde Habitaciones para organizar la agenda.
-          </p>
-        ) : (
-          <ul className="dashboard-schedule-list">
-            {scheduledRooms.slice(0, 6).map((room) => {
-              const isOverdue = room.date < today && room.status !== "finished";
-              const date = new Date(`${room.date}T00:00:00`);
+
+          <div className="dashboard-matrix-content">
+            {Object.entries(floors).map(([floorLabel, fRooms]) => {
+              const visibleRoomsInFloor = fRooms.filter(matrixFilterFn);
               return (
-                <li key={room.roomId}>
-                  <time dateTime={room.date} className={isOverdue ? "is-overdue" : ""}>
-                    <span>
-                      {room.status === "finished"
-                        ? "Atendida"
-                        : isOverdue
-                          ? "Vencida"
-                          : room.date === today
-                            ? "Hoy"
-                            : "Programada"}
-                    </span>
-                    <strong>{formatDateOnly(date)}</strong>
-                  </time>
-                  <div className="dashboard-schedule-room">
-                    <strong>{room.roomId}</strong>
-                    <span>{room.cleaner}</span>
+                <div className="matrix-floor-block" key={floorLabel}>
+                  <div className="matrix-floor-heading">
+                    <span className="matrix-floor-badge">{floorLabel}</span>
+                    <span className="matrix-floor-meta">{visibleRoomsInFloor.length} de {fRooms.length} habitaciones</span>
                   </div>
-                  <span className={`status-pill status-${room.status}`}>
-                    {statusLabels[room.status]}
-                  </span>
-                </li>
+                  <div className="matrix-room-tiles">
+                    {fRooms.map((roomId) => {
+                      const st = state.rooms[roomId] || "free";
+                      const isVisible = matrixFilterFn(roomId);
+                      const isHovered = hoveredRoom === roomId;
+                      const isSelected = selectedModalRoom === roomId;
+                      const guest = state.guests[roomId];
+                      const cleaner = state.assignedCleanings[roomId]?.staffName;
+                      const plan = state.servicePlans[roomId];
+                      const isVip = isVipRoom(plan);
+                      const icon = getRoomStatusIcon(st);
+
+                      return (
+                        <div
+                          className={`matrix-room-tile tile-${st} ${isVisible ? "" : "is-dimmed"} ${isHovered ? "is-hovered" : ""} ${isSelected ? "is-selected" : ""}`}
+                          key={roomId}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Habitación ${roomId}, estado ${statusLabels[st] || st}`}
+                          onClick={() => setSelectedModalRoom(roomId)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedModalRoom(roomId);
+                            }
+                          }}
+                          onMouseEnter={() => setHoveredRoom(roomId)}
+                          onMouseLeave={() => setHoveredRoom(null)}
+                        >
+                          {/* Top: Icon Badge & Live status dot / VIP */}
+                          <div className="matrix-tile-top">
+                            <div className="matrix-tile-icon-box">
+                              <span className="material-symbol" aria-hidden="true">{icon}</span>
+                            </div>
+                            {isVip ? (
+                              <span className="matrix-tile-vip-badge" title="Huésped / Plan VIP">
+                                <span className="material-symbol" aria-hidden="true">star</span>
+                              </span>
+                            ) : (
+                              <span className="matrix-tile-dot" aria-hidden="true" />
+                            )}
+                          </div>
+
+                          {/* Middle: Room Number */}
+                          <div className="matrix-tile-middle">
+                            <strong className="matrix-tile-num">{roomId}</strong>
+                          </div>
+
+                          {/* Bottom: Status Pill / Guest */}
+                          <div className="matrix-tile-bottom">
+                            <span className="matrix-tile-tag">
+                              {st === "occupied" && guest
+                                ? guest.split(" ")[0]
+                                : statusLabels[st] || st}
+                            </span>
+                          </div>
+
+                          {/* Interactive Hover Tooltip */}
+                          {isHovered && !selectedModalRoom && (
+                            <div className="matrix-tile-tooltip" role="tooltip">
+                              <div className="matrix-tooltip-head">
+                                <div className="matrix-tooltip-title">
+                                  <span className="material-symbol" aria-hidden="true">{icon}</span>
+                                  <strong>Habitación {roomId}</strong>
+                                </div>
+                                <span className={`status-pill status-${st}`}>{statusLabels[st]}</span>
+                              </div>
+                              <div className="matrix-tooltip-body">
+                                <div><small>Huésped:</small> <span>{guest || "Sin registro"}</span></div>
+                                <div><small>Aseador:</small> <span>{cleaner || "Sin asignar"}</span></div>
+                                {plan && <div><small>Plan:</small> <span>{plan}</span></div>}
+                                <div className="matrix-tooltip-hint">
+                                  <span className="material-symbol" aria-hidden="true">touch_app</span>
+                                  <span>Clic para abrir opciones</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
-          </ul>
-        )}
+          </div>
+
+          {/* Interactive Room Action Modal */}
+          {selectedModalRoom && (
+            <div
+              className="matrix-modal-backdrop"
+              onClick={() => setSelectedModalRoom(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="matrix-modal-title"
+            >
+              <div
+                className="matrix-modal-dialog"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="matrix-modal-header">
+                  <div className="matrix-modal-title-group">
+                    <div className={`matrix-modal-icon-badge status-${state.rooms[selectedModalRoom] || "free"}`}>
+                      <span className="material-symbol" aria-hidden="true">
+                        {getRoomStatusIcon(state.rooms[selectedModalRoom] || "free")}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 id="matrix-modal-title">Habitación {selectedModalRoom}</h3>
+                      <span className={`status-pill status-${state.rooms[selectedModalRoom] || "free"}`}>
+                        {statusLabels[state.rooms[selectedModalRoom] || "free"]}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="matrix-modal-close"
+                    onClick={() => setSelectedModalRoom(null)}
+                    aria-label="Cerrar detalles de habitación"
+                  >
+                    <span className="material-symbol" aria-hidden="true">close</span>
+                  </button>
+                </div>
+
+                {modalFeedback && (
+                  <div className="matrix-modal-feedback" role="status">
+                    <span className="material-symbol" aria-hidden="true">info</span>
+                    <span>{modalFeedback}</span>
+                  </div>
+                )}
+
+                <div className="matrix-modal-details-grid">
+                  <div className="matrix-detail-item">
+                    <span className="matrix-detail-label">Huésped Actual</span>
+                    <strong className="matrix-detail-value">
+                      {state.guests[selectedModalRoom] || "Sin huésped registrado"}
+                    </strong>
+                  </div>
+                  <div className="matrix-detail-item">
+                    <span className="matrix-detail-label">Aseador Asignado</span>
+                    <strong className="matrix-detail-value">
+                      {state.assignedCleanings[selectedModalRoom]?.staffName || "Sin asignar"}
+                    </strong>
+                  </div>
+                  <div className="matrix-detail-item">
+                    <span className="matrix-detail-label">Plan de Limpieza</span>
+                    <span className="matrix-detail-value">
+                      {state.servicePlans[selectedModalRoom] || "Estándar"}
+                    </span>
+                  </div>
+                  <div className="matrix-detail-item">
+                    <span className="matrix-detail-label">Próxima Fecha</span>
+                    <span className="matrix-detail-value">
+                      {state.scheduledCleaningDates[selectedModalRoom] || "No programada"}
+                    </span>
+                  </div>
+                </div>
+
+                {state.cleaningDetails[selectedModalRoom] && (
+                  <div className="matrix-modal-notes">
+                    <span className="matrix-detail-label">Indicaciones Especiales</span>
+                    <p>{state.cleaningDetails[selectedModalRoom]}</p>
+                  </div>
+                )}
+
+                <div className="matrix-modal-actions-section">
+                  <h4 className="matrix-actions-heading">
+                    <span className="material-symbol" aria-hidden="true">bolt</span>
+                    Cambio Rápido de Estado
+                  </h4>
+                  <div className="matrix-quick-buttons-row">
+                    <button
+                      type="button"
+                      className="matrix-quick-btn btn-free"
+                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "free"}
+                      onClick={() => handleQuickStatusChange(selectedModalRoom, "free")}
+                    >
+                      <span className="material-symbol" aria-hidden="true">bed</span>
+                      <span>Marcar Libre</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="matrix-quick-btn btn-occupied"
+                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "occupied"}
+                      onClick={() => handleQuickStatusChange(selectedModalRoom, "occupied")}
+                    >
+                      <span className="material-symbol" aria-hidden="true">hotel</span>
+                      <span>Marcar Ocupada</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="matrix-quick-btn btn-pending"
+                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "pending"}
+                      onClick={() => handleQuickStatusChange(selectedModalRoom, "pending")}
+                    >
+                      <span className="material-symbol" aria-hidden="true">schedule</span>
+                      <span>Por Limpiar</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="matrix-quick-btn btn-cleaning"
+                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "cleaning"}
+                      onClick={() => handleQuickStatusChange(selectedModalRoom, "cleaning")}
+                    >
+                      <span className="material-symbol" aria-hidden="true">cleaning_services</span>
+                      <span>En Limpieza</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="matrix-quick-btn btn-finished"
+                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "finished"}
+                      onClick={() => handleQuickStatusChange(selectedModalRoom, "finished")}
+                    >
+                      <span className="material-symbol" aria-hidden="true">task_alt</span>
+                      <span>Finalizada</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="matrix-modal-footer">
+                  <Link to="/rooms" className="button button-secondary matrix-modal-editor-btn">
+                    <span className="material-symbol" aria-hidden="true">open_in_new</span>
+                    Editor Completo
+                  </Link>
+                  <button
+                    type="button"
+                    className="button button-ghost"
+                    onClick={() => setSelectedModalRoom(null)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="dashboard-matrix-legend-strip">
+            <span className="matrix-legend-item"><span className="matrix-dot dot-free" /> Libre</span>
+            <span className="matrix-legend-item"><span className="matrix-dot dot-occupied" /> Ocupada</span>
+            <span className="matrix-legend-item"><span className="matrix-dot dot-pending" /> Por Limpiar</span>
+            <span className="matrix-legend-item"><span className="matrix-dot dot-cleaning" /> En Limpieza</span>
+          </div>
+        </article>
+      </section>
+
+      {/* Secondary Graphical Grid (2 Columns: Hourly Activity Bar Chart + Service Spectrum) */}
+      <section className="dashboard-graphic-row">
+        {/* Widget 3: Shift Operational Load Chart */}
+        <article className="dashboard-card dashboard-activity-card">
+          <div className="dashboard-card-head">
+            <div>
+              <p className="dashboard-widget-eyebrow">Flujo de Operación</p>
+              <h2 className="dashboard-widget-title">Carga Horaria y Actividad</h2>
+            </div>
+            <span className="dashboard-badge-pill">Turnos de Hoy</span>
+          </div>
+
+          <div className="dashboard-activity-chart-wrap">
+            <div className="activity-bars-container">
+              {activityHours.blocks.map((block) => {
+                const heightPct = Math.max(16, Math.round((block.count / activityHours.maxCount) * 100));
+                return (
+                  <div className="activity-bar-column" key={block.label}>
+                    <div className="activity-bar-track">
+                      <div
+                        className="activity-bar-fill"
+                        style={{ height: `${heightPct}%` }}
+                      >
+                        <span className="activity-bar-val">{block.count}</span>
+                      </div>
+                    </div>
+                    <div className="activity-bar-info">
+                      <strong className="activity-bar-name">{block.name}</strong>
+                      <span className="activity-bar-label">{block.label}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="activity-chart-meta">
+              <span className="material-symbol" aria-hidden="true">insights</span>
+              <span>Distribución en tiempo real basada en <strong>{state.events.length} eventos registrados</strong>.</span>
+            </div>
+          </div>
+        </article>
+
+        {/* Widget 4: Service Plans Spectrum & Critical Agenda */}
+        <article className="dashboard-card dashboard-services-card">
+          <div className="dashboard-card-head">
+            <div>
+              <p className="dashboard-widget-eyebrow">Protocolos y Agenda</p>
+              <h2 className="dashboard-widget-title">Planes y Fechas Críticas</h2>
+            </div>
+            <Link className="text-link" to="/app/habitaciones">
+              Administrar <span className="material-symbol" aria-hidden="true">arrow_forward</span>
+            </Link>
+          </div>
+
+          {/* Stacked spectrum bar */}
+          <div className="dashboard-services-content">
+            <div className="service-spectrum-header">
+              <span className="spectrum-label">Cobertura de Protocolos</span>
+              <span className="spectrum-total">{totalRooms} habitaciones activas</span>
+            </div>
+
+            <div className="service-stacked-bar" aria-label="Distribución de protocolos">
+              {serviceDistribution.semPct > 0 && (
+                <div
+                  className="stacked-slice slice-semanal"
+                  style={{ width: `${serviceDistribution.semPct}%` }}
+                  title={`Semanal: ${serviceDistribution.semanal} habs (${serviceDistribution.semPct}%)`}
+                />
+              )}
+              {serviceDistribution.menPct > 0 && (
+                <div
+                  className="stacked-slice slice-mensual"
+                  style={{ width: `${serviceDistribution.menPct}%` }}
+                  title={`Mensual: ${serviceDistribution.mensual} habs (${serviceDistribution.menPct}%)`}
+                />
+              )}
+              {serviceDistribution.prePct > 0 && (
+                <div
+                  className="stacked-slice slice-premium"
+                  style={{ width: `${serviceDistribution.prePct}%` }}
+                  title={`Premium: ${serviceDistribution.premium} habs (${serviceDistribution.prePct}%)`}
+                />
+              )}
+              {serviceDistribution.othPct > 0 && (
+                <div
+                  className="stacked-slice slice-other"
+                  style={{ width: `${serviceDistribution.othPct}%` }}
+                  title={`Estándar / Sin plan: ${serviceDistribution.other} habs (${serviceDistribution.othPct}%)`}
+                />
+              )}
+            </div>
+
+            <div className="service-pills-row">
+              <span className="service-pill-item">
+                <span className="pill-dot sem" /> Semanal: <strong>{serviceDistribution.semanal}</strong> ({serviceDistribution.semPct}%)
+              </span>
+              <span className="service-pill-item">
+                <span className="pill-dot men" /> Mensual: <strong>{serviceDistribution.mensual}</strong> ({serviceDistribution.menPct}%)
+              </span>
+              <span className="service-pill-item">
+                <span className="pill-dot pre" /> Premium: <strong>{serviceDistribution.premium}</strong> ({serviceDistribution.prePct}%)
+              </span>
+            </div>
+
+            {/* Critical schedule list preview */}
+            <div className="dashboard-critical-agenda">
+              <div className="critical-agenda-title">
+                <span>Próximas Fechas de Aseo</span>
+                <span className="critical-badge">{overdueCount > 0 ? `${overdueCount} vencidas` : upcomingCount > 0 ? `${upcomingCount} en 7 días` : "Al día"}</span>
+              </div>
+              {scheduledRooms.length === 0 ? (
+                <p className="empty-state-compact">Sin fechas programadas para los próximos días.</p>
+              ) : (
+                <ul className="critical-schedule-items">
+                  {scheduledRooms.slice(0, 3).map((room) => {
+                    const isOverdue = room.date < today && room.status !== "finished";
+                    const isToday = room.date === today;
+                    return (
+                      <li className={`critical-item ${isOverdue ? "is-overdue" : ""}`} key={room.roomId}>
+                        <div className="critical-room-col">
+                          <strong>Hab. {room.roomId}</strong>
+                          <span>{room.cleaner}</span>
+                        </div>
+                        <div className="critical-date-col">
+                          <span className={`critical-tag ${isOverdue ? "tag-overdue" : isToday ? "tag-today" : "tag-normal"}`}>
+                            {isOverdue ? "Vencida" : isToday ? "Hoy" : "Próxima"}
+                          </span>
+                          <time dateTime={room.date}>{room.date}</time>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </article>
       </section>
     </div>
   );
@@ -218,7 +985,8 @@ function RoomCard({ roomId }: { roomId: string }) {
   const { session } = useHotelAuth();
   const roomStatus = state.rooms[roomId] ?? "unknown";
   const roomGuest = state.guests[roomId] ?? "";
-  const roomServicePlan = state.servicePlans[roomId] ?? "";
+  const rawServicePlan = state.servicePlans[roomId] ?? "";
+  const roomServicePlan = rawServicePlan.trim().toLowerCase() === "salida" ? "" : rawServicePlan;
   const roomCleaningDetails = state.cleaningDetails[roomId] ?? "";
   const roomScheduledCleaningDate = state.scheduledCleaningDates[roomId] ?? "";
   const assignment = state.assignedCleanings[roomId];
@@ -234,6 +1002,20 @@ function RoomCard({ roomId }: { roomId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  function handleCancel() {
+    setStatus(roomStatus);
+    setGuest(roomGuest);
+    setServicePlan(roomServicePlan);
+    setCleaningDetails(roomCleaningDetails);
+    setScheduledCleaningDate(roomScheduledCleaningDate);
+    setStaffId(assignment?.staffId ?? "");
+    setCleaningType(assignment?.cleaningType ?? "");
+    setError(null);
+    setSuccess(null);
+    setIsEditing(false);
+  }
 
   useEffect(() => {
     setStatus(roomStatus);
@@ -243,6 +1025,7 @@ function RoomCard({ roomId }: { roomId: string }) {
     setScheduledCleaningDate(roomScheduledCleaningDate);
     setStaffId(assignment?.staffId ?? "");
     setCleaningType(assignment?.cleaningType ?? "");
+    setIsEditing(false);
   }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, roomScheduledCleaningDate, assignment?.staffId, assignment?.cleaningType]);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
@@ -255,7 +1038,7 @@ function RoomCard({ roomId }: { roomId: string }) {
       await updateRoom(roomId, {
         status,
         guest: guest.trim() || null,
-        servicePlan: servicePlan.trim() || null,
+        servicePlan: servicePlan.trim().toLowerCase() === "salida" ? null : servicePlan.trim() || null,
         cleaningDetails: cleaningDetails.trim() || null,
         scheduledCleaningDate: scheduledCleaningDate || null,
         assignedCleaner: staffId ? { staffId } : null,
@@ -285,6 +1068,7 @@ function RoomCard({ roomId }: { roomId: string }) {
 
       await refresh();
       setSuccess("Cambios guardados.");
+      setIsEditing(false);
     } catch (saveError: unknown) {
       setError(messageOf(saveError));
     } finally {
@@ -293,11 +1077,11 @@ function RoomCard({ roomId }: { roomId: string }) {
   }
 
   return (
-    <article className="room-card room-editor-card">
+    <article className={`room-card room-editor-card ${!isEditing ? "is-disabled" : "is-editing"}`}>
       <header className="room-editor-heading">
         <div className="room-editor-title">
           <span className="room-editor-icon">
-            <span className="material-symbol" aria-hidden="true">bed</span>
+            <span className="material-symbol" aria-hidden="true">{isEditing ? "edit" : "bed"}</span>
           </span>
           <div>
             <p className="eyebrow">Habitación</p>
@@ -309,7 +1093,7 @@ function RoomCard({ roomId }: { roomId: string }) {
       <form className="form-grid room-editor-form" onSubmit={handleSave}>
         <label>
           Estado
-          <select value={status} onChange={(event) => setStatus(event.target.value as RoomStatus)}>
+          <select disabled={!isEditing || saving} value={status} onChange={(event) => setStatus(event.target.value as RoomStatus)}>
             {status === "unknown" && <option value="unknown" disabled>Sin estado</option>}
             {editableStatuses.map((value) => (
               <option key={value} value={value}>{statusLabels[value]}</option>
@@ -318,23 +1102,32 @@ function RoomCard({ roomId }: { roomId: string }) {
         </label>
         <label>
           Huésped
-          <input value={guest} onChange={(event) => setGuest(event.target.value)} />
+          <input disabled={!isEditing || saving} value={guest} onChange={(event) => setGuest(event.target.value)} />
         </label>
         <label>
           Servicio de limpieza
-          <select value={servicePlan} onChange={(event) => setServicePlan(event.target.value)}>
+          <select
+            disabled={!isEditing || saving}
+            value={servicePlan.trim().toLowerCase() === "salida" ? "" : servicePlan}
+            onChange={(event) => setServicePlan(event.target.value)}
+          >
             <option value="">Sin servicio asignado</option>
-            {!cleaningServicePlans.some((plan) => plan === servicePlan) && servicePlan && (
-              <option value={servicePlan} disabled>{servicePlan} (actual)</option>
-            )}
-            {cleaningServicePlans.map((plan) => (
-              <option key={plan} value={plan}>{plan}</option>
-            ))}
+            {!cleaningServicePlans.some((plan) => plan.toLowerCase() === servicePlan.trim().toLowerCase()) &&
+              servicePlan &&
+              servicePlan.trim().toLowerCase() !== "salida" && (
+                <option value={servicePlan} disabled>{servicePlan} (actual)</option>
+              )}
+            {cleaningServicePlans
+              .filter((plan) => plan.toLowerCase() !== "salida")
+              .map((plan) => (
+                <option key={plan} value={plan}>{plan}</option>
+              ))}
           </select>
         </label>
         <label>
           Fecha de limpieza
           <input
+            disabled={!isEditing || saving}
             type="date"
             value={scheduledCleaningDate}
             onChange={(event) => setScheduledCleaningDate(event.target.value)}
@@ -342,7 +1135,7 @@ function RoomCard({ roomId }: { roomId: string }) {
         </label>
         <label>
           Personal asignado
-          <select value={staffId} onChange={(event) => setStaffId(event.target.value)}>
+          <select disabled={!isEditing || saving} value={staffId} onChange={(event) => setStaffId(event.target.value)}>
             <option value="">Sin asignar</option>
             {state.staff.map((person) => (
               <option key={person.id} value={person.id}>{person.name}</option>
@@ -352,6 +1145,7 @@ function RoomCard({ roomId }: { roomId: string }) {
         <label className="form-wide">
           Detalles de limpieza
           <textarea
+            disabled={!isEditing || saving}
             rows={2}
             value={cleaningDetails}
             onChange={(event) => setCleaningDetails(event.target.value)}
@@ -359,12 +1153,38 @@ function RoomCard({ roomId }: { roomId: string }) {
         </label>
         <div className="form-wide form-actions">
           <ActionMessage error={error} success={success} />
-          <button className="button button-primary room-editor-save" disabled={saving}>
-            <span className="material-symbol" aria-hidden="true">
-              {saving ? "hourglass_top" : "save"}
-            </span>
-            {saving ? "Guardando…" : "Guardar cambios"}
-          </button>
+          {!isEditing ? (
+            <button
+              type="button"
+              className="button button-primary room-editor-edit-btn"
+              onClick={() => {
+                setError(null);
+                setSuccess(null);
+                setIsEditing(true);
+              }}
+            >
+              <span className="material-symbol" aria-hidden="true">edit</span>
+              Editar habitación
+            </button>
+          ) : (
+            <div className="room-editor-actions-group">
+              <button
+                type="button"
+                className="button button-secondary room-editor-cancel-btn"
+                disabled={saving}
+                onClick={handleCancel}
+              >
+                <span className="material-symbol" aria-hidden="true">close</span>
+                Cancelar
+              </button>
+              <button className="button button-primary room-editor-save" disabled={saving}>
+                <span className="material-symbol" aria-hidden="true">
+                  {saving ? "hourglass_top" : "save"}
+                </span>
+                {saving ? "Guardando…" : "Guardar cambios"}
+              </button>
+            </div>
+          )}
         </div>
       </form>
     </article>
@@ -600,21 +1420,36 @@ export function CleaningPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyRoom, setBusyRoom] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const rooms = Object.keys(state.rooms)
-    .filter((room) => ["pending", "cleaning"].includes(state.rooms[room]))
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "cleaning" | "unassigned" | "finished">("all");
+
+  const allCleaningRooms = Object.keys(state.rooms)
+    .filter((room) => ["pending", "cleaning", "finished"].includes(state.rooms[room]))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const pendingCount = allCleaningRooms.filter((room) => state.rooms[room] === "pending").length;
+  const activeCount = allCleaningRooms.filter((room) => state.rooms[room] === "cleaning").length;
+  const finishedCount = allCleaningRooms.filter((room) => state.rooms[room] === "finished").length;
+  const unassignedCount = allCleaningRooms.filter(
+    (roomId) => ["pending", "cleaning"].includes(state.rooms[roomId]) && !state.assignedCleanings[roomId]?.staffId,
+  ).length;
+
+  const filteredByStatus = allCleaningRooms.filter((roomId) => {
+    const s = state.rooms[roomId];
+    if (statusFilter === "all") return true;
+    if (statusFilter === "pending") return s === "pending";
+    if (statusFilter === "cleaning") return s === "cleaning";
+    if (statusFilter === "finished") return s === "finished";
+    if (statusFilter === "unassigned") return ["pending", "cleaning"].includes(s) && !state.assignedCleanings[roomId]?.staffId;
+    return true;
+  });
+
   const query = search.trim().toLocaleLowerCase("es");
-  const visibleRooms = rooms.filter((roomId) => !query || [
+  const visibleRooms = filteredByStatus.filter((roomId) => !query || [
     roomId,
     state.guests[roomId] ?? "",
     state.servicePlans[roomId] ?? "",
     state.assignedCleanings[roomId]?.staffName ?? "",
   ].some((value) => value.toLocaleLowerCase("es").includes(query)));
-  const pendingCount = rooms.filter((room) => state.rooms[room] === "pending").length;
-  const activeCount = rooms.length - pendingCount;
-  const unassignedCount = rooms.filter(
-    (roomId) => !state.assignedCleanings[roomId]?.staffId,
-  ).length;
 
   async function startCleaning(roomId: string) {
     setBusyRoom(roomId);
@@ -642,36 +1477,150 @@ export function CleaningPage() {
     }
   }
 
+  async function finishCleaning(roomId: string) {
+    setBusyRoom(roomId);
+    setError(null);
+    let statusUpdated = false;
+    try {
+      await updateRoom(roomId, { status: "finished" });
+      statusUpdated = true;
+      await addEvent({
+        room: roomId,
+        status: "finished",
+        action: "Limpieza finalizada",
+        guest: state.guests[roomId] ?? null,
+        actor: session?.user.email ?? "Administrador",
+        cleanerId: state.assignedCleanings[roomId]?.staffId ?? null,
+        cleaningType: state.assignedCleanings[roomId]?.cleaningType ?? null,
+        time: new Date().toISOString(),
+      });
+      await refresh();
+    } catch (finishError: unknown) {
+      if (statusUpdated) await refresh();
+      setError(messageOf(finishError));
+    } finally {
+      setBusyRoom(null);
+    }
+  }
+
+  const getFilterLabel = () => {
+    switch (statusFilter) {
+      case "pending": return "Pendientes";
+      case "cleaning": return "En Curso";
+      case "unassigned": return "Sin Asignar";
+      case "finished": return "Finalizadas";
+      default: return "Todas";
+    }
+  };
+
   return (
     <div className="page-stack cleaning-page">
       <header className="cleaning-header">
         <div className="cleaning-title">
           <p className="eyebrow">Operación diaria</p>
           <h1>Limpiezas</h1>
-          <p className="page-description">Una vista clara de lo que está listo y lo que necesita atención.</p>
+          <p className="page-description">Filtra y supervisa en tiempo real las habitaciones pendientes, en curso o finalizadas.</p>
         </div>
         <div className="cleaning-connection"><HotelDataStatus showStatus={false} /></div>
       </header>
-      <section className="cleaning-overview" aria-label="Resumen de limpiezas">
-        <article className="cleaning-kpi cleaning-kpi-pending">
-          <span className="cleaning-kpi-icon material-symbol" aria-hidden="true">pending_actions</span>
-          <strong>{pendingCount}</strong>
-          <span>Pendientes</span>
-        </article>
-        <article className="cleaning-kpi cleaning-kpi-active">
-          <span className="cleaning-kpi-icon material-symbol" aria-hidden="true">autorenew</span>
-          <strong>{activeCount}</strong>
-          <span>En curso</span>
-        </article>
-        <article className="cleaning-kpi cleaning-kpi-unassigned">
-          <span className="cleaning-kpi-icon material-symbol" aria-hidden="true">person_off</span>
-          <strong>{unassignedCount}</strong>
-          <span>Sin asignar</span>
-        </article>
+
+      {/* Functional Cleaning Statuses Filter */}
+      <section className="cleaning-overview" aria-label="Filtro de estados de limpieza" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === "all"}
+          className={`cleaning-filter-card filter-all ${statusFilter === "all" ? "active" : ""}`}
+          onClick={() => setStatusFilter("all")}
+          title="Ver todas las habitaciones en flujo de limpieza"
+        >
+          <div className="cleaning-filter-top">
+            <span className="cleaning-filter-icon material-symbol" aria-hidden="true">apps</span>
+            <strong className="cleaning-filter-count">{allCleaningRooms.length}</strong>
+          </div>
+          <div className="cleaning-filter-bottom">
+            <span className="cleaning-filter-label">Todas</span>
+            <span className="cleaning-filter-indicator" aria-hidden="true" />
+          </div>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === "pending"}
+          className={`cleaning-filter-card filter-pending ${statusFilter === "pending" ? "active" : ""}`}
+          onClick={() => setStatusFilter("pending")}
+          title="Ver habitaciones pendientes por limpiar"
+        >
+          <div className="cleaning-filter-top">
+            <span className="cleaning-filter-icon material-symbol" aria-hidden="true">pending_actions</span>
+            <strong className="cleaning-filter-count">{pendingCount}</strong>
+          </div>
+          <div className="cleaning-filter-bottom">
+            <span className="cleaning-filter-label">Pendientes</span>
+            <span className="cleaning-filter-indicator" aria-hidden="true" />
+          </div>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === "cleaning"}
+          className={`cleaning-filter-card filter-cleaning ${statusFilter === "cleaning" ? "active" : ""}`}
+          onClick={() => setStatusFilter("cleaning")}
+          title="Ver habitaciones actualmente en limpieza"
+        >
+          <div className="cleaning-filter-top">
+            <span className="cleaning-filter-icon material-symbol" aria-hidden="true">autorenew</span>
+            <strong className="cleaning-filter-count">{activeCount}</strong>
+          </div>
+          <div className="cleaning-filter-bottom">
+            <span className="cleaning-filter-label">En Curso</span>
+            <span className="cleaning-filter-indicator" aria-hidden="true" />
+          </div>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === "unassigned"}
+          className={`cleaning-filter-card filter-unassigned ${statusFilter === "unassigned" ? "active" : ""}`}
+          onClick={() => setStatusFilter("unassigned")}
+          title="Ver habitaciones sin personal asignado"
+        >
+          <div className="cleaning-filter-top">
+            <span className="cleaning-filter-icon material-symbol" aria-hidden="true">person_off</span>
+            <strong className="cleaning-filter-count">{unassignedCount}</strong>
+          </div>
+          <div className="cleaning-filter-bottom">
+            <span className="cleaning-filter-label">Sin Asignar</span>
+            <span className="cleaning-filter-indicator" aria-hidden="true" />
+          </div>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={statusFilter === "finished"}
+          className={`cleaning-filter-card filter-finished ${statusFilter === "finished" ? "active" : ""}`}
+          onClick={() => setStatusFilter("finished")}
+          title="Ver habitaciones con limpieza finalizada"
+        >
+          <div className="cleaning-filter-top">
+            <span className="cleaning-filter-icon material-symbol" aria-hidden="true">task_alt</span>
+            <strong className="cleaning-filter-count">{finishedCount}</strong>
+          </div>
+          <div className="cleaning-filter-bottom">
+            <span className="cleaning-filter-label">Finalizadas</span>
+            <span className="cleaning-filter-indicator" aria-hidden="true" />
+          </div>
+        </button>
       </section>
+
       <ActionMessage error={error} success={null} />
-      {rooms.length === 0 ? (
-        <p className="empty-state">No hay limpiezas pendientes o en curso.</p>
+
+      {allCleaningRooms.length === 0 ? (
+        <p className="empty-state">No hay limpiezas pendientes o en curso en este momento.</p>
       ) : (
         <>
           <div className="room-selection-toolbar">
@@ -701,10 +1650,22 @@ export function CleaningPage() {
             </div>
             <p className="room-results-count">
               {visibleRooms.length} {visibleRooms.length === 1 ? "habitación" : "habitaciones"}
+              {statusFilter !== "all" && <span className="filter-active-tag"> • Filtro: {getFilterLabel()}</span>}
             </p>
           </div>
+
           {visibleRooms.length === 0 ? (
-            <p className="empty-state">No hay habitaciones que coincidan con la búsqueda.</p>
+            <div className="empty-filter-state">
+              <span className="material-symbol" aria-hidden="true">filter_alt_off</span>
+              <p>No hay habitaciones para el filtro <strong>"{getFilterLabel()}"</strong>{search ? ` y búsqueda "${search}"` : ""}.</p>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => { setStatusFilter("all"); setSearch(""); }}
+              >
+                Ver todas las limpiezas
+              </button>
+            </div>
           ) : (
             <section className="room-grid cleaning-room-grid" aria-label="Habitaciones por atender">
               {visibleRooms.map((roomId) => {
@@ -715,6 +1676,7 @@ export function CleaningPage() {
                 const latestCleaning = getLatestCleaningDate(roomId, state.cleaningWork, state.events);
                 const scheduleStart = latestCleaning ?? getCurrentAssignmentDate(roomId, state.roomAssignments);
                 const nextCleaningDate = getNextCleaningDate(servicePlan, scheduleStart);
+
                 return (
                   <article className="room-card cleaning-room-card" key={roomId}>
                     <div className="room-card-heading">
@@ -742,16 +1704,34 @@ export function CleaningPage() {
                       </div>
                       <div><dt>Huésped</dt><dd>{state.guests[roomId] || "No registrado"}</dd></div>
                     </dl>
-                    {status === "pending" && (
-                      <button
-                        className="button button-primary"
-                        disabled={busyRoom === roomId}
-                        onClick={() => void startCleaning(roomId)}
-                      >
-                        <span className="material-symbol" aria-hidden="true">play_arrow</span>
-                        {busyRoom === roomId ? "Actualizando…" : "Iniciar limpieza"}
-                      </button>
-                    )}
+                    <div className="cleaning-card-actions">
+                      {status === "pending" && (
+                        <button
+                          className="button button-primary"
+                          disabled={busyRoom === roomId}
+                          onClick={() => void startCleaning(roomId)}
+                        >
+                          <span className="material-symbol" aria-hidden="true">play_arrow</span>
+                          {busyRoom === roomId ? "Actualizando…" : "Iniciar limpieza"}
+                        </button>
+                      )}
+                      {status === "cleaning" && (
+                        <button
+                          className="button button-primary cleaning-finish-btn"
+                          disabled={busyRoom === roomId}
+                          onClick={() => void finishCleaning(roomId)}
+                        >
+                          <span className="material-symbol" aria-hidden="true">check_circle</span>
+                          {busyRoom === roomId ? "Guardando…" : "Finalizar limpieza"}
+                        </button>
+                      )}
+                      {status === "finished" && (
+                        <div className="cleaning-completed-tag">
+                          <span className="material-symbol" aria-hidden="true">verified</span>
+                          <span>Limpieza completada</span>
+                        </div>
+                      )}
+                    </div>
                   </article>
                 );
               })}
@@ -1139,129 +2119,217 @@ export function StaffPage() {
               <span className="material-symbol" aria-hidden="true">arrow_back</span>
               Volver al personal
             </button>
-            <div className="staff-profile-panel">
-              <header className="staff-profile-heading">
-                <div className="staff-profile-person">
-                  <span className="staff-profile-avatar" aria-hidden="true">
-                    {selectedStaff.name.trim().charAt(0).toLocaleUpperCase("es")}
-                  </span>
-                  <span className="staff-profile-title">
-                    <p className="eyebrow">Ficha de personal</p>
-                    <h3>{selectedStaff.name}</h3>
-                  </span>
-                </div>
-                <span className={`staff-attendance-status${selectedAttendance ? " on-shift" : ""}`}>
-                  {selectedAttendance ? "En turno" : "Fuera de turno"}
-                </span>
-              </header>
-              <div className="staff-identity" aria-label="Datos de contacto">
-                <div className="staff-identity-item">
-                  <span className="staff-identity-icon material-symbol" aria-hidden="true">call</span>
-                  <span className="staff-identity-copy">
-                    <span className="staff-identity-label">Teléfono</span>
-                    <strong>{selectedStaff.contact}</strong>
-                  </span>
-                </div>
-                <div className="staff-identity-item">
-                  <span className="staff-identity-icon material-symbol" aria-hidden="true">mail</span>
-                  <span className="staff-identity-copy">
-                    <span className="staff-identity-label">Correo</span>
-                    <strong>{selectedStaff.email || "Sin correo asignado"}</strong>
-                  </span>
-                </div>
-                {selectedAttendance && (
-                  <div className="staff-identity-item">
-                    <span className="staff-identity-icon material-symbol" aria-hidden="true">schedule</span>
-                    <span className="staff-identity-copy">
-                      <span className="staff-identity-label">Turno desde</span>
-                      <strong>{formatDate(selectedAttendance.checkIn)}</strong>
+            <div className="staff-profile-panel compact-modern">
+              <header className="staff-profile-header-bar">
+                <div className="staff-profile-main-info">
+                  <div className="staff-avatar-container">
+                    <span className="staff-profile-avatar" aria-hidden="true">
+                      {selectedStaff.name.trim().charAt(0).toLocaleUpperCase("es")}
                     </span>
+                    <span
+                      className={`staff-avatar-status-dot ${selectedAttendance ? "is-on-shift" : ""}`}
+                      title={selectedAttendance ? "En turno activo" : "Fuera de turno"}
+                      aria-hidden="true"
+                    />
                   </div>
-                )}
-              </div>
-              <div className="staff-profile-actions">
-                <button
-                  className="button button-small"
-                  onClick={() => editingStaffId === selectedStaff.id
-                    ? setEditingStaffId(null)
-                    : startEditingStaff(selectedStaff)}
-                  type="button"
-                >
-                  {editingStaffId === selectedStaff.id ? "Cancelar edición" : "Editar información"}
-                </button>
-                {selectedStaff.hasAccount && (
+
+                  <div className="staff-profile-identity-texts">
+                    <div className="staff-name-status-row">
+                      <h3>{selectedStaff.name}</h3>
+                      <span className={`staff-attendance-badge ${selectedAttendance ? "on-shift" : "off-shift"}`}>
+                        <span className="badge-pulse-dot" aria-hidden="true" />
+                        {selectedAttendance ? "En turno" : "Fuera de turno"}
+                      </span>
+                    </div>
+
+                    <div className="staff-contact-quick-strip">
+                      <span className="staff-quick-item" title="Teléfono">
+                        <span className="material-symbol" aria-hidden="true">call</span>
+                        <a href={`tel:${selectedStaff.contact}`}>{selectedStaff.contact}</a>
+                      </span>
+                      <span className="staff-bullet-dot" aria-hidden="true">•</span>
+                      <span className="staff-quick-item" title="Correo electrónico">
+                        <span className="material-symbol" aria-hidden="true">mail</span>
+                        <span>{selectedStaff.email || "Sin correo"}</span>
+                      </span>
+                      {selectedAttendance && (
+                        <>
+                          <span className="staff-bullet-dot" aria-hidden="true">•</span>
+                          <span className="staff-quick-item staff-shift-item" title="Hora de inicio de turno">
+                            <span className="material-symbol" aria-hidden="true">schedule</span>
+                            <span>Desde {formatDate(selectedAttendance.checkIn)}</span>
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="staff-header-actions">
                   <button
-                    className="button button-small"
-                    onClick={() => void handleResetPassword(selectedStaff.id, selectedStaff.name)}
+                    className={`button button-small staff-action-pill ${editingStaffId === selectedStaff.id ? "is-active" : ""}`}
+                    onClick={() => editingStaffId === selectedStaff.id
+                      ? setEditingStaffId(null)
+                      : startEditingStaff(selectedStaff)}
                     type="button"
                   >
-                    Restablecer contraseña
+                    <span className="material-symbol" aria-hidden="true">
+                      {editingStaffId === selectedStaff.id ? "close" : "edit"}
+                    </span>
+                    {editingStaffId === selectedStaff.id ? "Cancelar" : "Editar"}
                   </button>
-                )}
-              </div>
+                  {selectedStaff.hasAccount && (
+                    <button
+                      className="button button-small button-ghost staff-action-pill"
+                      onClick={() => void handleResetPassword(selectedStaff.id, selectedStaff.name)}
+                      type="button"
+                      title="Generar nueva contraseña provisional"
+                    >
+                      <span className="material-symbol" aria-hidden="true">lock_reset</span>
+                      Contraseña
+                    </button>
+                  )}
+                </div>
+              </header>
+
+              {/* Inline compact edit form */}
               {editingStaffId === selectedStaff.id && (
-                <form className="staff-edit-form" onSubmit={(event) => void handleUpdateStaff(event, selectedStaff)}>
-                  <label>
-                    Nombre
-                    <input required maxLength={80} value={editName} onChange={(event) => setEditName(event.target.value)} />
-                  </label>
-                  <label>
-                    Teléfono
-                    <input required maxLength={30} type="tel" value={editContact} onChange={(event) => setEditContact(event.target.value)} />
-                  </label>
-                  <label>
-                    Correo / usuario
-                    <input required={selectedStaff.hasAccount} autoComplete="email" maxLength={254} type="email" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} />
-                  </label>
-                  <button className="button button-small button-primary" disabled={saving}>
-                    {saving ? "Guardando…" : "Guardar cambios"}
-                  </button>
+                <form className="staff-edit-form-compact" onSubmit={(event) => void handleUpdateStaff(event, selectedStaff)}>
+                  <div className="staff-edit-grid">
+                    <label>
+                      <span>Nombre completo</span>
+                      <input required maxLength={80} value={editName} onChange={(event) => setEditName(event.target.value)} />
+                    </label>
+                    <label>
+                      <span>Teléfono</span>
+                      <input required maxLength={30} type="tel" value={editContact} onChange={(event) => setEditContact(event.target.value)} />
+                    </label>
+                    <label>
+                      <span>Correo / usuario</span>
+                      <input required={selectedStaff.hasAccount} autoComplete="email" maxLength={254} type="email" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} />
+                    </label>
+                  </div>
+                  <div className="staff-edit-actions">
+                    <button className="button button-small button-primary" disabled={saving}>
+                      <span className="material-symbol" aria-hidden="true">save</span>
+                      {saving ? "Guardando…" : "Guardar cambios"}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-small button-ghost"
+                      onClick={() => setEditingStaffId(null)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </form>
               )}
-              <section className="staff-report" aria-label={`Historial de trabajo de ${selectedStaff.name}`}>
-                <div className="staff-report-heading">
-                  <div>
-                    <h3>Actividad y horas</h3>
-                    <strong>{reportHours.toFixed(2)} h</strong>
+
+              {/* Compact telemetry metrics bar */}
+              <div className="staff-telemetry-row">
+                <div className="staff-metric-chip">
+                  <div className="staff-chip-icon blue">
+                    <span className="material-symbol" aria-hidden="true">call</span>
                   </div>
-                  <button
-                    className="button button-small"
-                    disabled={!reportPeriod}
-                    onClick={() => handleExportStaffReport(selectedStaff)}
-                    type="button"
-                  >
-                    Exportar CSV
-                  </button>
+                  <div className="staff-chip-data">
+                    <span className="staff-chip-label">Teléfono directo</span>
+                    <strong>{selectedStaff.contact}</strong>
+                  </div>
                 </div>
-                <p className="staff-report-note">Las horas se calculan con las asistencias; asignaciones y habitaciones terminadas se muestran aparte.</p>
-                <div className="staff-report-filters">
-                  <label>
-                    Desde
-                    <input type="date" value={reportStart} onChange={(event) => setReportStart(event.target.value)} />
-                  </label>
-                  <label>
-                    Hasta
-                    <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} />
-                  </label>
+
+                <div className="staff-metric-chip">
+                  <div className="staff-chip-icon purple">
+                    <span className="material-symbol" aria-hidden="true">mail</span>
+                  </div>
+                  <div className="staff-chip-data">
+                    <span className="staff-chip-label">Cuenta de correo</span>
+                    <strong title={selectedStaff.email || ""}>{selectedStaff.email || "No registrado"}</strong>
+                  </div>
                 </div>
+
+                <div className="staff-metric-chip">
+                  <div className="staff-chip-icon emerald">
+                    <span className="material-symbol" aria-hidden="true">timelapse</span>
+                  </div>
+                  <div className="staff-chip-data">
+                    <span className="staff-chip-label">Horas trabajadas</span>
+                    <strong>{reportHours.toFixed(2)} h <small>en periodo</small></strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Compact Activity and Hours Section */}
+              <section className="staff-report-compact" aria-label={`Historial de trabajo de ${selectedStaff.name}`}>
+                <div className="staff-report-compact-header">
+                  <div className="staff-report-title-wrap">
+                    <div className="staff-report-icon-box">
+                      <span className="material-symbol" aria-hidden="true">monitoring</span>
+                    </div>
+                    <div>
+                      <h4>Actividad y horas registradas</h4>
+                      <p>Horas calculadas por registro de turnos y habitaciones atendidas</p>
+                    </div>
+                  </div>
+
+                  <div className="staff-report-toolbar">
+                    <div className="staff-compact-date-range">
+                      <label>
+                        <span>Desde</span>
+                        <input type="date" value={reportStart} onChange={(event) => setReportStart(event.target.value)} />
+                      </label>
+                      <span className="date-arrow" aria-hidden="true">→</span>
+                      <label>
+                        <span>Hasta</span>
+                        <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} />
+                      </label>
+                    </div>
+
+                    <button
+                      className="button button-small button-secondary staff-csv-btn"
+                      disabled={!reportPeriod}
+                      onClick={() => handleExportStaffReport(selectedStaff)}
+                      type="button"
+                      title="Exportar registros a archivo CSV"
+                    >
+                      <span className="material-symbol" aria-hidden="true">download</span>
+                      CSV
+                    </button>
+                  </div>
+                </div>
+
                 {!reportPeriod ? (
                   <p className="form-error" role="alert">Selecciona un periodo válido: la fecha inicial debe ser anterior a la final.</p>
                 ) : reportRows.length === 0 ? (
-                  <p className="staff-report-empty">No hay actividad registrada en este periodo.</p>
+                  <div className="staff-report-empty-compact">
+                    <span className="material-symbol" aria-hidden="true">event_busy</span>
+                    <p>No hay actividad registrada en este periodo para {selectedStaff.name}.</p>
+                  </div>
                 ) : (
-                  <div className="staff-report-table">
-                    <table>
+                  <div className="staff-report-table-wrap">
+                    <table className="staff-compact-table">
                       <thead>
-                        <tr><th>Fecha</th><th>Actividad</th><th>Habitación</th><th>Detalle</th><th>Horas</th></tr>
+                        <tr>
+                          <th>Fecha y Hora</th>
+                          <th>Actividad</th>
+                          <th>Habitación</th>
+                          <th>Detalle</th>
+                          <th className="align-right">Horas</th>
+                        </tr>
                       </thead>
                       <tbody>
                         {reportRows.map((row, index) => (
                           <tr key={`${row.category}-${row.timestamp}-${row.room}-${index}`}>
-                            <td>{formatDate(row.timestamp)}</td>
-                            <td>{row.category}</td>
-                            <td>{row.room}</td>
-                            <td>{row.detail}</td>
-                            <td>{row.hours === null ? "—" : row.hours.toFixed(2)}</td>
+                            <td className="cell-date">{formatDate(row.timestamp)}</td>
+                            <td>
+                              <span className={`staff-activity-tag cat-${row.category.toLowerCase().replace(/\s+/g, '-')}`}>
+                                {row.category}
+                              </span>
+                            </td>
+                            <td className="cell-room">{row.room !== "—" ? `Hab. ${row.room}` : "—"}</td>
+                            <td className="cell-detail">{row.detail}</td>
+                            <td className="align-right cell-hours">
+                              {row.hours === null ? "—" : <strong>{row.hours.toFixed(2)} h</strong>}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1488,6 +2556,19 @@ export function CleanerPortal() {
     }
   }
 
+  async function handleStart(roomId: string) {
+    setBusyRoom(roomId);
+    setError(null);
+    try {
+      await startCleanerRoom(roomId);
+      await loadCleanerData();
+    } catch (startError: unknown) {
+      setError(messageOf(startError));
+    } finally {
+      setBusyRoom(null);
+    }
+  }
+
   async function handleFinish(roomId: string) {
     setBusyRoom(roomId);
     setError(null);
@@ -1552,21 +2633,55 @@ export function CleanerPortal() {
             <p className="empty-state">No tienes habitaciones asignadas actualmente.</p>
           ) : (
             <section className="room-grid">
-              {rooms.map((room) => (
-                <article className="room-card" key={room.id_habitacion}>
-                  <div className="room-card-heading"><div><p className="eyebrow">Habitación</p><h2>{room.id_habitacion}</h2></div><span className={`status-pill status-${statusFromDb(room.estado)}`}>{statusLabels[statusFromDb(room.estado)]}</span></div>
-                  <dl className="details-list">
-                    <div><dt>Huésped</dt><dd>{room.nombre_huesped || "No registrado"}</dd></div>
-                    <div><dt>Plan</dt><dd>{room.plan_limpieza || "No especificado"}</dd></div>
-                    <div><dt>Detalles</dt><dd>{room.detalles_limpieza || "Sin indicaciones"}</dd></div>
-                  </dl>
-                  {room.estado !== "finalizado" && (
-                    <button className="button button-primary" disabled={busyRoom === room.id_habitacion} onClick={() => void handleFinish(room.id_habitacion)}>
-                      {busyRoom === room.id_habitacion ? "Guardando…" : "Finalizar habitación"}
-                    </button>
-                  )}
-                </article>
-              ))}
+              {rooms.map((room) => {
+                const currentStatus = statusFromDb(room.estado);
+                const isCleaning = room.estado === "limpieza" || currentStatus === "cleaning";
+                const isFinished = room.estado === "finalizado" || currentStatus === "finished";
+
+                return (
+                  <article className="room-card cleaner-room-card" key={room.id_habitacion}>
+                    <div className="room-card-heading">
+                      <div><p className="eyebrow">Habitación</p><h2>{room.id_habitacion}</h2></div>
+                      <span className={`status-pill status-${currentStatus}`}>{statusLabels[currentStatus] || room.estado}</span>
+                    </div>
+                    <dl className="details-list">
+                      <div><dt>Huésped</dt><dd>{room.nombre_huesped || "No registrado"}</dd></div>
+                      <div><dt>Plan</dt><dd>{room.plan_limpieza || "No especificado"}</dd></div>
+                      <div><dt>Detalles</dt><dd>{room.detalles_limpieza || "Sin indicaciones"}</dd></div>
+                    </dl>
+                    <div className="cleaner-card-actions">
+                      {!isCleaning && !isFinished && (
+                        <button
+                          type="button"
+                          className="button button-primary cleaner-action-btn"
+                          disabled={busyRoom === room.id_habitacion}
+                          onClick={() => void handleStart(room.id_habitacion)}
+                        >
+                          <span className="material-symbol" aria-hidden="true">play_arrow</span>
+                          {busyRoom === room.id_habitacion ? "Iniciando…" : "Iniciar Limpieza"}
+                        </button>
+                      )}
+                      {isCleaning && (
+                        <button
+                          type="button"
+                          className="button button-primary cleaner-action-btn cleaner-finish-btn"
+                          disabled={busyRoom === room.id_habitacion}
+                          onClick={() => void handleFinish(room.id_habitacion)}
+                        >
+                          <span className="material-symbol" aria-hidden="true">check_circle</span>
+                          {busyRoom === room.id_habitacion ? "Finalizando…" : "Finalizar Limpieza"}
+                        </button>
+                      )}
+                      {isFinished && (
+                        <div className="cleaner-completed-badge">
+                          <span className="material-symbol" aria-hidden="true">task_alt</span>
+                          <span>Limpieza finalizada</span>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </section>
           )}
           <section className="page-card cleaner-history" aria-labelledby="cleaner-history-title">

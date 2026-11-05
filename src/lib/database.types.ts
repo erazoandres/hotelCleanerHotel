@@ -122,6 +122,10 @@ export interface Database {
           creado_en: string;
         }[];
       };
+      iniciar_limpieza_aseador: {
+        Args: { p_id_habitacion: string };
+        Returns: boolean;
+      };
       finalizar_habitacion_aseador: {
         Args: { p_id_habitacion: string };
         Returns: boolean;

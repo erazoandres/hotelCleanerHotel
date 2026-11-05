@@ -435,6 +435,27 @@ export async function getCleanerHistory(): Promise<CleanerHistoryItem[]> {
   return data;
 }
 
+export async function startCleanerRoom(
+  roomId: string,
+): Promise<void> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("iniciar_limpieza_aseador", {
+    p_id_habitacion: String(roomId),
+  });
+  if (error) {
+    const { error: fallbackError } = await supabase
+      .from("habitaciones")
+      .update({ estado: "limpieza", actualizado_en: new Date().toISOString() })
+      .eq("id_habitacion", roomId);
+
+    if (fallbackError) {
+      throw new Error(`No se pudo iniciar la limpieza: ${error.message}`);
+    }
+    return;
+  }
+  if (!data) throw new Error("No se pudo iniciar la limpieza.");
+}
+
 export async function finishCleanerRoom(
   roomId: string,
 ): Promise<void> {

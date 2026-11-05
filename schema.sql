@@ -277,6 +277,55 @@ AS $$
   ORDER BY t.creado_en DESC, t.id_trabajo DESC;
 $$;
 
+-- El trabajador puede iniciar la limpieza de una habitacion que tiene asignada.
+CREATE OR REPLACE FUNCTION public.iniciar_limpieza_aseador(
+  p_id_habitacion TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth, pg_temp
+AS $
+DECLARE
+  trabajador RECORD;
+  tipo TEXT;
+BEGIN
+  SELECT p.id_personal, p.nombre
+  INTO trabajador
+  FROM public.personal p
+  WHERE p.auth_user_id = auth.uid()
+    AND p.activo IS TRUE
+    AND auth.jwt() -> 'app_metadata' ->> 'role' = 'hotel_cleaner';
+
+  IF trabajador.id_personal IS NULL THEN
+    RAISE EXCEPTION 'No hay una cuenta de aseo activa asociada a esta sesion.';
+  END IF;
+
+  UPDATE public.habitaciones h
+  SET estado = 'limpieza',
+      actualizado_en = NOW()
+  WHERE h.id_habitacion = p_id_habitacion
+    AND h.id_personal_asignado = trabajador.id_personal
+    AND h.estado <> 'limpieza'
+    AND h.estado <> 'finalizado'
+  RETURNING h.tipo_limpieza_asignada INTO tipo;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'La habitacion no esta asignada o ya esta en limpieza o finalizada.';
+  END IF;
+
+  INSERT INTO public.eventos (
+    id_habitacion, estado, accion, responsable, id_personal, tipo_limpieza
+  )
+  VALUES (
+    p_id_habitacion, 'limpieza', 'Limpieza iniciada por personal',
+    trabajador.nombre, trabajador.id_personal, tipo
+  );
+
+  RETURN TRUE;
+END;
+$;
+
 -- El trabajador solo puede finalizar una habitacion que tiene asignada.
 CREATE OR REPLACE FUNCTION public.finalizar_habitacion_aseador(
   p_id_habitacion TEXT
@@ -429,11 +478,15 @@ GRANT EXECUTE ON FUNCTION public.es_administrador_hotel() TO authenticated;
 REVOKE ALL ON FUNCTION public.perfil_aseador() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.habitaciones_aseador() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.historial_habitaciones_aseador() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.iniciar_limpieza_aseador(TEXT)
+  FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.finalizar_habitacion_aseador(TEXT)
   FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.perfil_aseador() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.habitaciones_aseador() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.historial_habitaciones_aseador() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.iniciar_limpieza_aseador(TEXT)
+  TO authenticated;
 GRANT EXECUTE ON FUNCTION public.finalizar_habitacion_aseador(TEXT)
   TO authenticated;
 

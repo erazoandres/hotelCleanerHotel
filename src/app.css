@@ -6074,3 +6074,470 @@ textarea {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* ==========================================================================
+   Dashboard Hero Slider & Polished Themes (Editorial Carousel)
+   ========================================================================== */
+
+.dashboard-hero-slider {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  box-shadow: 0 16px 36px -10px rgb(16 12 34 / 20%), 0 1px 2px rgb(0 0 0 / 8%);
+  user-select: none;
+  outline: none;
+  background: #181329;
+}
+
+.dashboard-hero-slider:focus-visible {
+  outline: 2px solid #a88cf8;
+  outline-offset: 3px;
+}
+
+/* Ambient glow flare behind active slide */
+.slider-ambient-flare {
+  position: absolute;
+  top: -30%;
+  right: 15%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgb(255 255 255 / 12%), transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dashboard-hero-track {
+  display: flex;
+  width: 100%;
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.dashboard-hero-slide {
+  min-width: 100%;
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.dashboard-hero-slide .dashboard-hero {
+  border-radius: 22px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  box-shadow: none;
+  min-height: 200px;
+  padding: 22px clamp(20px, 3.5vw, 42px) 46px;
+  transition: background 0.6s ease;
+}
+
+/* Slide Content Entrance Animation */
+.dashboard-hero-slide.is-active .dashboard-hero-content {
+  animation: hero-content-fade-in 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes hero-content-fade-in {
+  from {
+    opacity: 0.3;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Eyebrow badge with live pulse */
+.hero-eyebrow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 255 255 / 18%);
+}
+
+.hero-eyebrow-badge .eyebrow {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-eyebrow-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0 currentColor;
+  animation: eyebrow-pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes eyebrow-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 60%);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgb(255 255 255 / 0%);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0%);
+  }
+}
+
+/* Title Styling with Editorial Serif Highlight */
+.dashboard-hero h1 {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(25px, 3.2vw, 36px);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  margin: 0;
+  color: #fffdf8;
+  text-shadow: 0 2px 14px rgb(0 0 0 / 15%);
+}
+
+.hero-title-highlight {
+  font-style: italic;
+  font-weight: 500;
+  color: #fff9e6;
+  text-shadow: 0 0 24px rgb(255 255 255 / 25%);
+}
+
+.dashboard-hero p {
+  color: rgb(255 255 255 / 84%);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: 8px 0 0;
+  max-width: 440px;
+}
+
+/* Hero Aside & Decorative Orbits */
+.dashboard-hero-aside {
+  position: relative;
+  display: grid;
+  min-height: 140px;
+  align-content: center;
+  justify-items: center;
+  gap: 3px;
+}
+
+.dashboard-hero-aside .hero-orbit {
+  width: 136px;
+  height: 136px;
+}
+
+.dashboard-hero-aside .hero-orbit-two {
+  width: 104px;
+  height: 104px;
+}
+
+.hero-orbit-animated {
+  animation: orbit-rotate-cw 36s linear infinite;
+}
+
+.hero-orbit-animated-reverse {
+  animation: orbit-rotate-ccw 26s linear infinite;
+}
+
+@keyframes orbit-rotate-cw {
+  from { transform: rotate(0deg) scale(1.06); }
+  to { transform: rotate(360deg) scale(1.06); }
+}
+
+@keyframes orbit-rotate-ccw {
+  from { transform: rotate(360deg) scale(0.96); }
+  to { transform: rotate(0deg) scale(0.96); }
+}
+
+.hero-illustration-glow {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / 22%), transparent 70%);
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+.hero-illustration {
+  z-index: 2;
+  font-size: 60px;
+  filter: drop-shadow(0 6px 14px rgb(0 0 0 / 22%));
+  animation: gentle-float 4.8s ease-in-out infinite;
+}
+
+/* Floating Stat Chip */
+.hero-stat-chip {
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 16%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 255 255 / 26%);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  margin-top: 2px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
+}
+
+.hero-stat-chip .material-symbol {
+  font-size: 14px;
+}
+
+.hero-session {
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+
+/* ==========================================================================
+   Slide Luxury Palettes
+   ========================================================================== */
+
+/* Theme 1: Amethyst Royal & Peach Ambient Glow */
+.dashboard-hero.hero-theme-violet {
+  background:
+    radial-gradient(ellipse at 88% 36%, rgb(255 125 110 / 42%), transparent 20rem),
+    radial-gradient(ellipse at 12% 90%, rgb(168 140 248 / 26%), transparent 18rem),
+    linear-gradient(118deg, #4424a6, #6b3ecf 60%, #7e4be2);
+}
+.dashboard-hero.hero-theme-violet .hero-eyebrow-badge {
+  color: #dfff9c;
+  border-color: rgb(223 255 156 / 35%);
+}
+.dashboard-hero.hero-theme-violet .hero-illustration {
+  color: #f7edff;
+}
+.dashboard-hero.hero-theme-violet .hero-caption {
+  color: #f3eaff;
+}
+.dashboard-hero.hero-theme-violet .hero-orbit {
+  border-color: rgb(255 255 255 / 25%);
+}
+.dashboard-hero.hero-theme-violet .hero-session {
+  color: #ded3ff;
+}
+
+/* Theme 2: Deep Nocturnal Oceanic Teal & Mint */
+.dashboard-hero.hero-theme-teal {
+  background:
+    radial-gradient(ellipse at 88% 36%, rgb(45 212 191 / 40%), transparent 20rem),
+    radial-gradient(ellipse at 12% 90%, rgb(14 165 233 / 26%), transparent 18rem),
+    linear-gradient(118deg, #093744, #125464 60%, #1a6f80);
+}
+.dashboard-hero.hero-theme-teal .hero-eyebrow-badge {
+  color: #8bf4e2;
+  border-color: rgb(139 244 226 / 35%);
+}
+.dashboard-hero.hero-theme-teal .hero-illustration {
+  color: #e0fbf7;
+}
+.dashboard-hero.hero-theme-teal .hero-caption {
+  color: #e0fbf7;
+}
+.dashboard-hero.hero-theme-teal .hero-orbit {
+  border-color: rgb(139 244 226 / 25%);
+}
+.dashboard-hero.hero-theme-teal .hero-session {
+  color: #b9f3ea;
+}
+
+/* Theme 3: Warm Terracotta & Champagne Amber */
+.dashboard-hero.hero-theme-sunset {
+  background:
+    radial-gradient(ellipse at 88% 36%, rgb(251 191 36 / 42%), transparent 20rem),
+    radial-gradient(ellipse at 12% 90%, rgb(244 63 94 / 28%), transparent 18rem),
+    linear-gradient(118deg, #5c2425, #7d3334 60%, #9c4240);
+}
+.dashboard-hero.hero-theme-sunset .hero-eyebrow-badge {
+  color: #fde68a;
+  border-color: rgb(253 230 138 / 35%);
+}
+.dashboard-hero.hero-theme-sunset .hero-illustration {
+  color: #fff7ed;
+}
+.dashboard-hero.hero-theme-sunset .hero-caption {
+  color: #fff7ed;
+}
+.dashboard-hero.hero-theme-sunset .hero-orbit {
+  border-color: rgb(253 230 138 / 25%);
+}
+.dashboard-hero.hero-theme-sunset .hero-session {
+  color: #fed7aa;
+}
+
+
+/* ==========================================================================
+   Editorial Timeline Tabs with Moving Progress Bar ("Se desliza solo")
+   ========================================================================== */
+
+.dashboard-hero-timeline-bar {
+  position: absolute;
+  bottom: 8px;
+  left: clamp(20px, 3.5vw, 42px);
+  right: clamp(20px, 3.5vw, 42px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.dashboard-hero-timeline {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  max-width: 540px;
+}
+
+.hero-timeline-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0.55;
+  transition: opacity 0.25s ease;
+  outline: none;
+}
+
+.hero-timeline-tab:hover {
+  opacity: 0.9;
+}
+
+.hero-timeline-tab.active {
+  opacity: 1;
+}
+
+.hero-tab-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hero-tab-index {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgb(255 255 255 / 90%);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-tab-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.hero-tab-track {
+  width: 100%;
+  height: 2.5px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 22%);
+  overflow: hidden;
+  position: relative;
+}
+
+.hero-tab-fill {
+  height: 100%;
+  width: 0%;
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 10px rgb(255 255 255 / 80%);
+}
+
+/* Continuous smooth filling progress bar */
+.hero-tab-fill.is-animating {
+  animation-name: hero-progress-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes hero-progress-fill {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+
+/* ==========================================================================
+   Responsive Overrides
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .dashboard-hero-slide .dashboard-hero {
+    min-height: 195px;
+    padding-bottom: 44px;
+  }
+
+  .dashboard-hero-timeline-bar {
+    left: 16px;
+    right: 16px;
+    bottom: 7px;
+  }
+
+  .hero-tab-label {
+    display: none;
+  }
+
+  .hero-timeline-tab {
+    gap: 3px;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-hero-slider {
+    border-radius: 18px;
+  }
+
+  .dashboard-hero-slide .dashboard-hero {
+    border-radius: 18px;
+    padding: 16px 14px 44px;
+    min-height: 175px;
+  }
+
+  .dashboard-hero h1 {
+    font-size: 22px;
+  }
+
+  .dashboard-hero p {
+    font-size: 11.5px;
+    max-width: 220px;
+    line-height: 1.35;
+  }
+
+  .hero-stat-chip {
+    display: none;
+  }
+
+  .hero-illustration {
+    font-size: 46px;
+  }
+}
