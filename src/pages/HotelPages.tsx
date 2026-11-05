@@ -7,6 +7,7 @@ import {
   addEvent,
   createStaff,
   finishCleanerRoom,
+  getCleanerHistory,
   getCleanerProfile,
   getCleanerRooms,
   loginCleaner,
@@ -16,6 +17,7 @@ import {
   updateRoom,
 } from "../services/hotelRepository";
 import type {
+  CleanerHistoryItem,
   CleanerProfile,
   CleanerRoom,
   HotelEvent,
@@ -50,16 +52,11 @@ const editableStatuses: RoomStatus[] = [
 ];
 
 const cleaningServicePlans = ["Semanal", "Mensual", "Premium"] as const;
-const roomServiceFilters = cleaningServicePlans.map((plan) => ({
-  label: plan,
-  value: plan.toLocaleLowerCase("es"),
-}));
-type RoomViewMode = "grid" | "rows" | "mosaic";
-const roomViewOptions: { value: RoomViewMode; label: string; icon: string }[] = [
-  { value: "grid", label: "Grilla", icon: "grid_view" },
-  { value: "rows", label: "Filas", icon: "view_agenda" },
-  { value: "mosaic", label: "Mosaico", icon: "dashboard" },
-];
+const roomPhotos = [
+  "/images/rooms/bedroom-01.jpg",
+  "/images/rooms/bedroom-02.jpg",
+  "/images/rooms/bedroom-03.jpg",
+] as const;
 
 function ActionMessage({
   error,
@@ -77,6 +74,31 @@ export function DashboardPage() {
   const { state } = useHotelData();
   const { session } = useHotelAuth();
   const roomStatuses = Object.values(state.rooms);
+  const today = localDateValue(new Date());
+  const nextWeekDate = new Date();
+  nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+  const nextWeek = localDateValue(nextWeekDate);
+  const scheduledRooms = Object.entries(state.scheduledCleaningDates)
+    .filter(([roomId, date]) => Boolean(date && state.rooms[roomId]))
+    .map(([roomId, date]) => ({
+      roomId,
+      date,
+      status: state.rooms[roomId],
+      cleaner: state.assignedCleanings[roomId]?.staffName || "Sin asignar",
+    }))
+    .sort((a, b) => {
+      const aOverdue = a.date < today && a.status !== "finished";
+      const bOverdue = b.date < today && b.status !== "finished";
+      if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+      return a.date.localeCompare(b.date)
+        || a.roomId.localeCompare(b.roomId, undefined, { numeric: true });
+    });
+  const overdueCount = scheduledRooms.filter(
+    (room) => room.date < today && room.status !== "finished",
+  ).length;
+  const upcomingCount = scheduledRooms.filter(
+    (room) => room.date >= today && room.date <= nextWeek && room.status !== "finished",
+  ).length;
   const counts = [
     { label: "Habitaciones", value: roomStatuses.length, icon: "bed", tone: "sand" },
     {
@@ -126,34 +148,65 @@ export function DashboardPage() {
           </article>
         ))}
       </section>
-      <section className="page-card">
-        <div className="section-heading">
+      <section className="page-card dashboard-schedule">
+        <div className="section-heading dashboard-schedule-heading">
           <div>
-            <p className="eyebrow">Actividad reciente</p>
-            <h2>Últimos movimientos</h2>
+            <p className="eyebrow">Planificación</p>
+            <h2>Agenda de limpieza</h2>
+            <p>Fechas próximas y tareas que requieren atención.</p>
           </div>
-          <Link className="text-link" to="/app/historial">Ver historial</Link>
+          <Link className="text-link" to="/app/habitaciones">
+            Administrar fechas <span className="material-symbol" aria-hidden="true">arrow_forward</span>
+          </Link>
         </div>
-        {state.events.length === 0 ? (
-          <p className="empty-state">Todavía no hay movimientos registrados.</p>
-        ) : (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr><th>Hora</th><th>Habitación</th><th>Acción</th><th>Responsable</th></tr>
-              </thead>
-              <tbody>
-                {state.events.slice(0, 8).map((event, index) => (
-                  <tr key={`${event.room}-${event.time}-${index}`}>
-                    <td>{formatDate(event.time)}</td>
-                    <td>{event.room}</td>
-                    <td>{event.action}</td>
-                    <td>{event.actor ?? "No registrado"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="dashboard-schedule-summary" aria-label="Resumen de agenda">
+          <div className={overdueCount ? "is-overdue" : ""}>
+            <strong>{overdueCount}</strong>
+            <span>Vencidas</span>
           </div>
+          <div>
+            <strong>{upcomingCount}</strong>
+            <span>Próximos 7 días</span>
+          </div>
+          <div>
+            <strong>{scheduledRooms.length}</strong>
+            <span>Con fecha asignada</span>
+          </div>
+        </div>
+        {scheduledRooms.length === 0 ? (
+          <p className="empty-state dashboard-schedule-empty">
+            Aún no hay fechas programadas. Asigna una fecha desde Habitaciones para organizar la agenda.
+          </p>
+        ) : (
+          <ul className="dashboard-schedule-list">
+            {scheduledRooms.slice(0, 6).map((room) => {
+              const isOverdue = room.date < today && room.status !== "finished";
+              const date = new Date(`${room.date}T00:00:00`);
+              return (
+                <li key={room.roomId}>
+                  <time dateTime={room.date} className={isOverdue ? "is-overdue" : ""}>
+                    <span>
+                      {room.status === "finished"
+                        ? "Atendida"
+                        : isOverdue
+                          ? "Vencida"
+                          : room.date === today
+                            ? "Hoy"
+                            : "Programada"}
+                    </span>
+                    <strong>{formatDateOnly(date)}</strong>
+                  </time>
+                  <div className="dashboard-schedule-room">
+                    <strong>{room.roomId}</strong>
+                    <span>{room.cleaner}</span>
+                  </div>
+                  <span className={`status-pill status-${room.status}`}>
+                    {statusLabels[room.status]}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
     </div>
@@ -240,15 +293,20 @@ function RoomCard({ roomId }: { roomId: string }) {
   }
 
   return (
-    <article className="room-card">
-      <div className="room-card-heading">
-        <div>
-          <p className="eyebrow">Habitación</p>
-          <h2>{roomId}</h2>
+    <article className="room-card room-editor-card">
+      <header className="room-editor-heading">
+        <div className="room-editor-title">
+          <span className="room-editor-icon">
+            <span className="material-symbol" aria-hidden="true">bed</span>
+          </span>
+          <div>
+            <p className="eyebrow">Habitación</p>
+            <h2>{roomId}</h2>
+          </div>
+          <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
         </div>
-        <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
-      </div>
-      <form className="form-grid" onSubmit={handleSave}>
+      </header>
+      <form className="form-grid room-editor-form" onSubmit={handleSave}>
         <label>
           Estado
           <select value={status} onChange={(event) => setStatus(event.target.value as RoomStatus)}>
@@ -292,7 +350,7 @@ function RoomCard({ roomId }: { roomId: string }) {
           </select>
         </label>
         <label className="form-wide">
-          Detalles
+          Detalles de limpieza
           <textarea
             rows={2}
             value={cleaningDetails}
@@ -301,7 +359,10 @@ function RoomCard({ roomId }: { roomId: string }) {
         </label>
         <div className="form-wide form-actions">
           <ActionMessage error={error} success={success} />
-          <button className="button button-primary" disabled={saving}>
+          <button className="button button-primary room-editor-save" disabled={saving}>
+            <span className="material-symbol" aria-hidden="true">
+              {saving ? "hourglass_top" : "save"}
+            </span>
             {saving ? "Guardando…" : "Guardar cambios"}
           </button>
         </div>
@@ -325,25 +386,54 @@ function RoomPickerCard({
   cleanerName: string;
   onSelect: () => void;
 }) {
+  const photoIndex = Array.from(roomId).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  ) % roomPhotos.length;
+
   return (
     <button className={`room-picker-card room-picker-card-${status}`} onClick={onSelect} type="button">
-      <span className={`room-picker-icon room-picker-icon-${status}`}>
-        <span className="material-symbol" aria-hidden="true">
-          {status === "occupied" ? "bed" : status === "pending" || status === "cleaning" ? "cleaning_services" : "door_front"}
+      <span className="room-picker-art">
+        <img
+          alt={`Habitación ${roomId}`}
+          className="room-picker-image"
+          src={roomPhotos[photoIndex]}
+          loading="lazy"
+          decoding="async"
+        />
+        <span className={`status-pill status-${status}`}>
+          <span className="room-status-dot" />
+          {statusLabels[status]}
         </span>
       </span>
       <span className="room-picker-main">
         <span className="room-picker-heading">
-          <strong>Habitación {roomId}</strong>
-          <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
+          <span className="room-picker-room-name">
+            <strong>{roomId}</strong>
+          </span>
+          <span className="material-symbol room-picker-arrow" aria-hidden="true">arrow_forward</span>
         </span>
         <span className="room-picker-details">
-          {guest || "Sin huésped"}
-          {servicePlan && <span>{servicePlan}</span>}
-          {cleanerName && <span>{cleanerName}</span>}
+          <span className="room-picker-meta">
+            <span className="material-symbol" aria-hidden="true">person</span>
+            <span className="room-picker-meta-copy">
+              <strong>{guest || "Sin huésped"}</strong>
+            </span>
+          </span>
+          <span className="room-picker-secondary">
+            <span className="room-picker-service">
+              <span className="material-symbol" aria-hidden="true">cleaning_services</span>
+              {servicePlan || "Sin servicio"}
+            </span>
+            {cleanerName && (
+              <span className="room-picker-assignee" title={cleanerName}>
+                <span className="room-picker-assignee-avatar">{cleanerName.trim().charAt(0).toLocaleUpperCase("es")}</span>
+                <span>{cleanerName}</span>
+              </span>
+            )}
+          </span>
         </span>
       </span>
-      <span className="material-symbol room-picker-arrow" aria-hidden="true">arrow_forward_ios</span>
     </button>
   );
 }
@@ -352,8 +442,6 @@ export function RoomsPage() {
   const { state, loading, error, refresh } = useHotelData();
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [serviceFilter, setServiceFilter] = useState<string | null>(null);
-  const [roomView, setRoomView] = useState<RoomViewMode>("grid");
   const roomIds = useMemo(
     () => Object.keys(state.rooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [state.rooms],
@@ -361,28 +449,14 @@ export function RoomsPage() {
   const visibleRoomIds = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return roomIds.filter((roomId) => {
-      const plan = (state.servicePlans[roomId] ?? "").trim().toLocaleLowerCase("es");
-      const matchesService = !serviceFilter || plan === serviceFilter;
-      const matchesSearch = !query || [
+      return !query || [
         roomId,
         state.guests[roomId] ?? "",
         state.servicePlans[roomId] ?? "",
         state.assignedCleanings[roomId]?.staffName ?? "",
       ].some((value) => value.toLocaleLowerCase().includes(query));
-      return matchesService && matchesSearch;
     });
-  }, [roomIds, search, serviceFilter, state.assignedCleanings, state.guests, state.servicePlans]);
-  const serviceFilterCounts = useMemo(
-    () => Object.fromEntries(
-      roomServiceFilters.map(({ value }) => [
-        value,
-        Object.values(state.servicePlans).filter(
-          (plan) => plan.trim().toLocaleLowerCase("es") === value,
-        ).length,
-      ]),
-    ) as Record<string, number>,
-    [state.servicePlans],
-  );
+  }, [roomIds, search, state.assignedCleanings, state.guests, state.servicePlans]);
   const roomSummary = [
     { label: "Libres", icon: "door_open", includes: (status: RoomStatus) => status === "free" },
     { label: "Ocupadas", icon: "bed", includes: (status: RoomStatus) => status === "occupied" },
@@ -425,16 +499,6 @@ export function RoomsPage() {
           <p className="page-description">Cada espacio, su estado y los detalles para atenderlo.</p>
         </div>
         <div className="room-heading-actions">
-          <section className="room-summary" aria-label="Estado de habitaciones">
-            {roomSummary.map((item) => (
-              <div className="room-summary-item" key={item.label}>
-                <span className="material-symbol" aria-hidden="true">{item.icon}</span>
-                <span>{item.label}</span>
-                <strong>{item.count}</strong>
-              </div>
-            ))}
-            <span className="room-summary-total">{roomIds.length} espacios</span>
-          </section>
           <button className="button button-refresh" onClick={() => void refresh()}>
             <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
           </button>
@@ -476,53 +540,31 @@ export function RoomsPage() {
                   <input
                     aria-label="Buscar habitación"
                     autoComplete="off"
-                    placeholder="Número, huésped o servicio"
+                    placeholder="Habitación, huésped o personal"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
+                  {search && (
+                    <button
+                      type="button"
+                      className="search-clear-button"
+                      aria-label="Limpiar búsqueda"
+                      onClick={() => setSearch("")}
+                    >
+                      <span className="material-symbol" aria-hidden="true">close</span>
+                    </button>
+                  )}
                 </span>
               </label>
-              <div className="room-service-filters" role="group" aria-label="Filtrar por servicio de limpieza">
-                <button
-                  aria-pressed={serviceFilter === null}
-                  className={`room-service-filter${serviceFilter === null ? " active" : ""}`}
-                  onClick={() => setServiceFilter(null)}
-                  type="button"
-                >
-                  Todas <span>{roomIds.length}</span>
-                </button>
-                {roomServiceFilters.map(({ label, value }) => (
-                  <button
-                    aria-pressed={serviceFilter === value}
-                    className={`room-service-filter${serviceFilter === value ? " active" : ""}`}
-                    key={value}
-                    onClick={() => setServiceFilter(value)}
-                    type="button"
-                  >
-                    {label} <span>{serviceFilterCounts[value] ?? 0}</span>
-                  </button>
-                ))}
-              </div>
             </div>
-            <div className="room-view-switch" role="group" aria-label="Vista de habitaciones">
-              {roomViewOptions.map(({ value, label, icon }) => (
-                <button
-                  aria-pressed={roomView === value}
-                  className={`room-view-button${roomView === value ? " active" : ""}`}
-                  key={value}
-                  onClick={() => setRoomView(value)}
-                  type="button"
-                >
-                  <span className="material-symbol" aria-hidden="true">{icon}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
+            <p className="room-results-count">
+              {visibleRoomIds.length} {visibleRoomIds.length === 1 ? "habitación" : "habitaciones"}
+            </p>
           </div>
           {visibleRoomIds.length === 0 ? (
-            <p className="empty-state">No hay habitaciones que coincidan con los filtros seleccionados.</p>
+            <p className="empty-state">No hay habitaciones que coincidan con la búsqueda.</p>
           ) : (
-            <div className={`room-picker-grid room-picker-grid-${roomView}`}>
+            <div className="room-picker-grid">
               {visibleRoomIds.map((roomId) => (
                 <RoomPickerCard
                   key={roomId}
@@ -536,6 +578,16 @@ export function RoomsPage() {
               ))}
             </div>
           )}
+          <section className="room-summary room-selection-summary" aria-label="Estado de habitaciones">
+            {roomSummary.map((item) => (
+              <div className="room-summary-item" key={item.label}>
+                <span className="material-symbol" aria-hidden="true">{item.icon}</span>
+                <span>{item.label}</span>
+                <strong>{item.count}</strong>
+              </div>
+            ))}
+            <span className="room-summary-total">{roomIds.length} espacios</span>
+          </section>
         </section>
       )}
     </div>
@@ -547,11 +599,22 @@ export function CleaningPage() {
   const { session } = useHotelAuth();
   const [error, setError] = useState<string | null>(null);
   const [busyRoom, setBusyRoom] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const rooms = Object.keys(state.rooms)
     .filter((room) => ["pending", "cleaning"].includes(state.rooms[room]))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const query = search.trim().toLocaleLowerCase("es");
+  const visibleRooms = rooms.filter((roomId) => !query || [
+    roomId,
+    state.guests[roomId] ?? "",
+    state.servicePlans[roomId] ?? "",
+    state.assignedCleanings[roomId]?.staffName ?? "",
+  ].some((value) => value.toLocaleLowerCase("es").includes(query)));
   const pendingCount = rooms.filter((room) => state.rooms[room] === "pending").length;
   const activeCount = rooms.length - pendingCount;
+  const unassignedCount = rooms.filter(
+    (roomId) => !state.assignedCleanings[roomId]?.staffId,
+  ).length;
 
   async function startCleaning(roomId: string) {
     setBusyRoom(roomId);
@@ -590,70 +653,111 @@ export function CleaningPage() {
         <div className="cleaning-connection"><HotelDataStatus showStatus={false} /></div>
       </header>
       <section className="cleaning-overview" aria-label="Resumen de limpiezas">
-        <div className="cleaning-overview-title">
-          <strong>Seguimiento de hoy</strong>
-          <span>{rooms.length} {rooms.length === 1 ? "habitación" : "habitaciones"}</span>
-        </div>
-        <div className="cleaning-overview-stats">
-          <span><i className="overview-dot overview-pending" /><strong>{pendingCount}</strong> pendientes</span>
-          <span><i className="overview-dot overview-active" /><strong>{activeCount}</strong> en curso</span>
-        </div>
+        <article className="cleaning-kpi cleaning-kpi-pending">
+          <span className="cleaning-kpi-icon material-symbol" aria-hidden="true">pending_actions</span>
+          <strong>{pendingCount}</strong>
+          <span>Pendientes</span>
+        </article>
+        <article className="cleaning-kpi cleaning-kpi-active">
+          <span className="cleaning-kpi-icon material-symbol" aria-hidden="true">autorenew</span>
+          <strong>{activeCount}</strong>
+          <span>En curso</span>
+        </article>
+        <article className="cleaning-kpi cleaning-kpi-unassigned">
+          <span className="cleaning-kpi-icon material-symbol" aria-hidden="true">person_off</span>
+          <strong>{unassignedCount}</strong>
+          <span>Sin asignar</span>
+        </article>
       </section>
       <ActionMessage error={error} success={null} />
       {rooms.length === 0 ? (
         <p className="empty-state">No hay limpiezas pendientes o en curso.</p>
       ) : (
-        <section className="room-grid cleaning-room-grid" aria-label="Habitaciones por atender">
-          {rooms.map((roomId) => {
-            const assignment = state.assignedCleanings[roomId];
-            const status = state.rooms[roomId];
-            const servicePlan = state.servicePlans[roomId] ?? "";
-            const scheduledDate = state.scheduledCleaningDates[roomId];
-            const latestCleaning = getLatestCleaningDate(roomId, state.cleaningWork, state.events);
-            const scheduleStart = latestCleaning ?? getCurrentAssignmentDate(roomId, state.roomAssignments);
-            const nextCleaningDate = getNextCleaningDate(servicePlan, scheduleStart);
-            return (
-              <article className="room-card cleaning-room-card" key={roomId}>
-                <div className="room-card-heading">
-                  <div><p className="eyebrow">Habitación</p><h2>{roomId}</h2></div>
-                  <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
-                </div>
-                <dl className="details-list cleaning-details">
-                  <div><dt>Personal</dt><dd>{assignment?.staffName || "Sin asignar"}</dd></div>
-                  <div><dt>Tipo</dt><dd>{assignment?.cleaningType || "No especificado"}</dd></div>
-                  <div><dt>Plan</dt><dd>{servicePlan || "No especificado"}</dd></div>
-                  <div>
-                    <dt>Próxima limpieza</dt>
-                    <dd>
-                      {scheduledDate
-                        ? formatDateOnly(new Date(`${scheduledDate}T00:00:00`))
-                        : servicePlan.trim().toLocaleLowerCase("es") === "premium"
-                        ? "A solicitud"
-                        : nextCleaningDate
-                          ? formatDateOnly(nextCleaningDate)
-                          : !servicePlan
-                            ? "Sin plan"
-                            : latestCleaning
-                              ? "Sin frecuencia definida"
-                              : "Sin historial de limpieza"}
-                    </dd>
-                  </div>
-                  <div><dt>Huésped</dt><dd>{state.guests[roomId] || "No registrado"}</dd></div>
-                </dl>
-                {status === "pending" && (
-                  <button
-                    className="button button-primary"
-                    disabled={busyRoom === roomId}
-                    onClick={() => void startCleaning(roomId)}
-                  >
-                    <span className="material-symbol" aria-hidden="true">play_arrow</span>
-                    {busyRoom === roomId ? "Actualizando…" : "Iniciar limpieza"}
-                  </button>
-                )}
-              </article>
-            );
-          })}
-        </section>
+        <>
+          <div className="room-selection-toolbar">
+            <div className="room-selection-controls">
+              <label className="search-field">
+                <span className="search-input-wrap">
+                  <span className="material-symbol" aria-hidden="true">search</span>
+                  <input
+                    aria-label="Buscar habitación"
+                    autoComplete="off"
+                    placeholder="Habitación, huésped o personal"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      className="search-clear-button"
+                      aria-label="Limpiar búsqueda"
+                      onClick={() => setSearch("")}
+                    >
+                      <span className="material-symbol" aria-hidden="true">close</span>
+                    </button>
+                  )}
+                </span>
+              </label>
+            </div>
+            <p className="room-results-count">
+              {visibleRooms.length} {visibleRooms.length === 1 ? "habitación" : "habitaciones"}
+            </p>
+          </div>
+          {visibleRooms.length === 0 ? (
+            <p className="empty-state">No hay habitaciones que coincidan con la búsqueda.</p>
+          ) : (
+            <section className="room-grid cleaning-room-grid" aria-label="Habitaciones por atender">
+              {visibleRooms.map((roomId) => {
+                const assignment = state.assignedCleanings[roomId];
+                const status = state.rooms[roomId];
+                const servicePlan = state.servicePlans[roomId] ?? "";
+                const scheduledDate = state.scheduledCleaningDates[roomId];
+                const latestCleaning = getLatestCleaningDate(roomId, state.cleaningWork, state.events);
+                const scheduleStart = latestCleaning ?? getCurrentAssignmentDate(roomId, state.roomAssignments);
+                const nextCleaningDate = getNextCleaningDate(servicePlan, scheduleStart);
+                return (
+                  <article className="room-card cleaning-room-card" key={roomId}>
+                    <div className="room-card-heading">
+                      <div><p className="eyebrow">Habitación</p><h2>{roomId}</h2></div>
+                      <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
+                    </div>
+                    <dl className="details-list cleaning-details">
+                      <div><dt>Aseador/a</dt><dd>{assignment?.staffName || "Sin asignar"}</dd></div>
+                      <div><dt>Plan</dt><dd>{servicePlan || "No especificado"}</dd></div>
+                      <div>
+                        <dt>Fecha limpieza</dt>
+                        <dd>
+                          {scheduledDate
+                            ? formatDateOnly(new Date(`${scheduledDate}T00:00:00`))
+                            : servicePlan.trim().toLocaleLowerCase("es") === "premium"
+                            ? "A solicitud"
+                            : nextCleaningDate
+                              ? formatDateOnly(nextCleaningDate)
+                              : !servicePlan
+                                ? "Sin plan"
+                                : latestCleaning
+                                  ? "Sin frecuencia definida"
+                                  : "Sin historial de limpieza"}
+                        </dd>
+                      </div>
+                      <div><dt>Huésped</dt><dd>{state.guests[roomId] || "No registrado"}</dd></div>
+                    </dl>
+                    {status === "pending" && (
+                      <button
+                        className="button button-primary"
+                        disabled={busyRoom === roomId}
+                        onClick={() => void startCleaning(roomId)}
+                      >
+                        <span className="material-symbol" aria-hidden="true">play_arrow</span>
+                        {busyRoom === roomId ? "Actualizando…" : "Iniciar limpieza"}
+                      </button>
+                    )}
+                  </article>
+                );
+              })}
+            </section>
+          )}
+        </>
       )}
     </div>
   );
@@ -688,7 +792,11 @@ export function HistoryPage() {
         Buscar por habitación, acción o responsable
         <span className="search-input-wrap">
           <span className="material-symbol" aria-hidden="true">search</span>
-          <input value={filter} onChange={(event) => setFilter(event.target.value)} />
+          <input
+            placeholder="Introduce nombre de personal, habitación o fecha (dd/mm/aa)"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          />
         </span>
       </label>
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -961,11 +1069,11 @@ export function StaffPage() {
     <div className="page-stack staff-page">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">Equipo</p>
-          <h1>{selectedStaff ? selectedStaff.name : "Personal"}</h1>
+          <p className="eyebrow">{selectedStaff ? "Ficha del equipo" : "Equipo"}</p>
+          <h1>Personal</h1>
           <p className="page-description">
             {selectedStaff
-              ? "Gestiona sus datos, acceso y actividad."
+              ? `Perfil, jornada y actividad de ${selectedStaff.name}.`
               : "Administra turnos, accesos y novedades desde un solo lugar."}
           </p>
         </div>
@@ -1015,19 +1123,42 @@ export function StaffPage() {
             </button>
             <div className="staff-profile-panel">
               <header className="staff-profile-heading">
-                <div>
-                  <p className="eyebrow">Ficha de personal</p>
-                  <h3>{selectedStaff.name}</h3>
+                <div className="staff-profile-person">
+                  <span className="staff-profile-avatar" aria-hidden="true">
+                    {selectedStaff.name.trim().charAt(0).toLocaleUpperCase("es")}
+                  </span>
+                  <span className="staff-profile-title">
+                    <p className="eyebrow">Ficha de personal</p>
+                    <h3>{selectedStaff.name}</h3>
+                  </span>
                 </div>
                 <span className={`staff-attendance-status${selectedAttendance ? " on-shift" : ""}`}>
                   {selectedAttendance ? "En turno" : "Fuera de turno"}
                 </span>
               </header>
-              <div className="staff-identity">
-                <span>{selectedStaff.contact}</span>
-                <span>{selectedStaff.email || "Sin correo asignado"}</span>
+              <div className="staff-identity" aria-label="Datos de contacto">
+                <div className="staff-identity-item">
+                  <span className="staff-identity-icon material-symbol" aria-hidden="true">call</span>
+                  <span className="staff-identity-copy">
+                    <span className="staff-identity-label">Teléfono</span>
+                    <strong>{selectedStaff.contact}</strong>
+                  </span>
+                </div>
+                <div className="staff-identity-item">
+                  <span className="staff-identity-icon material-symbol" aria-hidden="true">mail</span>
+                  <span className="staff-identity-copy">
+                    <span className="staff-identity-label">Correo</span>
+                    <strong>{selectedStaff.email || "Sin correo asignado"}</strong>
+                  </span>
+                </div>
                 {selectedAttendance && (
-                  <span>Desde {formatDate(selectedAttendance.checkIn)}</span>
+                  <div className="staff-identity-item">
+                    <span className="staff-identity-icon material-symbol" aria-hidden="true">schedule</span>
+                    <span className="staff-identity-copy">
+                      <span className="staff-identity-label">Turno desde</span>
+                      <strong>{formatDate(selectedAttendance.checkIn)}</strong>
+                    </span>
+                  </div>
                 )}
               </div>
               <div className="staff-profile-actions">
@@ -1274,29 +1405,45 @@ export function CleanerPortal() {
   const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<CleanerProfile | null>(null);
   const [rooms, setRooms] = useState<CleanerRoom[]>([]);
+  const [history, setHistory] = useState<CleanerHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyRoom, setBusyRoom] = useState<string | null>(null);
 
-  async function loadRooms() {
-    const assignedRooms = await getCleanerRooms();
+  async function loadCleanerData() {
+    const [assignedRooms, completedRooms] = await Promise.all([
+      getCleanerRooms(),
+      getCleanerHistory(),
+    ]);
     setRooms(assignedRooms);
+    setHistory(completedRooms);
   }
 
   useEffect(() => {
     let active = true;
+    setHistoryLoading(true);
     void getCleanerProfile()
       .then(async (currentProfile) => {
         if (!active || !currentProfile) return;
         setProfile(currentProfile);
-        const assignedRooms = await getCleanerRooms();
-        if (active) setRooms(assignedRooms);
+        const [assignedRooms, completedRooms] = await Promise.all([
+          getCleanerRooms(),
+          getCleanerHistory(),
+        ]);
+        if (active) {
+          setRooms(assignedRooms);
+          setHistory(completedRooms);
+        }
       })
       .catch((profileError: unknown) => {
         if (active) setError(messageOf(profileError));
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setHistoryLoading(false);
+        }
       });
     return () => {
       active = false;
@@ -1310,13 +1457,16 @@ export function CleanerPortal() {
     try {
       const authenticated = await loginCleaner(email.trim(), password);
       setProfile(authenticated);
-      await loadRooms();
+      setHistoryLoading(true);
+      await loadCleanerData();
     } catch (loginError: unknown) {
       setError(messageOf(loginError));
       setProfile(null);
       setRooms([]);
+      setHistory([]);
     } finally {
       setLoading(false);
+      setHistoryLoading(false);
     }
   }
 
@@ -1325,7 +1475,7 @@ export function CleanerPortal() {
     setError(null);
     try {
       await finishCleanerRoom(roomId);
-      await loadRooms();
+      await loadCleanerData();
     } catch (finishError: unknown) {
       setError(messageOf(finishError));
     } finally {
@@ -1344,6 +1494,7 @@ export function CleanerPortal() {
     }
     setProfile(null);
     setRooms([]);
+    setHistory([]);
     setEmail("");
     setPassword("");
     setError(null);
@@ -1400,6 +1551,36 @@ export function CleanerPortal() {
               ))}
             </section>
           )}
+          <section className="page-card cleaner-history" aria-labelledby="cleaner-history-title">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Actividad completada</p>
+                <h2 id="cleaner-history-title">Historial de habitaciones</h2>
+                <p className="muted">Habitaciones que has finalizado anteriormente.</p>
+              </div>
+            </div>
+            {historyLoading ? (
+              <p className="empty-state">Cargando historial…</p>
+            ) : history.length === 0 ? (
+              <p className="empty-state">Aún no tienes habitaciones finalizadas.</p>
+            ) : (
+              <div className="cleaner-history-list">
+                {history.map((item) => (
+                  <article
+                    className="cleaner-history-item"
+                    key={item.id_trabajo}
+                  >
+                    <span className="material-symbol" aria-hidden="true">check_circle</span>
+                    <div className="cleaner-history-room">
+                      <strong>Habitación {item.id_habitacion}</strong>
+                      <span>{item.tipo_limpieza || "Tipo de limpieza no especificado"}</span>
+                    </div>
+                    <time dateTime={item.creado_en}>{formatDate(item.creado_en)}</time>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
         </section>
       )}
     </main>

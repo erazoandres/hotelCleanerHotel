@@ -173,6 +173,8 @@ CREATE TABLE IF NOT EXISTS public.trabajos_limpieza (
 
 CREATE INDEX IF NOT EXISTS trabajos_limpieza_fecha
   ON public.trabajos_limpieza (creado_en DESC);
+CREATE INDEX IF NOT EXISTS trabajos_limpieza_personal_fecha
+  ON public.trabajos_limpieza (id_personal, creado_en DESC);
 
 -- Novedades del personal.
 CREATE TABLE IF NOT EXISTS public.novedades (
@@ -251,6 +253,28 @@ AS $$
     AND p.activo IS TRUE
     AND auth.jwt() -> 'app_metadata' ->> 'role' = 'hotel_cleaner'
   ORDER BY h.id_habitacion;
+$$;
+
+-- Devuelve solo el historial del trabajador autenticado.
+CREATE OR REPLACE FUNCTION public.historial_habitaciones_aseador()
+RETURNS TABLE (
+  id_trabajo BIGINT,
+  id_habitacion TEXT,
+  tipo_limpieza TEXT,
+  creado_en TIMESTAMPTZ
+)
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth, pg_temp
+AS $$
+  SELECT t.id_trabajo, t.id_habitacion, t.tipo_limpieza, t.creado_en
+  FROM public.trabajos_limpieza t
+  JOIN public.personal p ON p.id_personal = t.id_personal
+  WHERE p.auth_user_id = auth.uid()
+    AND p.activo IS TRUE
+    AND auth.jwt() -> 'app_metadata' ->> 'role' = 'hotel_cleaner'
+  ORDER BY t.creado_en DESC, t.id_trabajo DESC;
 $$;
 
 -- El trabajador solo puede finalizar una habitacion que tiene asignada.
@@ -404,10 +428,12 @@ GRANT EXECUTE ON FUNCTION public.es_administrador_hotel() TO authenticated;
 
 REVOKE ALL ON FUNCTION public.perfil_aseador() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.habitaciones_aseador() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.historial_habitaciones_aseador() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.finalizar_habitacion_aseador(TEXT)
   FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.perfil_aseador() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.habitaciones_aseador() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.historial_habitaciones_aseador() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.finalizar_habitacion_aseador(TEXT)
   TO authenticated;
 

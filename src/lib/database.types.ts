@@ -113,6 +113,15 @@ export interface Database {
           fecha_limpieza_programada: string | null;
         }[];
       };
+      historial_habitaciones_aseador: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id_trabajo: number;
+          id_habitacion: string;
+          tipo_limpieza: string | null;
+          creado_en: string;
+        }[];
+      };
       finalizar_habitacion_aseador: {
         Args: { p_id_habitacion: string };
         Returns: boolean;

@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseClient } from "../lib/supabase";
 import type {
   AttendanceRecord,
+  CleanerHistoryItem,
   CleanerProfile,
   CleanerRoom,
   CleaningWork,
@@ -28,6 +29,15 @@ const statusFromDatabase: Record<string, RoomStatus> = {
   limpieza: "cleaning",
   finalizado: "finished",
 };
+
+function dateInputValue(value: string | null): string | null {
+  const date = value?.trim().match(/^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/i)?.[1];
+  if (!date) return null;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date
+    ? null
+    : date;
+}
 
 export async function fetchRemoteState(): Promise<RemoteHotelState> {
   const supabase = getSupabaseClient();
@@ -158,10 +168,8 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
     if (room.detalles_limpieza) {
       state.cleaningDetails[room.id_habitacion] = room.detalles_limpieza;
     }
-    if (room.fecha_limpieza_programada) {
-      state.scheduledCleaningDates[room.id_habitacion] =
-        room.fecha_limpieza_programada;
-    }
+    const scheduledDate = dateInputValue(room.fecha_limpieza_programada);
+    if (scheduledDate) state.scheduledCleaningDates[room.id_habitacion] = scheduledDate;
     if (room.id_personal_asignado) {
       const assignedStaff = staffById.get(room.id_personal_asignado);
       state.assignedCleanings[room.id_habitacion] = {
@@ -417,6 +425,13 @@ export async function getCleanerRooms(): Promise<CleanerRoom[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.rpc("habitaciones_aseador");
   if (error) throw new Error(`No se pudieron cargar las habitaciones: ${error.message}`);
+  return data;
+}
+
+export async function getCleanerHistory(): Promise<CleanerHistoryItem[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("historial_habitaciones_aseador");
+  if (error) throw new Error(`No se pudo cargar el historial: ${error.message}`);
   return data;
 }
 

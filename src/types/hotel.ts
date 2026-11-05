@@ -29,6 +29,13 @@ export interface CleanerRoom {
   fecha_limpieza_programada: string | null;
 }
 
+export interface CleanerHistoryItem {
+  id_trabajo: number;
+  id_habitacion: string;
+  tipo_limpieza: string | null;
+  creado_en: string;
+}
+
 export interface CleanerAssignment {
   staffId: string;
   staffName: string;

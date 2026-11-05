@@ -7,7 +7,7 @@ El archivo [`schema.sql`](./schema.sql) crea las tablas y permisos que usa la ap
 - cuentas de Supabase para el acceso del personal con correo y contraseña.
 - `asignaciones_habitacion`: historial de asignaciones.
 - `asistencias`: entradas y salidas.
-- `trabajos_limpieza`: limpiezas finalizadas.
+- `trabajos_limpieza`: limpiezas finalizadas e historial de habitaciones de cada aseador.
 - `eventos`: historial de cambios.
 - `novedades`: notas del personal.
 
@@ -22,6 +22,8 @@ El archivo [`schema.sql`](./schema.sql) crea las tablas y permisos que usa la ap
 7. Para las cuentas nuevas, comparte con cada trabajador el correo y la contraseña temporal mostrada una sola vez. Las cuentas vinculadas conservan su contraseña actual. Si alguien pierde su contraseña, usa **Regenerar contraseña**.
 
 El personal inicia sesión desde **Acceso de aseo** usando ese correo y contraseña. Las cuentas se crean en Supabase Auth por la función administrativa; no habilites el registro público para esta operación.
+
+El portal de aseo muestra a cada trabajador el historial de habitaciones que ha finalizado. En una base existente, ejecuta [`supabase/patches/cleaner-room-history.sql`](./supabase/patches/cleaner-room-history.sql) desde **Supabase SQL Editor** para crear la función y actualizar el caché del esquema. La consulta se limita a la cuenta autenticada. Alternativamente, al instalar desde cero, ejecuta la versión actualizada de `schema.sql`.
 
 El SQL crea las tablas, pero no inventa números de habitación ni agrega registros de ejemplo. Para agregar una habitación real, ejecuta una fila por habitación y reemplaza el número:
 
