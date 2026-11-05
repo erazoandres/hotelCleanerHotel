@@ -4,6 +4,7 @@ import { useHotelAuth } from "../components/HotelAuth";
 import { FreshlyMark } from "../components/FreshlyBrand";
 import { HotelDataStatus, useHotelData } from "../components/HotelData";
 import { DashboardHeroSlider } from "../components/DashboardHeroSlider";
+import { ModernAvatar3D, Avatar3DStylePicker } from "../components/ModernAvatar3D";
 import {
   addEvent,
   createStaff,
@@ -1247,7 +1248,12 @@ function RoomPickerCard({
             </span>
             {cleanerName && (
               <span className="room-picker-assignee" title={cleanerName}>
-                <span className="room-picker-assignee-avatar">{cleanerName.trim().charAt(0).toLocaleUpperCase("es")}</span>
+                <ModernAvatar3D
+                  name={cleanerName}
+                  size={18}
+                  className="room-picker-assignee-avatar"
+                  alt={`Avatar 3D de ${cleanerName}`}
+                />
                 <span>{cleanerName}</span>
               </span>
             )}
@@ -2123,9 +2129,12 @@ export function StaffPage() {
               <header className="staff-profile-header-bar">
                 <div className="staff-profile-main-info">
                   <div className="staff-avatar-container">
-                    <span className="staff-profile-avatar" aria-hidden="true">
-                      {selectedStaff.name.trim().charAt(0).toLocaleUpperCase("es")}
-                    </span>
+                    <ModernAvatar3D
+                      name={selectedStaff.name}
+                      size={58}
+                      className="staff-profile-avatar"
+                      alt={`Avatar 3D de ${selectedStaff.name}`}
+                    />
                     <span
                       className={`staff-avatar-status-dot ${selectedAttendance ? "is-on-shift" : ""}`}
                       title={selectedAttendance ? "En turno activo" : "Fuera de turno"}
@@ -2429,9 +2438,12 @@ export function StaffPage() {
                         }}
                         type="button"
                       >
-                        <span className="staff-card-avatar" aria-hidden="true">
-                          {person.name.trim().charAt(0).toLocaleUpperCase("es")}
-                        </span>
+                        <ModernAvatar3D
+                          name={person.name}
+                          size={44}
+                          className="staff-card-avatar"
+                          alt={`Avatar 3D de ${person.name}`}
+                        />
                         <span className="staff-card-details">
                           <strong>{person.name}</strong>
                           <span><span className="material-symbol" aria-hidden="true">call</span>{person.contact}</span>
@@ -2478,6 +2490,8 @@ export function StaffPage() {
                   </span>
                 </div>
               </section>
+
+              <Avatar3DStylePicker variant="aside" />
             </aside>
           </div>
         )}

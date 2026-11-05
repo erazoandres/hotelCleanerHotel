@@ -9,8 +9,8 @@ export interface BannerSlideData {
   titleHighlight: string;
   description: string;
   illustration: string;
-  caption: React.ReactNode;
-  statChipIcon: string;
+  captionTitle: string;
+  captionSubtitle: string;
   statChipText: string;
   shortTitle: string;
 }
@@ -30,56 +30,44 @@ export function DashboardHeroSlider({
     {
       id: "operations",
       themeClass: "hero-theme-violet",
-      badge: "Centro de Operaciones",
+      badge: "Control de Habitaciones",
       sparkle: "✦",
-      titlePart1: "Todo en orden,",
-      titleHighlight: "a primera vista.",
-      description: "Monitoreo integral y sincronización en vivo para que cada estancia fluya a la perfección.",
-      illustration: "holiday_village",
-      caption: (
-        <>
-          Hospitalidad,<br />con cada detalle.
-        </>
-      ),
-      statChipIcon: "verified",
-      statChipText: "Operación en tiempo real",
-      shortTitle: "Operaciones",
+      titlePart1: "Estado de limpieza,",
+      titleHighlight: "en tiempo real.",
+      description: "Monitorea al instante qué cuartos están limpios, en proceso de aseo o pendientes de cambio de sábanas.",
+      illustration: "checklist",
+      captionTitle: "Tablero de Cuartos",
+      captionSubtitle: "Seguimiento y control piso por piso",
+      statChipText: "Monitoreo en vivo",
+      shortTitle: "Habitaciones",
     },
     {
       id: "housekeeping",
-      themeClass: "hero-theme-teal",
-      badge: "Gobernanza & Limpieza",
+      themeClass: "hero-theme-lilac",
+      badge: "Aseo & Desinfección",
       sparkle: "✦",
-      titlePart1: "Habitaciones listas,",
-      titleHighlight: "estancias impecables.",
-      description: "Supervisión continua del ciclo de limpieza, desinfección y alistamiento sin tiempos muertos.",
+      titlePart1: "Limpieza profunda,",
+      titleHighlight: "rutinas al día.",
+      description: "Supervisa tiempos de aseo, asignaciones de camareras y cumplimiento riguroso de protocolos de higiene.",
       illustration: "cleaning_services",
-      caption: (
-        <>
-          Rotación ágil,<br />máxima pulcritud.
-        </>
-      ),
-      statChipIcon: "bolt",
-      statChipText: "Alistamiento prioritario",
-      shortTitle: "Housekeeping",
+      captionTitle: "Equipo de Limpieza",
+      captionSubtitle: "Control de tiempos y camareras",
+      statChipText: "Camareras en ruta",
+      shortTitle: "Limpieza",
     },
     {
       id: "occupancy",
       themeClass: "hero-theme-sunset",
-      badge: "Ocupación & Huéspedes",
+      badge: "Inspección & Calidad",
       sparkle: "✦",
-      titlePart1: "Hospitalidad total,",
-      titleHighlight: "decisiones al instante.",
-      description: "Optimiza la disponibilidad por pisos, anticipa check-outs y brinda una llegada de lujo.",
-      illustration: "hotel",
-      caption: (
-        <>
-          Experiencia 5 estrellas,<br />en cada estancia.
-        </>
-      ),
-      statChipIcon: "hotel_class",
-      statChipText: "Máxima disponibilidad",
-      shortTitle: "Rendimiento",
+      titlePart1: "Cuartos verificados,",
+      titleHighlight: "listos para entrega.",
+      description: "Audita los puntos clave de limpieza, aprueba la inspección final y libera las habitaciones sin demoras.",
+      illustration: "task_alt",
+      captionTitle: "Control de Calidad",
+      captionSubtitle: "Aprobación y entrega ágil",
+      statChipText: "Inspección aprobada",
+      shortTitle: "Inspección",
     },
   ];
 
@@ -106,7 +94,7 @@ export function DashboardHeroSlider({
     setProgressKey((k) => k + 1);
   };
 
-  // Continuous auto-sliding
+  // Continuous auto-sliding without pause
   useEffect(() => {
     if (totalSlides <= 1) return;
 
@@ -147,15 +135,12 @@ export function DashboardHeroSlider({
       className="dashboard-hero-slider"
       role="region"
       aria-roledescription="carrusel"
-      aria-label="Banners destacados del hotel"
+      aria-label="Banners informativos del hotel"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Background ambient light flare */}
-      <div className="slider-ambient-flare" aria-hidden="true" />
-
       {/* Slider Track */}
       <div
         className="dashboard-hero-track"
@@ -170,15 +155,8 @@ export function DashboardHeroSlider({
             <section className={`dashboard-hero ${slide.themeClass}`}>
               <div className="dashboard-hero-content">
                 <div className="hero-eyebrow-badge">
-                  <span className="hero-eyebrow-pulse" aria-hidden="true" />
-                  <p className="eyebrow">
-                    {slide.badge}
-                    {slide.sparkle && (
-                      <span className="eyebrow-sparkle" aria-hidden="true">
-                        {slide.sparkle}
-                      </span>
-                    )}
-                  </p>
+                  <span className="hero-eyebrow-sparkle" aria-hidden="true">✦</span>
+                  <span className="eyebrow">{slide.badge}</span>
                 </div>
 
                 <h1>
@@ -191,33 +169,33 @@ export function DashboardHeroSlider({
               </div>
 
               <div className="dashboard-hero-aside">
-                {/* Rotating decorative orbits */}
-                <span className="hero-orbit hero-orbit-one hero-orbit-animated" aria-hidden="true" />
-                <span className="hero-orbit hero-orbit-two hero-orbit-animated-reverse" aria-hidden="true" />
-                <div className="hero-illustration-glow" aria-hidden="true" />
-
-                <span className="hero-illustration material-symbol" aria-hidden="true">
-                  {slide.illustration}
-                </span>
-
-                <span className="hero-caption">{slide.caption}</span>
-
-                {/* Stat Chip & Session */}
-                <div className="hero-stat-chip">
-                  <span className="material-symbol" aria-hidden="true">
-                    {slide.statChipIcon}
-                  </span>
-                  <span>{slide.statChipText}</span>
+                <div className="hero-emblem-card">
+                  <div className="hero-emblem-icon-wrap">
+                    <span className="hero-illustration material-symbol" aria-hidden="true">
+                      {slide.illustration}
+                    </span>
+                  </div>
+                  <div className="hero-emblem-text">
+                    <strong className="hero-caption-title">{slide.captionTitle}</strong>
+                    <span className="hero-caption-subtitle">{slide.captionSubtitle}</span>
+                  </div>
+                  <div className="hero-emblem-status">
+                    <span className="hero-status-dot" aria-hidden="true" />
+                    <span>{slide.statChipText}</span>
+                  </div>
                 </div>
 
-                <span className="hero-session">Conectado como {userEmail}</span>
+                <div className="hero-session-pill">
+                  <span className="material-symbol" aria-hidden="true">account_circle</span>
+                  <span>{userEmail}</span>
+                </div>
               </div>
             </section>
           </div>
         ))}
       </div>
 
-      {/* Editorial Timeline Tabs with Live Moving Progress Line */}
+      {/* Editorial Timeline Tabs with Smooth Progress Fill */}
       <div className="dashboard-hero-timeline-bar">
         <div
           className="dashboard-hero-timeline"

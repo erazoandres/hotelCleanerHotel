@@ -16,6 +16,7 @@ import {
 import { isSupabaseConfigured } from "./lib/supabase";
 import HotelAssistant from "./components/HotelAssistant";
 import { FreshlyMark } from "./components/FreshlyBrand";
+import { ModernAvatar3D } from "./components/ModernAvatar3D";
 
 const sections = [
   { path: "/app/inicio", label: "Inicio", icon: "space_dashboard" },
@@ -111,9 +112,11 @@ function AdminApplication() {
             ))}
           </nav>
           <div className="sidebar-account">
-            <span className="account-avatar" aria-hidden="true">
-              {(session.user.email?.[0] ?? "A").toUpperCase()}
-            </span>
+            <ModernAvatar3D
+              name={session.user.email ?? "Admin"}
+              className="account-avatar"
+              alt={session.user.email ?? "Usuario"}
+            />
             <span className="account-copy">
               <small>Sesión activa</small>
               <strong title={session.user.email}>{session.user.email}</strong>
