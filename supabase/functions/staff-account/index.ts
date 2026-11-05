@@ -188,11 +188,76 @@ Deno.serve(async (request) => {
 
     const { data: staff, error: staffError } = await admin
       .from("personal")
-      .select("id_personal, nombre, activo, correo, auth_user_id")
+      .select("id_personal, nombre, contacto, activo, correo, auth_user_id")
       .eq("id_personal", staffId)
       .maybeSingle();
     if (staffError) throw staffError;
     if (!staff) return response({ error: "No se encontró la ficha del personal." }, 404);
+
+    if (action === "update_staff") {
+      if (!staff.activo) return response({ error: "No se puede editar personal inactivo." }, 409);
+      const name = typeof input.nombre === "string" ? input.nombre.trim() : "";
+      const contact = typeof input.contacto === "string" ? input.contacto.trim() : "";
+      const email = typeof input.correo === "string" ? input.correo.trim().toLowerCase() : "";
+      if (!name || name.length > 80 || !contact || contact.length > 30) {
+        return response({ error: "Revisa el nombre y teléfono del personal." }, 400);
+      }
+      if (contact.replace(/\D/g, "").length < 7) {
+        return response({ error: "El teléfono no es válido." }, 400);
+      }
+      if (
+        (staff.auth_user_id && !email)
+        || (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))
+      ) {
+        return response({ error: "Escribe un correo electrónico válido." }, 400);
+      }
+
+      let previousEmail: string | null = null;
+      let previousUserMetadata: User["user_metadata"] = {};
+      if (staff.auth_user_id) {
+        const { data: authData, error: authLookupError } = await admin.auth.admin
+          .getUserById(staff.auth_user_id);
+        if (authLookupError) throw authLookupError;
+        if (!authData.user) return response({ error: "No se encontró la cuenta vinculada." }, 404);
+        if (!authData.user.email) {
+          return response({ error: "La cuenta vinculada no tiene un correo válido." }, 409);
+        }
+        previousEmail = authData.user.email;
+        previousUserMetadata = authData.user.user_metadata ?? {};
+        const { error: authUpdateError } = await admin.auth.admin.updateUserById(
+          staff.auth_user_id,
+          {
+            email,
+            email_confirm: true,
+            user_metadata: { ...previousUserMetadata, full_name: name },
+          },
+        );
+        if (authUpdateError) return response({ error: authUpdateError.message }, 409);
+      }
+
+      const { error: updateError } = await admin.from("personal")
+        .update({ nombre: name, contacto: contact, correo: email || null })
+        .eq("id_personal", staffId);
+      if (updateError) {
+        if (staff.auth_user_id && previousEmail) {
+          const { error: rollbackError } = await admin.auth.admin.updateUserById(
+            staff.auth_user_id,
+            {
+              email: previousEmail,
+              email_confirm: true,
+              user_metadata: previousUserMetadata,
+            },
+          );
+          if (rollbackError) {
+            return response({
+              error: `No se pudo actualizar la ficha (${updateError.message}) ni restaurar la cuenta (${rollbackError.message}).`,
+            }, 500);
+          }
+        }
+        return response({ error: `No se pudo actualizar la ficha: ${updateError.message}` }, 409);
+      }
+      return response({ id_personal: staffId });
+    }
 
     if (action === "create_account") {
       if (!staff.activo) return response({ error: "No se puede crear acceso para personal inactivo." }, 409);

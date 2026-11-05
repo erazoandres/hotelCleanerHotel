@@ -317,6 +317,32 @@ export async function createStaffWithExistingAccount(
   });
 }
 
+export async function updateStaff(
+  person: Pick<StaffMember, "id" | "name" | "contact" | "email" | "hasAccount">,
+): Promise<void> {
+  const digits = person.contact.replace(/\D/g, "");
+  if (!person.name.trim() || person.name.length > 80) {
+    throw new Error("El nombre debe tener entre 1 y 80 caracteres.");
+  }
+  if (digits.length < 7 || person.contact.length > 30) {
+    throw new Error("El teléfono no es válido.");
+  }
+  const email = person.email?.trim().toLowerCase() ?? "";
+  if (
+    (person.hasAccount && !email)
+    || (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))
+  ) {
+    throw new Error("Escribe un correo electrónico válido.");
+  }
+  await invokeStaffAccount<{ id_personal: string }>({
+    action: "update_staff",
+    id_personal: person.id,
+    nombre: person.name.trim(),
+    contacto: person.contact.trim(),
+    correo: email,
+  });
+}
+
 export async function createCleanerAccount(
   staffId: string,
   email: string,

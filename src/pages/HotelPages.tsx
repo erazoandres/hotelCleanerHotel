@@ -8,26 +8,31 @@ import {
   addNovelty,
   createCleanerAccount,
   createStaff,
-  createStaffWithExistingAccount,
   finishCleanerRoom,
   getCleanerProfile,
   getCleanerRooms,
-  linkCleanerAccount,
   loginCleaner,
   logoutCleaner,
   resetCleanerPassword,
-  removeStaff,
-  saveAttendance,
+  updateStaff,
   updateRoom,
 } from "../services/hotelRepository";
 import type {
-  AttendanceRecord,
   CleanerProfile,
   CleanerRoom,
   HotelEvent,
+  RemoteHotelState,
   RoomStatus,
   StaffMember,
 } from "../types/hotel";
+
+interface StaffReportRow {
+  timestamp: string;
+  category: "Jornada" | "Habitación terminada" | "Asignación";
+  room: string;
+  detail: string;
+  hours: number | null;
+}
 
 const statusLabels: Record<RoomStatus, string> = {
   free: "Libre",
@@ -409,20 +414,22 @@ export function RoomsPage() {
           <h1>Habitaciones</h1>
           <p className="page-description">Cada espacio, su estado y los detalles para atenderlo.</p>
         </div>
-        <button className="button button-refresh" onClick={() => void refresh()}>
-          <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
-        </button>
+        <div className="room-heading-actions">
+          <section className="room-summary" aria-label="Estado de habitaciones">
+            {roomSummary.map((item) => (
+              <div className="room-summary-item" key={item.label}>
+                <span className="material-symbol" aria-hidden="true">{item.icon}</span>
+                <span>{item.label}</span>
+                <strong>{item.count}</strong>
+              </div>
+            ))}
+            <span className="room-summary-total">{roomIds.length} espacios</span>
+          </section>
+          <button className="button button-refresh" onClick={() => void refresh()}>
+            <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
+          </button>
+        </div>
       </div>
-      <section className="room-summary" aria-label="Estado de habitaciones">
-        {roomSummary.map((item) => (
-          <div className="room-summary-item" key={item.label}>
-            <span className="material-symbol" aria-hidden="true">{item.icon}</span>
-            <span>{item.label}</span>
-            <strong>{item.count}</strong>
-          </div>
-        ))}
-        <span className="room-summary-total">{roomIds.length} espacios en total</span>
-      </section>
       {error && <p className="form-error" role="alert">{error}</p>}
       {loading && roomIds.length === 0 ? (
         <p className="empty-state">Cargando habitaciones…</p>
@@ -582,6 +589,10 @@ export function CleaningPage() {
           {rooms.map((roomId) => {
             const assignment = state.assignedCleanings[roomId];
             const status = state.rooms[roomId];
+            const servicePlan = state.servicePlans[roomId] ?? "";
+            const latestCleaning = getLatestCleaningDate(roomId, state.cleaningWork, state.events);
+            const scheduleStart = latestCleaning ?? getCurrentAssignmentDate(roomId, state.roomAssignments);
+            const nextCleaningDate = getNextCleaningDate(servicePlan, scheduleStart);
             return (
               <article className="room-card" key={roomId}>
                 <div className="room-card-heading">
@@ -591,6 +602,21 @@ export function CleaningPage() {
                 <dl className="details-list">
                   <div><dt>Personal</dt><dd>{assignment?.staffName || "Sin asignar"}</dd></div>
                   <div><dt>Tipo</dt><dd>{assignment?.cleaningType || "No especificado"}</dd></div>
+                  <div><dt>Plan</dt><dd>{servicePlan || "No especificado"}</dd></div>
+                  <div>
+                    <dt>Próxima limpieza</dt>
+                    <dd>
+                      {servicePlan.trim().toLocaleLowerCase("es") === "premium"
+                        ? "A solicitud"
+                        : nextCleaningDate
+                          ? formatDateOnly(nextCleaningDate)
+                          : !servicePlan
+                            ? "Sin plan"
+                            : latestCleaning
+                              ? "Sin frecuencia definida"
+                              : "Sin historial de limpieza"}
+                    </dd>
+                  </div>
                   <div><dt>Huésped</dt><dd>{state.guests[roomId] || "No registrado"}</dd></div>
                 </dl>
                 {status === "pending" && (
@@ -677,15 +703,120 @@ export function StaffPage() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
-  const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
-  const [accountEmails, setAccountEmails] = useState<Record<string, string>>({});
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editContact, setEditContact] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [newPassword, setNewPassword] = useState<string | null>(null);
+  const [credentialUsername, setCredentialUsername] = useState("");
   const [credentialName, setCredentialName] = useState("");
+  const [reportStart, setReportStart] = useState(() => {
+    const now = new Date();
+    return localDateValue(new Date(now.getFullYear(), now.getMonth(), 1));
+  });
+  const [reportEnd, setReportEnd] = useState(() => localDateValue(new Date()));
+  const [reportNow, setReportNow] = useState(() => Date.now());
   const [noveltyStaffId, setNoveltyStaffId] = useState("");
   const [noveltyLabel, setNoveltyLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (selectedStaffId && !state.staff.some((person) => person.id === selectedStaffId)) {
+      setSelectedStaffId(null);
+    }
+  }, [selectedStaffId, state.staff]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setReportNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const reportPeriod = useMemo(() => {
+    const start = new Date(`${reportStart}T00:00:00`);
+    const end = new Date(`${reportEnd}T00:00:00`);
+    end.setDate(end.getDate() + 1);
+    if (
+      Number.isNaN(start.getTime())
+      || Number.isNaN(end.getTime())
+      || start >= end
+    ) {
+      return null;
+    }
+    return { start: start.getTime(), end: end.getTime() };
+  }, [reportEnd, reportStart]);
+  const selectedStaff = state.staff.find((person) => person.id === selectedStaffId) ?? null;
+  const selectedAttendance = selectedStaff
+    ? state.attendance.find((record) => record.staffId === selectedStaff.id && !record.checkOut)
+    : null;
+  const reportRows = useMemo(() => {
+    if (!selectedStaffId || !reportPeriod) return [];
+    const rows: StaffReportRow[] = [];
+
+    for (const attendance of state.attendance) {
+      if (attendance.staffId !== selectedStaffId) continue;
+      const start = Math.max(new Date(attendance.checkIn).getTime(), reportPeriod.start);
+      const end = Math.min(
+        attendance.checkOut ? new Date(attendance.checkOut).getTime() : reportNow,
+        reportPeriod.end,
+      );
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+      rows.push({
+        timestamp: new Date(start).toISOString(),
+        category: "Jornada",
+        room: "—",
+        detail: `Entrada ${formatDate(attendance.checkIn)} · salida ${attendance.checkOut ? formatDate(attendance.checkOut) : "en curso"}`,
+        hours: (end - start) / 3_600_000,
+      });
+    }
+
+    for (const work of state.cleaningWork) {
+      if (work.staffId !== selectedStaffId) continue;
+      const timestamp = new Date(work.time);
+      if (
+        Number.isNaN(timestamp.getTime())
+        || timestamp.getTime() < reportPeriod.start
+        || timestamp.getTime() >= reportPeriod.end
+      ) continue;
+      rows.push({
+        timestamp: work.time,
+        category: "Habitación terminada",
+        room: work.room,
+        detail: work.cleaningType || "Limpieza",
+        hours: null,
+      });
+    }
+
+    for (const assignment of state.roomAssignments) {
+      if (assignment.staffId !== selectedStaffId) continue;
+      const assignedAt = new Date(assignment.assignedAt).getTime();
+      const releasedAt = assignment.unassignedAt
+        ? new Date(assignment.unassignedAt).getTime()
+        : reportNow;
+      const start = Math.max(assignedAt, reportPeriod.start);
+      const end = Math.min(releasedAt, reportPeriod.end);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+      rows.push({
+        timestamp: new Date(start).toISOString(),
+        category: "Asignación",
+        room: assignment.roomId,
+        detail: `${assignment.cleaningType || "Sin tipo de limpieza"} · desde ${formatDate(assignment.assignedAt)} · hasta ${assignment.unassignedAt ? formatDate(assignment.unassignedAt) : "activa"}`,
+        hours: null,
+      });
+    }
+
+    return rows.sort((left, right) => right.timestamp.localeCompare(left.timestamp));
+  }, [
+    selectedStaffId,
+    reportPeriod,
+    reportNow,
+    state.attendance,
+    state.cleaningWork,
+    state.roomAssignments,
+  ]);
+  const reportHours = reportRows.reduce((total, row) => total + (row.hours ?? 0), 0);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -701,6 +832,7 @@ export function StaffPage() {
         hasAccount: false,
       });
       setNewPassword(password);
+      setCredentialUsername(email.trim().toLowerCase());
       setCredentialName(`${name.trim()} (${email.trim().toLowerCase()})`);
       setName("");
       setContact("");
@@ -711,55 +843,6 @@ export function StaffPage() {
       setError(messageOf(createError));
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleCreateWithExistingAccount() {
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const person: StaffMember = {
-        id: crypto.randomUUID(),
-        name: name.trim(),
-        contact: contact.trim(),
-        email: email.trim().toLowerCase(),
-        hasAccount: false,
-      };
-      await createStaffWithExistingAccount(person);
-      setName("");
-      setContact("");
-      setEmail("");
-      setSuccess("Ficha creada y cuenta existente vinculada. El trabajador debe iniciar sesión nuevamente.");
-      await refresh();
-    } catch (createError: unknown) {
-      setError(messageOf(createError));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function toggleAttendance(personId: string, personName: string) {
-    setError(null);
-    setSuccess(null);
-    const activeRecord = state.attendance.find(
-      (record) => record.staffId === personId && !record.checkOut,
-    );
-    try {
-      const record: AttendanceRecord = activeRecord
-        ? { ...activeRecord, checkOut: new Date().toISOString() }
-        : {
-            id: crypto.randomUUID(),
-            staffId: personId,
-            staffName: personName,
-            checkIn: new Date().toISOString(),
-            checkOut: null,
-          };
-      await saveAttendance(record);
-      setSuccess(activeRecord ? "Salida registrada." : "Entrada registrada.");
-      await refresh();
-    } catch (attendanceError: unknown) {
-      setError(messageOf(attendanceError));
     }
   }
 
@@ -796,25 +879,14 @@ export function StaffPage() {
     }
   }
 
-  async function handleRemove(personId: string) {
-    if (!window.confirm("¿Desactivar esta ficha de personal?")) return;
-    setError(null);
-    setSuccess(null);
-    try {
-      await removeStaff(personId);
-      setSuccess("Ficha desactivada.");
-      await refresh();
-    } catch (removeError: unknown) {
-      setError(messageOf(removeError));
-    }
-  }
-
   async function handleResetPassword(personId: string, personName: string) {
     if (!window.confirm(`¿Generar una nueva contraseña temporal para ${personName}?`)) return;
     setError(null);
     setSuccess(null);
     try {
       const password = await resetCleanerPassword(personId);
+      const person = state.staff.find((member) => member.id === personId);
+      setCredentialUsername(person?.email ?? "");
       setCredentialName(personName);
       setNewPassword(password);
       setSuccess("Nueva contraseña temporal generada. La anterior ya no es válida.");
@@ -824,41 +896,87 @@ export function StaffPage() {
   }
 
   async function handleCreateAccount(person: StaffMember) {
-    const accountEmail = accountEmails[person.id]?.trim().toLowerCase();
+    const accountEmail = person.email?.trim().toLowerCase();
     if (!accountEmail) {
-      setError("Escribe el correo de la cuenta del trabajador.");
+      setError("Esta ficha no tiene un correo asignado.");
       return;
     }
     setError(null);
     setSuccess(null);
     try {
       const password = await createCleanerAccount(person.id, accountEmail);
+      setCredentialUsername(accountEmail);
       setCredentialName(`${person.name} (${accountEmail})`);
       setNewPassword(password);
       setSuccess("Acceso creado. Comparte el correo y la contraseña temporal de forma segura.");
-      setAccountEmails((current) => ({ ...current, [person.id]: "" }));
       await refresh();
     } catch (accountError: unknown) {
       setError(messageOf(accountError));
     }
   }
 
-  async function handleLinkAccount(person: StaffMember) {
-    const accountEmail = accountEmails[person.id]?.trim().toLowerCase();
-    if (!accountEmail) {
-      setError("Escribe el correo de la cuenta existente.");
-      return;
-    }
+  function startEditingStaff(person: StaffMember) {
+    setEditingStaffId(person.id);
+    setEditName(person.name);
+    setEditContact(person.contact);
+    setEditEmail(person.email ?? "");
+  }
+
+  async function handleUpdateStaff(event: FormEvent<HTMLFormElement>, person: StaffMember) {
+    event.preventDefault();
     setError(null);
     setSuccess(null);
+    setSaving(true);
     try {
-      await linkCleanerAccount(person.id, accountEmail);
-      setSuccess(`Cuenta vinculada. ${person.name} debe cerrar sesión e ingresar de nuevo con ${accountEmail}.`);
-      setAccountEmails((current) => ({ ...current, [person.id]: "" }));
+      await updateStaff({
+        id: person.id,
+        name: editName,
+        contact: editContact,
+        email: editEmail,
+        hasAccount: person.hasAccount,
+      });
+      setEditingStaffId(null);
+      setSuccess("Información del personal actualizada.");
       await refresh();
-    } catch (accountError: unknown) {
-      setError(messageOf(accountError));
+    } catch (updateError: unknown) {
+      setError(messageOf(updateError));
+    } finally {
+      setSaving(false);
     }
+  }
+
+  function handleExportStaffReport(person: StaffMember) {
+    if (!reportPeriod) {
+      setError("El periodo seleccionado no es válido.");
+      return;
+    }
+    const headers = ["Personal", "Desde", "Hasta", "Actividad", "Fecha", "Habitación", "Detalle", "Horas trabajadas"];
+    const csvRows = reportRows.map((row) => [
+      person.name,
+      reportStart,
+      reportEnd,
+      row.category,
+      row.timestamp,
+      row.room,
+      row.detail,
+      row.hours === null ? "" : row.hours.toFixed(2),
+    ]);
+    const csv = [
+      headers,
+      ...csvRows,
+      ["", "", "", "Total del periodo", "", "", "", reportHours.toFixed(2)],
+    ]
+      .map((row) => row.map(csvCell).join(","))
+      .join("\r\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `reporte-${person.name.trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}-${reportStart}-${reportEnd}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
   }
 
   return (
@@ -866,122 +984,220 @@ export function StaffPage() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">Equipo</p>
-          <h1>Personal</h1>
-          <p className="page-description">Un equipo cuidado hace que cada huésped se sienta en casa.</p>
+          <h1>{selectedStaff ? selectedStaff.name : "Personal"}</h1>
+          <p className="page-description">
+            {selectedStaff
+              ? "Gestiona sus datos, acceso y actividad."
+              : "Un equipo cuidado hace que cada huésped se sienta en casa."}
+          </p>
         </div>
         <HotelDataStatus />
       </div>
       <ActionMessage error={error} success={success} />
       {newPassword && (
         <section className="credential-notice" aria-live="polite">
-          <strong>Contraseña temporal para {credentialName || "el personal"} — compartir una sola vez</strong>
-          <code>{newPassword}</code>
-          <button className="button button-small" onClick={() => setNewPassword(null)}>
-            Ocultar clave
+          <div className="credential-notice-heading">
+            <strong>Acceso para {credentialName || "el personal"}</strong>
+            <span>Comparte estos datos de forma segura.</span>
+          </div>
+          <div className="credential-value">
+            <span>Usuario</span>
+            <code>{credentialUsername || "No disponible"}</code>
+          </div>
+          <div className="credential-value">
+            <span>Contraseña temporal</span>
+            <code>{newPassword}</code>
+          </div>
+          <button
+            className="button button-small"
+            onClick={() => {
+              setNewPassword(null);
+              setCredentialUsername("");
+            }}
+          >
+            Ocultar credenciales
           </button>
         </section>
       )}
-      <section className="staff-layout">
-        <form className="page-card form-stack" onSubmit={handleCreate}>
-          <div><p className="eyebrow">Nuevo registro</p><h2>Agregar personal</h2></div>
-          <label>Nombre completo<input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
-          <label>Teléfono<input required maxLength={30} type="tel" value={contact} onChange={(event) => setContact(event.target.value)} /></label>
-          <label>Correo de acceso<input required autoComplete="email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <button className="button button-primary" disabled={saving}>
-            {saving ? "Guardando…" : "Crear ficha y cuenta nueva"}
-          </button>
-          <button
-            className="button"
-            disabled={saving}
-            onClick={() => void handleCreateWithExistingAccount()}
-            type="button"
-          >
-            Vincular cuenta Supabase existente
-          </button>
-        </form>
-        <section className="page-card">
-          <div className="section-heading"><div><p className="eyebrow">Equipo activo</p><h2>Personal registrado</h2></div></div>
-          {state.staff.length === 0 ? (
-            <p className="empty-state">No hay personal activo.</p>
-          ) : (
-            <div className="staff-list">
-              {state.staff.map((person) => {
-                const active = state.attendance.find(
-                  (record) => record.staffId === person.id && !record.checkOut,
-                );
-                return (
-                  <article
-                    className={`staff-row${expandedStaffId === person.id ? " expanded" : ""}`}
-                    key={person.id}
+      <section className={`staff-layout${selectedStaff ? " staff-layout-detail" : ""}`}>
+        {selectedStaff ? (
+          <section className="page-card staff-directory staff-detail-page">
+            <button
+              className="button staff-back-button"
+              onClick={() => {
+                setSelectedStaffId(null);
+                setEditingStaffId(null);
+                setError(null);
+                setSuccess(null);
+              }}
+              type="button"
+            >
+              <span className="material-symbol" aria-hidden="true">arrow_back</span>
+              Volver al personal
+            </button>
+            <div className="staff-profile-panel">
+              <header className="staff-profile-heading">
+                <div>
+                  <p className="eyebrow">Ficha de personal</p>
+                  <h3>{selectedStaff.name}</h3>
+                </div>
+                <span className={`staff-attendance-status${selectedAttendance ? " on-shift" : ""}`}>
+                  {selectedAttendance ? "En turno" : "Fuera de turno"}
+                </span>
+              </header>
+              <div className="staff-identity">
+                <span>{selectedStaff.contact}</span>
+                <span>{selectedStaff.email || "Sin correo asignado"}</span>
+                {selectedAttendance && (
+                  <span>Desde {formatDate(selectedAttendance.checkIn)}</span>
+                )}
+              </div>
+              <div className="staff-profile-actions">
+                <button
+                  className="button button-small"
+                  onClick={() => editingStaffId === selectedStaff.id
+                    ? setEditingStaffId(null)
+                    : startEditingStaff(selectedStaff)}
+                  type="button"
+                >
+                  {editingStaffId === selectedStaff.id ? "Cancelar edición" : "Editar información"}
+                </button>
+                {selectedStaff.hasAccount ? (
+                  <button
+                    className="button button-small"
+                    onClick={() => void handleResetPassword(selectedStaff.id, selectedStaff.name)}
+                    type="button"
                   >
-                    <button
-                      aria-controls={`staff-details-${person.id}`}
-                      aria-expanded={expandedStaffId === person.id}
-                      className="staff-card-toggle"
-                      id={`staff-toggle-${person.id}`}
-                      onClick={() => setExpandedStaffId((current) => current === person.id ? null : person.id)}
-                      type="button"
-                    >
-                      <span>{person.name}</span>
-                      <span className="material-symbol" aria-hidden="true">
-                        {expandedStaffId === person.id ? "expand_less" : "expand_more"}
-                      </span>
-                    </button>
-                    <div
-                      aria-labelledby={`staff-toggle-${person.id}`}
-                      className="staff-card-details"
-                      hidden={expandedStaffId !== person.id}
-                      id={`staff-details-${person.id}`}
-                    >
-                      <div className="staff-identity">
-                        <span>{person.contact}</span>
-                        <span>{person.email || "Sin correo asignado"}</span>
-                        <span>{active ? `En turno desde ${formatDate(active.checkIn)}` : "Fuera de turno"}</span>
-                      </div>
-                      <div className="staff-actions">
-                        {!person.hasAccount ? (
-                          <>
-                            <label>
-                              Correo de acceso
-                              <input
-                                autoComplete="email"
-                                type="email"
-                                required
-                                value={accountEmails[person.id] ?? person.email ?? ""}
-                                onChange={(event) => setAccountEmails((current) => ({
-                                  ...current,
-                                  [person.id]: event.target.value,
-                                }))}
-                              />
-                            </label>
-                            <button className="button button-small" onClick={() => void handleCreateAccount(person)}>
-                              Crear cuenta nueva
-                            </button>
-                            <button className="button button-small" onClick={() => void handleLinkAccount(person)}>
-                              Vincular cuenta existente
-                            </button>
-                          </>
-                        ) : (
-                          <button className="button button-small" onClick={() => void handleResetPassword(person.id, person.name)}>
-                            Regenerar contraseña
-                          </button>
-                        )}
-                        <button className="button button-small" onClick={() => void toggleAttendance(person.id, person.name)}>
-                          {active ? "Registrar salida" : "Registrar entrada"}
-                        </button>
-                        <button className="button button-small button-danger" onClick={() => void handleRemove(person.id)}>
-                          Desactivar
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+                    Restablecer contraseña
+                  </button>
+                ) : (
+                  <button
+                    className="button button-small"
+                    disabled={!selectedStaff.email}
+                    onClick={() => void handleCreateAccount(selectedStaff)}
+                    type="button"
+                  >
+                    Crear usuario y contraseña
+                  </button>
+                )}
+              </div>
+              {editingStaffId === selectedStaff.id && (
+                <form className="staff-edit-form" onSubmit={(event) => void handleUpdateStaff(event, selectedStaff)}>
+                  <label>
+                    Nombre
+                    <input required maxLength={80} value={editName} onChange={(event) => setEditName(event.target.value)} />
+                  </label>
+                  <label>
+                    Teléfono
+                    <input required maxLength={30} type="tel" value={editContact} onChange={(event) => setEditContact(event.target.value)} />
+                  </label>
+                  <label>
+                    Correo / usuario
+                    <input required={selectedStaff.hasAccount} autoComplete="email" maxLength={254} type="email" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} />
+                  </label>
+                  <button className="button button-small button-primary" disabled={saving}>
+                    {saving ? "Guardando…" : "Guardar cambios"}
+                  </button>
+                </form>
+              )}
+              <section className="staff-report" aria-label={`Historial de trabajo de ${selectedStaff.name}`}>
+                <div className="staff-report-heading">
+                  <div>
+                    <h3>Actividad y horas</h3>
+                    <strong>{reportHours.toFixed(2)} h</strong>
+                  </div>
+                  <button
+                    className="button button-small"
+                    disabled={!reportPeriod}
+                    onClick={() => handleExportStaffReport(selectedStaff)}
+                    type="button"
+                  >
+                    Exportar CSV
+                  </button>
+                </div>
+                <p className="staff-report-note">Las horas se calculan con las asistencias; asignaciones y habitaciones terminadas se muestran aparte.</p>
+                <div className="staff-report-filters">
+                  <label>
+                    Desde
+                    <input type="date" value={reportStart} onChange={(event) => setReportStart(event.target.value)} />
+                  </label>
+                  <label>
+                    Hasta
+                    <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} />
+                  </label>
+                </div>
+                {!reportPeriod ? (
+                  <p className="form-error" role="alert">Selecciona un periodo válido: la fecha inicial debe ser anterior a la final.</p>
+                ) : reportRows.length === 0 ? (
+                  <p className="staff-report-empty">No hay actividad registrada en este periodo.</p>
+                ) : (
+                  <div className="staff-report-table">
+                    <table>
+                      <thead>
+                        <tr><th>Fecha</th><th>Actividad</th><th>Habitación</th><th>Detalle</th><th>Horas</th></tr>
+                      </thead>
+                      <tbody>
+                        {reportRows.map((row, index) => (
+                          <tr key={`${row.category}-${row.timestamp}-${row.room}-${index}`}>
+                            <td>{formatDate(row.timestamp)}</td>
+                            <td>{row.category}</td>
+                            <td>{row.room}</td>
+                            <td>{row.detail}</td>
+                            <td>{row.hours === null ? "—" : row.hours.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
             </div>
-          )}
-        </section>
+          </section>
+        ) : (
+          <>
+            <form className="page-card form-stack" onSubmit={handleCreate}>
+              <div><p className="eyebrow">Nuevo registro</p><h2>Agregar personal</h2></div>
+              <label>Nombre completo<input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
+              <label>Teléfono<input required maxLength={30} type="tel" value={contact} onChange={(event) => setContact(event.target.value)} /></label>
+              <label>Correo de acceso<input required autoComplete="email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+              <button className="button button-primary" disabled={saving}>
+                {saving ? "Guardando…" : "Crear ficha y cuenta nueva"}
+              </button>
+            </form>
+            <section className="page-card staff-directory">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Equipo activo</p>
+                  <h2>Personal registrado</h2>
+                </div>
+                {state.staff.length > 0 && <span className="staff-count">{state.staff.length} personas</span>}
+              </div>
+              {state.staff.length === 0 ? (
+                <p className="empty-state">No hay personal activo.</p>
+              ) : (
+                <nav className="staff-directory-list" aria-label="Seleccionar personal">
+                {state.staff.map((person) => (
+                  <button
+                    className="staff-directory-card"
+                    key={person.id}
+                    onClick={() => {
+                      setSelectedStaffId(person.id);
+                      setEditingStaffId(null);
+                      setError(null);
+                      setSuccess(null);
+                    }}
+                    type="button"
+                  >
+                    {person.name}
+                  </button>
+                ))}
+                </nav>
+              )}
+            </section>
+          </>
+        )}
       </section>
-      <form className="page-card novelty-form" onSubmit={handleNovelty}>
+      {!selectedStaff && <form className="page-card novelty-form" onSubmit={handleNovelty}>
         <div><p className="eyebrow">Registro diario</p><h2>Agregar novedad</h2></div>
         <label>Personal
           <select required value={noveltyStaffId} onChange={(event) => setNoveltyStaffId(event.target.value)}>
@@ -993,8 +1209,8 @@ export function StaffPage() {
           <input required maxLength={180} value={noveltyLabel} onChange={(event) => setNoveltyLabel(event.target.value)} />
         </label>
         <button className="button button-primary">Guardar novedad</button>
-      </form>
-      <section className="page-card">
+      </form>}
+      {!selectedStaff && <section className="page-card">
         <div><p className="eyebrow">Novedades</p><h2>Registro reciente</h2></div>
         {state.novelties.length === 0 ? (
           <p className="empty-state">No hay novedades registradas.</p>
@@ -1005,7 +1221,7 @@ export function StaffPage() {
             ))}
           </ul>
         )}
-      </section>
+      </section>}
     </div>
   );
 }
@@ -1166,6 +1382,78 @@ function formatDate(value: string) {
         dateStyle: "short",
         timeStyle: "short",
       }).format(date);
+}
+
+function getNextCleaningDate(plan: string, lastCleaning: string | null): Date | null {
+  if (!lastCleaning) return null;
+  const date = new Date(lastCleaning);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const normalizedPlan = plan.trim().toLocaleLowerCase("es");
+  if (normalizedPlan === "semanal") {
+    date.setDate(date.getDate() + 7);
+    return date;
+  }
+  if (normalizedPlan === "mensual") {
+    const day = date.getDate();
+    date.setDate(1);
+    date.setMonth(date.getMonth() + 1);
+    const lastDayOfNextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    date.setDate(Math.min(day, lastDayOfNextMonth));
+    return date;
+  }
+  return null;
+}
+
+function getLatestCleaningDate(
+  roomId: string,
+  cleaningWork: RemoteHotelState["cleaningWork"],
+  events: HotelEvent[],
+): string | null {
+  const completedWorkDates = cleaningWork
+    .filter((work) => work.room === roomId)
+    .map((work) => work.time);
+  const completedEventDates = events
+    .filter((event) => (
+      event.room === roomId
+      && event.action.toLocaleLowerCase("es").includes("limpieza finalizada")
+    ))
+    .map((event) => event.time);
+  return [...completedWorkDates, ...completedEventDates]
+    .filter((value) => Number.isFinite(new Date(value).getTime()))
+    .reduce<string | null>((latest, value) => (
+      !latest || new Date(value).getTime() > new Date(latest).getTime() ? value : latest
+    ), null);
+}
+
+function getCurrentAssignmentDate(
+  roomId: string,
+  assignments: RemoteHotelState["roomAssignments"],
+): string | null {
+  return assignments
+    .filter((assignment) => assignment.roomId === roomId && !assignment.unassignedAt)
+    .reduce<string | null>((latest, assignment) => (
+      !latest || new Date(assignment.assignedAt).getTime() > new Date(latest).getTime()
+        ? assignment.assignedAt
+        : latest
+    ), null);
+}
+
+function formatDateOnly(value: Date) {
+  return new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(value);
+}
+
+function localDateValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function csvCell(value: string | number) {
+  let text = String(value);
+  if (/^[\t\r ]*[=+\-@]/.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 function messageOf(error: unknown) {

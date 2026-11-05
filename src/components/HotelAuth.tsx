@@ -8,7 +8,6 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Link } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseClient } from "../lib/supabase";
 import { FreshlyMark } from "./FreshlyBrand";
@@ -182,9 +181,6 @@ export function AdminSignIn() {
         <button className="button button-primary" disabled={submitting}>
           {submitting ? "Ingresando…" : "Ingresar"}
         </button>
-        <Link className="text-link" to="/app/aseo">
-          Acceso para personal de aseo
-        </Link>
       </form>
     </main>
   );
