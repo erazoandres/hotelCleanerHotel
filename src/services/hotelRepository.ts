@@ -96,6 +96,7 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
     guests: {},
     servicePlans: {},
     cleaningDetails: {},
+    scheduledCleaningDates: {},
     assignedCleanings: {},
     roomAssignments: assignmentRows.map((assignment) => ({
       id: assignment.id_asignacion,
@@ -157,6 +158,10 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
     if (room.detalles_limpieza) {
       state.cleaningDetails[room.id_habitacion] = room.detalles_limpieza;
     }
+    if (room.fecha_limpieza_programada) {
+      state.scheduledCleaningDates[room.id_habitacion] =
+        room.fecha_limpieza_programada;
+    }
     if (room.id_personal_asignado) {
       const assignedStaff = staffById.get(room.id_personal_asignado);
       state.assignedCleanings[room.id_habitacion] = {
@@ -180,6 +185,7 @@ export async function updateRoom(
     nombre_huesped?: string | null;
     plan_limpieza?: string | null;
     detalles_limpieza?: string | null;
+    fecha_limpieza_programada?: string | null;
     id_personal_asignado?: string | null;
     tipo_limpieza_asignada?: string | null;
     actualizado_en: string;
@@ -194,6 +200,9 @@ export async function updateRoom(
   if (updates.servicePlan !== undefined) row.plan_limpieza = updates.servicePlan;
   if (updates.cleaningDetails !== undefined) {
     row.detalles_limpieza = updates.cleaningDetails;
+  }
+  if (updates.scheduledCleaningDate !== undefined) {
+    row.fecha_limpieza_programada = updates.scheduledCleaningDate;
   }
   if (updates.assignedCleaner !== undefined) {
     row.id_personal_asignado = updates.assignedCleaner?.staffId ?? null;
@@ -270,6 +279,11 @@ async function invokeStaffAccount<T>(
     body,
   });
   if (error) {
+    if (error.name === "FunctionsFetchError") {
+      throw new Error(
+        "No se pudo conectar con la función de cuentas. Comprueba tu conexión y que staff-account esté desplegada en Supabase.",
+      );
+    }
     let detail = error.message;
     if (error.context instanceof Response) {
       try {
@@ -341,20 +355,6 @@ export async function updateStaff(
     contacto: person.contact.trim(),
     correo: email,
   });
-}
-
-export async function createCleanerAccount(
-  staffId: string,
-  email: string,
-): Promise<string> {
-  const password = createTemporaryPassword();
-  await invokeStaffAccount<{ id_personal: string }>({
-    action: "create_account",
-    id_personal: staffId,
-    correo: email.trim(),
-    password,
-  });
-  return password;
 }
 
 export async function linkCleanerAccount(

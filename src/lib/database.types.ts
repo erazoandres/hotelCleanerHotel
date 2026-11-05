@@ -27,6 +27,7 @@ export interface Database {
           nombre_huesped: string | null;
           plan_limpieza: string | null;
           detalles_limpieza: string | null;
+          fecha_limpieza_programada: string | null;
           id_personal_asignado: string | null;
           tipo_limpieza_asignada: string | null;
           actualizado_en: string;
@@ -109,6 +110,7 @@ export interface Database {
           plan_limpieza: string | null;
           detalles_limpieza: string | null;
           tipo_limpieza_asignada: string | null;
+          fecha_limpieza_programada: string | null;
         }[];
       };
       finalizar_habitacion_aseador: {

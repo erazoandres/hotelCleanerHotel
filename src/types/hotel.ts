@@ -26,6 +26,7 @@ export interface CleanerRoom {
   plan_limpieza: string | null;
   detalles_limpieza: string | null;
   tipo_limpieza_asignada: string | null;
+  fecha_limpieza_programada: string | null;
 }
 
 export interface CleanerAssignment {
@@ -88,6 +89,7 @@ export interface RemoteHotelState {
   guests: Record<string, string>;
   servicePlans: Record<string, string>;
   cleaningDetails: Record<string, string>;
+  scheduledCleaningDates: Record<string, string>;
   assignedCleanings: Record<string, CleanerAssignment>;
   roomAssignments: RoomAssignment[];
   cleaningWork: CleaningWork[];
@@ -102,6 +104,7 @@ export interface RoomUpdate {
   guest?: string | null;
   servicePlan?: string | null;
   cleaningDetails?: string | null;
+  scheduledCleaningDate?: string | null;
   assignedCleaner?: Pick<CleanerAssignment, "staffId"> | null;
   assignedCleaningType?: string | null;
 }

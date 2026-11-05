@@ -19,6 +19,7 @@ const emptyState: RemoteHotelState = {
   guests: {},
   servicePlans: {},
   cleaningDetails: {},
+  scheduledCleaningDates: {},
   assignedCleanings: {},
   roomAssignments: [],
   cleaningWork: [],
@@ -118,17 +119,19 @@ export function useHotelData() {
   return context;
 }
 
-export function HotelDataStatus() {
+export function HotelDataStatus({ showStatus = true }: { showStatus?: boolean }) {
   const { connection, error, loading, refresh } = useHotelData();
-  if (loading && connection === "Conectando") {
+  if (showStatus && loading && connection === "Conectando") {
     return <p className="status-badge">Conectando con Supabase…</p>;
   }
   return (
     <div className="status-stack">
       <div className="status-row">
-        <p className={error ? "status-badge status-error" : "status-badge"}>
-          {connection}
-        </p>
+        {showStatus && (
+          <p className={error ? "status-badge status-error" : "status-badge"}>
+            {connection}
+          </p>
+        )}
         <button className="button button-small" onClick={() => void refresh()}>
           Actualizar
         </button>

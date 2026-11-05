@@ -5,8 +5,6 @@ import { FreshlyMark } from "../components/FreshlyBrand";
 import { HotelDataStatus, useHotelData } from "../components/HotelData";
 import {
   addEvent,
-  addNovelty,
-  createCleanerAccount,
   createStaff,
   finishCleanerRoom,
   getCleanerProfile,
@@ -117,7 +115,7 @@ export function DashboardPage() {
           <span className="hero-session">Conectado como {session?.user.email ?? "Administrador"}</span>
         </div>
       </section>
-      <div className="dashboard-status"><HotelDataStatus /></div>
+      <div className="dashboard-status"><HotelDataStatus showStatus={false} /></div>
       <section className="metric-grid" aria-label="Resumen">
         {counts.map((item) => (
           <article className={`metric-card metric-${item.tone}`} key={item.label}>
@@ -169,11 +167,13 @@ function RoomCard({ roomId }: { roomId: string }) {
   const roomGuest = state.guests[roomId] ?? "";
   const roomServicePlan = state.servicePlans[roomId] ?? "";
   const roomCleaningDetails = state.cleaningDetails[roomId] ?? "";
+  const roomScheduledCleaningDate = state.scheduledCleaningDates[roomId] ?? "";
   const assignment = state.assignedCleanings[roomId];
   const [status, setStatus] = useState(roomStatus);
   const [guest, setGuest] = useState(roomGuest);
   const [servicePlan, setServicePlan] = useState(roomServicePlan);
   const [cleaningDetails, setCleaningDetails] = useState(roomCleaningDetails);
+  const [scheduledCleaningDate, setScheduledCleaningDate] = useState(roomScheduledCleaningDate);
   const [staffId, setStaffId] = useState(assignment?.staffId ?? "");
   const [cleaningType, setCleaningType] = useState(
     assignment?.cleaningType ?? "",
@@ -187,9 +187,10 @@ function RoomCard({ roomId }: { roomId: string }) {
     setGuest(roomGuest);
     setServicePlan(roomServicePlan);
     setCleaningDetails(roomCleaningDetails);
+    setScheduledCleaningDate(roomScheduledCleaningDate);
     setStaffId(assignment?.staffId ?? "");
     setCleaningType(assignment?.cleaningType ?? "");
-  }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, assignment?.staffId, assignment?.cleaningType]);
+  }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, roomScheduledCleaningDate, assignment?.staffId, assignment?.cleaningType]);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -203,6 +204,7 @@ function RoomCard({ roomId }: { roomId: string }) {
         guest: guest.trim() || null,
         servicePlan: servicePlan.trim() || null,
         cleaningDetails: cleaningDetails.trim() || null,
+        scheduledCleaningDate: scheduledCleaningDate || null,
         assignedCleaner: staffId ? { staffId } : null,
         assignedCleaningType: staffId ? cleaningType.trim() || null : null,
       });
@@ -271,6 +273,14 @@ function RoomCard({ roomId }: { roomId: string }) {
               <option key={plan} value={plan}>{plan}</option>
             ))}
           </select>
+        </label>
+        <label>
+          Fecha de limpieza
+          <input
+            type="date"
+            value={scheduledCleaningDate}
+            onChange={(event) => setScheduledCleaningDate(event.target.value)}
+          />
         </label>
         <label>
           Personal asignado
@@ -540,6 +550,8 @@ export function CleaningPage() {
   const rooms = Object.keys(state.rooms)
     .filter((room) => ["pending", "cleaning"].includes(state.rooms[room]))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const pendingCount = rooms.filter((room) => state.rooms[room] === "pending").length;
+  const activeCount = rooms.length - pendingCount;
 
   async function startCleaning(roomId: string) {
     setBusyRoom(roomId);
@@ -568,45 +580,54 @@ export function CleaningPage() {
   }
 
   return (
-    <div className="page-stack">
-      <div className="page-heading">
-        <div>
+    <div className="page-stack cleaning-page">
+      <header className="cleaning-header">
+        <div className="cleaning-title">
           <p className="eyebrow">Operación diaria</p>
           <h1>Limpiezas</h1>
           <p className="page-description">Una vista clara de lo que está listo y lo que necesita atención.</p>
         </div>
-        <HotelDataStatus />
-      </div>
-      <div className="cleaning-overview" aria-label="Resumen de limpiezas">
-        <span><i className="overview-dot overview-pending" /> {rooms.filter((room) => state.rooms[room] === "pending").length} pendientes</span>
-        <span><i className="overview-dot overview-active" /> {rooms.filter((room) => state.rooms[room] === "cleaning").length} en curso</span>
-      </div>
+        <div className="cleaning-connection"><HotelDataStatus showStatus={false} /></div>
+      </header>
+      <section className="cleaning-overview" aria-label="Resumen de limpiezas">
+        <div className="cleaning-overview-title">
+          <strong>Seguimiento de hoy</strong>
+          <span>{rooms.length} {rooms.length === 1 ? "habitación" : "habitaciones"}</span>
+        </div>
+        <div className="cleaning-overview-stats">
+          <span><i className="overview-dot overview-pending" /><strong>{pendingCount}</strong> pendientes</span>
+          <span><i className="overview-dot overview-active" /><strong>{activeCount}</strong> en curso</span>
+        </div>
+      </section>
       <ActionMessage error={error} success={null} />
       {rooms.length === 0 ? (
         <p className="empty-state">No hay limpiezas pendientes o en curso.</p>
       ) : (
-        <section className="room-grid">
+        <section className="room-grid cleaning-room-grid" aria-label="Habitaciones por atender">
           {rooms.map((roomId) => {
             const assignment = state.assignedCleanings[roomId];
             const status = state.rooms[roomId];
             const servicePlan = state.servicePlans[roomId] ?? "";
+            const scheduledDate = state.scheduledCleaningDates[roomId];
             const latestCleaning = getLatestCleaningDate(roomId, state.cleaningWork, state.events);
             const scheduleStart = latestCleaning ?? getCurrentAssignmentDate(roomId, state.roomAssignments);
             const nextCleaningDate = getNextCleaningDate(servicePlan, scheduleStart);
             return (
-              <article className="room-card" key={roomId}>
+              <article className="room-card cleaning-room-card" key={roomId}>
                 <div className="room-card-heading">
                   <div><p className="eyebrow">Habitación</p><h2>{roomId}</h2></div>
                   <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
                 </div>
-                <dl className="details-list">
+                <dl className="details-list cleaning-details">
                   <div><dt>Personal</dt><dd>{assignment?.staffName || "Sin asignar"}</dd></div>
                   <div><dt>Tipo</dt><dd>{assignment?.cleaningType || "No especificado"}</dd></div>
                   <div><dt>Plan</dt><dd>{servicePlan || "No especificado"}</dd></div>
                   <div>
                     <dt>Próxima limpieza</dt>
                     <dd>
-                      {servicePlan.trim().toLocaleLowerCase("es") === "premium"
+                      {scheduledDate
+                        ? formatDateOnly(new Date(`${scheduledDate}T00:00:00`))
+                        : servicePlan.trim().toLocaleLowerCase("es") === "premium"
                         ? "A solicitud"
                         : nextCleaningDate
                           ? formatDateOnly(nextCleaningDate)
@@ -625,6 +646,7 @@ export function CleaningPage() {
                     disabled={busyRoom === roomId}
                     onClick={() => void startCleaning(roomId)}
                   >
+                    <span className="material-symbol" aria-hidden="true">play_arrow</span>
                     {busyRoom === roomId ? "Actualizando…" : "Iniciar limpieza"}
                   </button>
                 )}
@@ -703,6 +725,8 @@ export function StaffPage() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
+  const [staffFilter, setStaffFilter] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -717,8 +741,6 @@ export function StaffPage() {
   });
   const [reportEnd, setReportEnd] = useState(() => localDateValue(new Date()));
   const [reportNow, setReportNow] = useState(() => Date.now());
-  const [noveltyStaffId, setNoveltyStaffId] = useState("");
-  const [noveltyLabel, setNoveltyLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -817,6 +839,14 @@ export function StaffPage() {
     state.roomAssignments,
   ]);
   const reportHours = reportRows.reduce((total, row) => total + (row.hours ?? 0), 0);
+  const visibleStaff = state.staff.filter((person) => {
+    const query = staffFilter.trim().toLocaleLowerCase("es");
+    return !query || [person.name, person.contact, person.email ?? ""]
+      .some((value) => value.toLocaleLowerCase("es").includes(query));
+  });
+  const staffOnShift = state.staff.filter((person) =>
+    state.attendance.some((record) => record.staffId === person.id && !record.checkOut),
+  ).length;
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -837,45 +867,13 @@ export function StaffPage() {
       setName("");
       setContact("");
       setEmail("");
+      setShowCreateForm(false);
       setSuccess("Registro creado. Copia la clave temporal; solo se mostrará una vez.");
       await refresh();
     } catch (createError: unknown) {
       setError(messageOf(createError));
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleNovelty(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!noveltyStaffId) {
-      setError("Selecciona una persona para registrar la novedad.");
-      return;
-    }
-    const person = state.staff.find((member) => member.id === noveltyStaffId);
-    if (!person) {
-      setError("La persona seleccionada ya no está disponible.");
-      return;
-    }
-    setError(null);
-    setSuccess(null);
-    try {
-      await addNovelty({
-        id: crypto.randomUUID(),
-        staffId: person.id,
-        staffName: person.name,
-        date: new Date().toISOString().slice(0, 10),
-        type: "nota",
-        label: noveltyLabel.trim(),
-        notes: "",
-        extraMinutes: null,
-        createdAt: new Date().toISOString(),
-      });
-      setNoveltyLabel("");
-      setSuccess("Novedad registrada.");
-      await refresh();
-    } catch (noveltyError: unknown) {
-      setError(messageOf(noveltyError));
     }
   }
 
@@ -892,26 +890,6 @@ export function StaffPage() {
       setSuccess("Nueva contraseña temporal generada. La anterior ya no es válida.");
     } catch (resetError: unknown) {
       setError(messageOf(resetError));
-    }
-  }
-
-  async function handleCreateAccount(person: StaffMember) {
-    const accountEmail = person.email?.trim().toLowerCase();
-    if (!accountEmail) {
-      setError("Esta ficha no tiene un correo asignado.");
-      return;
-    }
-    setError(null);
-    setSuccess(null);
-    try {
-      const password = await createCleanerAccount(person.id, accountEmail);
-      setCredentialUsername(accountEmail);
-      setCredentialName(`${person.name} (${accountEmail})`);
-      setNewPassword(password);
-      setSuccess("Acceso creado. Comparte el correo y la contraseña temporal de forma segura.");
-      await refresh();
-    } catch (accountError: unknown) {
-      setError(messageOf(accountError));
     }
   }
 
@@ -980,7 +958,7 @@ export function StaffPage() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack staff-page">
       <div className="page-heading">
         <div>
           <p className="eyebrow">Equipo</p>
@@ -988,10 +966,10 @@ export function StaffPage() {
           <p className="page-description">
             {selectedStaff
               ? "Gestiona sus datos, acceso y actividad."
-              : "Un equipo cuidado hace que cada huésped se sienta en casa."}
+              : "Administra turnos, accesos y novedades desde un solo lugar."}
           </p>
         </div>
-        <HotelDataStatus />
+        <HotelDataStatus showStatus={false} />
       </div>
       <ActionMessage error={error} success={success} />
       {newPassword && (
@@ -1062,22 +1040,13 @@ export function StaffPage() {
                 >
                   {editingStaffId === selectedStaff.id ? "Cancelar edición" : "Editar información"}
                 </button>
-                {selectedStaff.hasAccount ? (
+                {selectedStaff.hasAccount && (
                   <button
                     className="button button-small"
                     onClick={() => void handleResetPassword(selectedStaff.id, selectedStaff.name)}
                     type="button"
                   >
                     Restablecer contraseña
-                  </button>
-                ) : (
-                  <button
-                    className="button button-small"
-                    disabled={!selectedStaff.email}
-                    onClick={() => void handleCreateAccount(selectedStaff)}
-                    type="button"
-                  >
-                    Crear usuario y contraseña
                   </button>
                 )}
               </div>
@@ -1154,74 +1123,148 @@ export function StaffPage() {
             </div>
           </section>
         ) : (
-          <>
-            <form className="page-card form-stack" onSubmit={handleCreate}>
-              <div><p className="eyebrow">Nuevo registro</p><h2>Agregar personal</h2></div>
-              <label>Nombre completo<input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
-              <label>Teléfono<input required maxLength={30} type="tel" value={contact} onChange={(event) => setContact(event.target.value)} /></label>
-              <label>Correo de acceso<input required autoComplete="email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-              <button className="button button-primary" disabled={saving}>
-                {saving ? "Guardando…" : "Crear ficha y cuenta nueva"}
-              </button>
-            </form>
-            <section className="page-card staff-directory">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Equipo activo</p>
-                  <h2>Personal registrado</h2>
+          <div className="staff-hub">
+            <div className="staff-hub-main">
+            {showCreateForm && (
+              <form className="page-card staff-create-form" onSubmit={handleCreate}>
+                <div className="staff-create-heading">
+                  <div>
+                    <p className="eyebrow">Nuevo registro</p>
+                    <h2>Agregar personal</h2>
+                  </div>
+                  <button
+                    className="button staff-close-create"
+                    onClick={() => setShowCreateForm(false)}
+                    type="button"
+                    aria-label="Cerrar formulario"
+                  >
+                    <span className="material-symbol" aria-hidden="true">close</span>
+                  </button>
                 </div>
-                {state.staff.length > 0 && <span className="staff-count">{state.staff.length} personas</span>}
+                <div className="staff-create-fields">
+                  <label>Nombre completo<input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
+                  <label>Teléfono<input required maxLength={30} type="tel" value={contact} onChange={(event) => setContact(event.target.value)} /></label>
+                  <label>Correo de acceso<input required autoComplete="email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+                  <button className="button button-primary" disabled={saving}>
+                    {saving ? "Guardando…" : "Crear ficha y cuenta"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <section className="page-card staff-directory staff-directory-main">
+              <div className="staff-directory-toolbar">
+                <div>
+                  <p className="eyebrow">Directorio</p>
+                  <h2>Tu equipo</h2>
+                  <p className="staff-directory-subtitle">
+                    {state.staff.length === 1 ? "1 persona registrada" : `${state.staff.length} personas registradas`}
+                  </p>
+                </div>
+                <div className="staff-directory-tools">
+                  <label className="staff-search">
+                    <span className="material-symbol" aria-hidden="true">search</span>
+                    <span className="sr-only">Buscar personal</span>
+                    <input
+                      type="search"
+                      value={staffFilter}
+                      onChange={(event) => setStaffFilter(event.target.value)}
+                      placeholder="Buscar por nombre, teléfono o correo"
+                    />
+                  </label>
+                  <button
+                    className="button button-primary staff-add-button"
+                    onClick={() => setShowCreateForm((open) => !open)}
+                    type="button"
+                    aria-expanded={showCreateForm}
+                  >
+                    <span className="material-symbol" aria-hidden="true">{showCreateForm ? "close" : "add"}</span>
+                    {showCreateForm ? "Cerrar" : "Agregar personal"}
+                  </button>
+                </div>
               </div>
               {state.staff.length === 0 ? (
-                <p className="empty-state">No hay personal activo.</p>
+                <div className="staff-directory-empty">
+                  <span className="material-symbol" aria-hidden="true">person_add</span>
+                  <strong>Aún no hay personal registrado</strong>
+                  <span>Agrega a tu equipo para empezar a gestionar sus turnos y actividad.</span>
+                  <button className="button button-primary" onClick={() => setShowCreateForm(true)} type="button">
+                    Agregar primera persona
+                  </button>
+                </div>
+              ) : visibleStaff.length === 0 ? (
+                <p className="staff-search-empty">No encontramos personas con “{staffFilter}”. Prueba con otro dato.</p>
               ) : (
                 <nav className="staff-directory-list" aria-label="Seleccionar personal">
-                {state.staff.map((person) => (
-                  <button
-                    className="staff-directory-card"
-                    key={person.id}
-                    onClick={() => {
-                      setSelectedStaffId(person.id);
-                      setEditingStaffId(null);
-                      setError(null);
-                      setSuccess(null);
-                    }}
-                    type="button"
-                  >
-                    {person.name}
-                  </button>
-                ))}
+                  {visibleStaff.map((person) => {
+                    const onShift = state.attendance.some(
+                      (record) => record.staffId === person.id && !record.checkOut,
+                    );
+                    return (
+                      <button
+                        className="staff-directory-card"
+                        key={person.id}
+                        onClick={() => {
+                          setSelectedStaffId(person.id);
+                          setEditingStaffId(null);
+                          setError(null);
+                          setSuccess(null);
+                        }}
+                        type="button"
+                      >
+                        <span className="staff-card-avatar" aria-hidden="true">
+                          {person.name.trim().charAt(0).toLocaleUpperCase("es")}
+                        </span>
+                        <span className="staff-card-details">
+                          <strong>{person.name}</strong>
+                          <span><span className="material-symbol" aria-hidden="true">call</span>{person.contact}</span>
+                          <span><span className="material-symbol" aria-hidden="true">mail</span>{person.email || "Sin correo asignado"}</span>
+                        </span>
+                        <span className={`staff-card-status${onShift ? " on-shift" : ""}`}>
+                          <span aria-hidden="true" />
+                          {onShift ? "En turno" : "Fuera de turno"}
+                        </span>
+                        <span className="material-symbol staff-card-arrow" aria-hidden="true">arrow_forward</span>
+                      </button>
+                    );
+                  })}
                 </nav>
               )}
             </section>
-          </>
+            </div>
+
+            <aside className="staff-hub-aside">
+              <section className="staff-overview" aria-label="Resumen del equipo">
+                <div className="staff-overview-heading">
+                  <p className="eyebrow">Resumen del equipo</p>
+                  <span className="material-symbol" aria-hidden="true">insights</span>
+                </div>
+                <div className="staff-overview-item">
+                  <span className="staff-overview-icon" aria-hidden="true">
+                    <span className="material-symbol">groups</span>
+                  </span>
+                  <span><strong>{state.staff.length}</strong><small>Personas activas</small></span>
+                </div>
+                <div className="staff-overview-item">
+                  <span className="staff-overview-icon staff-overview-icon-shift" aria-hidden="true">
+                    <span className="material-symbol">schedule</span>
+                  </span>
+                  <span><strong>{staffOnShift}</strong><small>En turno ahora</small></span>
+                </div>
+                <div className="staff-overview-item">
+                  <span className="staff-overview-icon staff-overview-icon-access" aria-hidden="true">
+                    <span className="material-symbol">verified_user</span>
+                  </span>
+                  <span>
+                    <strong>{state.staff.filter((person) => person.hasAccount).length}</strong>
+                    <small>Con acceso activo</small>
+                  </span>
+                </div>
+              </section>
+            </aside>
+          </div>
         )}
       </section>
-      {!selectedStaff && <form className="page-card novelty-form" onSubmit={handleNovelty}>
-        <div><p className="eyebrow">Registro diario</p><h2>Agregar novedad</h2></div>
-        <label>Personal
-          <select required value={noveltyStaffId} onChange={(event) => setNoveltyStaffId(event.target.value)}>
-            <option value="">Seleccionar…</option>
-            {state.staff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-          </select>
-        </label>
-        <label>Descripción
-          <input required maxLength={180} value={noveltyLabel} onChange={(event) => setNoveltyLabel(event.target.value)} />
-        </label>
-        <button className="button button-primary">Guardar novedad</button>
-      </form>}
-      {!selectedStaff && <section className="page-card">
-        <div><p className="eyebrow">Novedades</p><h2>Registro reciente</h2></div>
-        {state.novelties.length === 0 ? (
-          <p className="empty-state">No hay novedades registradas.</p>
-        ) : (
-          <ul className="novelty-list">
-            {state.novelties.slice(0, 12).map((item) => (
-              <li key={item.id}><strong>{item.staffName}</strong><span>{item.label}</span><time>{item.date}</time></li>
-            ))}
-          </ul>
-        )}
-      </section>}
     </div>
   );
 }

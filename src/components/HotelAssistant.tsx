@@ -9,11 +9,6 @@ type ChatMessage = {
   error?: boolean;
 };
 
-const suggestions = [
-  "Habitaciones ocupadas",
-  "Habitaciones pendientes",
-];
-
 async function readFunctionError(response: Response): Promise<{ error?: string; code?: string } | null> {
   try {
     return await response.clone().json() as { error?: string; code?: string };
@@ -133,10 +128,16 @@ export default function HotelAssistant() {
       {open && (
         <section className="assistant-panel" aria-label="Asistente de operaciones">
           <header className="assistant-header">
-            <div>
+            <div className="assistant-heading">
               <span className="assistant-avatar material-symbol" aria-hidden="true">auto_awesome</span>
-              <strong>Asistente del hotel</strong>
-              <span>Consultas operativas con IA</span>
+              <div className="assistant-heading-copy">
+                <strong>Asistente del hotel</strong>
+                <span>Tu apoyo para la operación diaria</span>
+                <span className="assistant-presence">
+                  <span aria-hidden="true" />
+                  Disponible ahora
+                </span>
+              </div>
             </div>
             <button
               className="assistant-close"
@@ -158,23 +159,15 @@ export default function HotelAssistant() {
                   : item.content}
               </div>
             ))}
-            {sending && <div className="assistant-message assistant-pending">Consultando…</div>}
+            {sending && (
+              <div className="assistant-message assistant-pending" role="status" aria-label="El asistente está escribiendo">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
             <div ref={endRef} />
           </div>
-          {messages.length === 1 && (
-            <div className="assistant-suggestions">
-              {suggestions.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  disabled={sending}
-                  onClick={() => void sendMessage(suggestion)}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          )}
           <form className="assistant-form" onSubmit={handleSubmit}>
             <input
               aria-label="Pregunta sobre el hotel"
@@ -184,9 +177,14 @@ export default function HotelAssistant() {
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
             />
-            <button className="button button-primary" disabled={sending || !prompt.trim()}>
-              Enviar
-            </button>
+              <button
+                className="button button-primary"
+                disabled={sending || !prompt.trim()}
+                aria-label="Enviar mensaje"
+                title="Enviar mensaje"
+              >
+                <span className="material-symbol" aria-hidden="true">arrow_upward</span>
+              </button>
           </form>
         </section>
       )}

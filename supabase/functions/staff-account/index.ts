@@ -262,10 +262,10 @@ Deno.serve(async (request) => {
     if (action === "create_account") {
       if (!staff.activo) return response({ error: "No se puede crear acceso para personal inactivo." }, 409);
       if (staff.auth_user_id) return response({ error: "Esta ficha ya tiene una cuenta de acceso." }, 409);
-      const email = typeof input.correo === "string" ? input.correo.trim().toLowerCase() : "";
+      const email = typeof staff.correo === "string" ? staff.correo.trim().toLowerCase() : "";
       const password = typeof input.password === "string" ? input.password : "";
       if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return response({ error: "Escribe un correo electrónico válido." }, 400);
+        return response({ error: "La ficha debe tener un correo electrónico válido para crear el acceso." }, 400);
       }
       if (password.length < 12 || password.length > 128) {
         return response({ error: "La contraseña temporal debe tener entre 12 y 128 caracteres." }, 400);

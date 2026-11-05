@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.habitaciones (
   ),
   nombre_huesped TEXT,
   plan_limpieza TEXT,
+  fecha_limpieza_programada DATE,
   detalles_limpieza TEXT,
   id_personal_asignado TEXT REFERENCES public.personal(id_personal) ON DELETE SET NULL,
   tipo_limpieza_asignada TEXT,
@@ -82,6 +83,8 @@ ALTER TABLE public.habitaciones
   ADD COLUMN IF NOT EXISTS nombre_huesped TEXT;
 ALTER TABLE public.habitaciones
   ADD COLUMN IF NOT EXISTS plan_limpieza TEXT;
+ALTER TABLE public.habitaciones
+  ADD COLUMN IF NOT EXISTS fecha_limpieza_programada DATE;
 ALTER TABLE public.habitaciones
   ADD COLUMN IF NOT EXISTS detalles_limpieza TEXT;
 ALTER TABLE public.habitaciones
@@ -231,7 +234,8 @@ RETURNS TABLE (
   nombre_huesped TEXT,
   plan_limpieza TEXT,
   detalles_limpieza TEXT,
-  tipo_limpieza_asignada TEXT
+  tipo_limpieza_asignada TEXT,
+  fecha_limpieza_programada DATE
 )
 LANGUAGE SQL
 STABLE
@@ -239,7 +243,8 @@ SECURITY DEFINER
 SET search_path = pg_catalog, public, auth, pg_temp
 AS $$
   SELECT h.id_habitacion, h.estado, h.nombre_huesped, h.plan_limpieza,
-         h.detalles_limpieza, h.tipo_limpieza_asignada
+         h.detalles_limpieza, h.tipo_limpieza_asignada,
+         h.fecha_limpieza_programada
   FROM public.personal p
   JOIN public.habitaciones h ON h.id_personal_asignado = p.id_personal
   WHERE p.auth_user_id = auth.uid()
@@ -387,6 +392,7 @@ REVOKE ALL ON public.personal, public.habitaciones,
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.personal, public.habitaciones,
   public.asignaciones_habitacion, public.asistencias, public.eventos,
   public.trabajos_limpieza, public.novedades TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.personal TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE
   public.asignaciones_habitacion_id_asignacion_seq,
   public.eventos_id_evento_seq,
