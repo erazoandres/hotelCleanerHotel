@@ -80,6 +80,7 @@ export function DashboardPage() {
   const { state, refresh } = useHotelData();
   const { session } = useHotelAuth();
   const [matrixFilter, setMatrixFilter] = useState<"all" | "free" | "occupied" | "pending" | "cleaning" | "finished">("all");
+  const [selectedFloor, setSelectedFloor] = useState<string>("all");
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
   const [selectedModalRoom, setSelectedModalRoom] = useState<string | null>(null);
   const [modalBusy, setModalBusy] = useState(false);
@@ -139,7 +140,9 @@ export function DashboardPage() {
   );
   const totalRooms = roomIds.length;
   const occupiedCount = roomIds.filter((id) => state.rooms[id] === "occupied").length;
-  const freeCount = roomIds.filter((id) => state.rooms[id] === "free" || state.rooms[id] === "finished").length;
+  const freeOnlyCount = roomIds.filter((id) => state.rooms[id] === "free").length;
+  const finishedCount = roomIds.filter((id) => state.rooms[id] === "finished").length;
+  const freeCount = freeOnlyCount + finishedCount;
   const pendingCount = roomIds.filter((id) => state.rooms[id] === "pending").length;
   const cleaningCount = roomIds.filter((id) => state.rooms[id] === "cleaning").length;
   const turnoverCount = pendingCount + cleaningCount;
@@ -534,151 +537,308 @@ export function DashboardPage() {
 
         {/* Widget 2: Spatial Floor Map Matrix */}
         <article className="dashboard-card dashboard-matrix-card">
-          <div className="dashboard-card-head">
-            <div>
-              <p className="dashboard-widget-eyebrow">Mapa Espacial</p>
-              <h2 className="dashboard-widget-title">Distribución por Pisos</h2>
+          <div className="dashboard-card-head matrix-card-head">
+            <div className="matrix-head-info">
+              <div className="matrix-title-row">
+                <span className="matrix-head-icon" aria-hidden="true">
+                  <span className="material-symbol">apartment</span>
+                </span>
+                <div>
+                  <p className="dashboard-widget-eyebrow">Control Espacial en Tiempo Real</p>
+                  <h2 className="dashboard-widget-title">Distribución por Pisos</h2>
+                </div>
+              </div>
+              <div className="matrix-head-telemetry">
+                <span className="matrix-telemetry-chip">
+                  <span className="material-symbol" aria-hidden="true">domain</span>
+                  <strong>{Object.keys(floors).length}</strong> Pisos
+                </span>
+                <span className="matrix-telemetry-chip">
+                  <span className="material-symbol" aria-hidden="true">meeting_room</span>
+                  <strong>{totalRooms}</strong> Habitaciones
+                </span>
+                <span className="matrix-telemetry-chip highlight">
+                  <span className="matrix-pulse-dot-mini" aria-hidden="true" />
+                  <strong>{occupancyRate}%</strong> Ocupación Global
+                </span>
+              </div>
             </div>
-            <div className="dashboard-matrix-filters" role="tablist">
-              <button
-                type="button"
-                className={`matrix-filter-pill ${matrixFilter === "all" ? "active" : ""}`}
-                onClick={() => setMatrixFilter("all")}
-              >
-                Todas ({totalRooms})
-              </button>
-              <button
-                type="button"
-                className={`matrix-filter-pill ${matrixFilter === "free" ? "active" : ""}`}
-                onClick={() => setMatrixFilter("free")}
-              >
-                Libres
-              </button>
-              <button
-                type="button"
-                className={`matrix-filter-pill ${matrixFilter === "occupied" ? "active" : ""}`}
-                onClick={() => setMatrixFilter("occupied")}
-              >
-                Ocupadas
-              </button>
-              <button
-                type="button"
-                className={`matrix-filter-pill ${matrixFilter === "pending" ? "active" : ""}`}
-                onClick={() => setMatrixFilter("pending")}
-              >
-                Pendiente
-              </button>
-              <button
-                type="button"
-                className={`matrix-filter-pill ${matrixFilter === "cleaning" ? "active" : ""}`}
-                onClick={() => setMatrixFilter("cleaning")}
-              >
-                En limpieza
-              </button>
-              <button
-                type="button"
-                className={`matrix-filter-pill ${matrixFilter === "finished" ? "active" : ""}`}
-                onClick={() => setMatrixFilter("finished")}
-              >
-                Finalizada
-              </button>
+
+            {/* Controls: Floor Selector + Status Filter Pills */}
+            <div className="matrix-controls-wrapper">
+              {Object.keys(floors).length > 1 && (
+                <div className="matrix-floor-tabs" role="tablist" aria-label="Filtro por piso">
+                  <button
+                    type="button"
+                    className={`matrix-tab-btn ${selectedFloor === "all" ? "active" : ""}`}
+                    onClick={() => setSelectedFloor("all")}
+                  >
+                    Todos ({Object.keys(floors).length})
+                  </button>
+                  {Object.keys(floors).map((fl) => (
+                    <button
+                      key={fl}
+                      type="button"
+                      className={`matrix-tab-btn ${selectedFloor === fl ? "active" : ""}`}
+                      onClick={() => setSelectedFloor(fl)}
+                    >
+                      {fl}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="dashboard-matrix-filters" role="tablist" aria-label="Filtro por estado">
+                <button
+                  type="button"
+                  className={`matrix-filter-pill ${matrixFilter === "all" ? "active" : ""}`}
+                  onClick={() => setMatrixFilter("all")}
+                >
+                  Todas ({totalRooms})
+                </button>
+                <button
+                  type="button"
+                  className={`matrix-filter-pill filter-free ${matrixFilter === "free" ? "active" : ""}`}
+                  onClick={() => setMatrixFilter("free")}
+                >
+                  <span className="matrix-filter-dot dot-free" aria-hidden="true" />
+                  Libres ({freeOnlyCount})
+                </button>
+                <button
+                  type="button"
+                  className={`matrix-filter-pill filter-occupied ${matrixFilter === "occupied" ? "active" : ""}`}
+                  onClick={() => setMatrixFilter("occupied")}
+                >
+                  <span className="matrix-filter-dot dot-occupied" aria-hidden="true" />
+                  Ocupadas ({occupiedCount})
+                </button>
+                <button
+                  type="button"
+                  className={`matrix-filter-pill filter-pending ${matrixFilter === "pending" ? "active" : ""}`}
+                  onClick={() => setMatrixFilter("pending")}
+                >
+                  <span className="matrix-filter-dot dot-pending" aria-hidden="true" />
+                  Pendiente ({pendingCount})
+                </button>
+                <button
+                  type="button"
+                  className={`matrix-filter-pill filter-cleaning ${matrixFilter === "cleaning" ? "active" : ""}`}
+                  onClick={() => setMatrixFilter("cleaning")}
+                >
+                  <span className="matrix-filter-dot dot-cleaning" aria-hidden="true" />
+                  En limpieza ({cleaningCount})
+                </button>
+                <button
+                  type="button"
+                  className={`matrix-filter-pill filter-finished ${matrixFilter === "finished" ? "active" : ""}`}
+                  onClick={() => setMatrixFilter("finished")}
+                >
+                  <span className="matrix-filter-dot dot-finished" aria-hidden="true" />
+                  Finalizada ({finishedCount})
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="dashboard-matrix-content">
-            {Object.entries(floors).map(([floorLabel, fRooms]) => {
-              const visibleRoomsInFloor = fRooms.filter(matrixFilterFn);
-              return (
-                <div className="matrix-floor-block" key={floorLabel}>
-                  <div className="matrix-floor-heading">
-                    <span className="matrix-floor-badge">{floorLabel}</span>
-                    <span className="matrix-floor-meta">{visibleRoomsInFloor.length} de {fRooms.length} habitaciones</span>
-                  </div>
-                  <div className="matrix-room-tiles">
-                    {fRooms.map((roomId) => {
-                      const st = state.rooms[roomId] || "free";
-                      const isVisible = matrixFilterFn(roomId);
-                      const isHovered = hoveredRoom === roomId;
-                      const isSelected = selectedModalRoom === roomId;
-                      const guest = state.guests[roomId];
-                      const cleaner = state.assignedCleanings[roomId]?.staffName;
-                      const plan = state.servicePlans[roomId];
-                      const isVip = isVipRoom(plan);
-                      const icon = getRoomStatusIcon(st);
+            {Object.entries(floors)
+              .filter(([floorLabel]) => (selectedFloor === "all" ? true : floorLabel === selectedFloor))
+              .map(([floorLabel, fRooms]) => {
+                const visibleRoomsInFloor = fRooms.filter(matrixFilterFn);
+                const floorTotal = fRooms.length;
+                const floorOcc = fRooms.filter((id) => state.rooms[id] === "occupied").length;
+                const floorFree = fRooms.filter(
+                  (id) => state.rooms[id] === "free" || state.rooms[id] === "finished",
+                ).length;
+                const floorTurnover = fRooms.filter(
+                  (id) => state.rooms[id] === "pending" || state.rooms[id] === "cleaning",
+                ).length;
+                const floorOccPct = floorTotal > 0 ? Math.round((floorOcc / floorTotal) * 100) : 0;
+                const floorFreePct = floorTotal > 0 ? Math.round((floorFree / floorTotal) * 100) : 0;
+                const floorTurnoverPct = floorTotal > 0 ? Math.max(0, 100 - floorOccPct - floorFreePct) : 0;
 
-                      return (
-                        <div
-                          className={`matrix-room-tile tile-${st} ${isVisible ? "" : "is-dimmed"} ${isHovered ? "is-hovered" : ""} ${isSelected ? "is-selected" : ""}`}
-                          key={roomId}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`Habitación ${roomId}, estado ${statusLabels[st] || st}`}
-                          onClick={() => setSelectedModalRoom(roomId)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setSelectedModalRoom(roomId);
-                            }
-                          }}
-                          onMouseEnter={() => setHoveredRoom(roomId)}
-                          onMouseLeave={() => setHoveredRoom(null)}
-                        >
-                          {/* Top: Icon Badge & Live status dot / VIP */}
-                          <div className="matrix-tile-top">
-                            <div className="matrix-tile-icon-box">
-                              <span className="material-symbol" aria-hidden="true">{icon}</span>
+                return (
+                  <div className="matrix-floor-block" key={floorLabel}>
+                    <div className="matrix-floor-heading">
+                      <div className="matrix-floor-left">
+                        <span className="matrix-floor-icon-wrap" aria-hidden="true">
+                          <span className="material-symbol">layers</span>
+                        </span>
+                        <div>
+                          <span className="matrix-floor-badge">{floorLabel}</span>
+                          <span className="matrix-floor-meta">
+                            {visibleRoomsInFloor.length} de {floorTotal} habitaciones
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Graphic Floor Telemetry Bar */}
+                      <div
+                        className="matrix-floor-telemetry"
+                        title={`Piso: ${floorOcc} ocupadas (${floorOccPct}%), ${floorFree} disponibles (${floorFreePct}%), ${floorTurnover} en rotación (${floorTurnoverPct}%)`}
+                      >
+                        <div className="matrix-floor-bar-track" aria-hidden="true">
+                          <div className="matrix-floor-bar-seg seg-occ" style={{ width: `${floorOccPct}%` }} />
+                          <div className="matrix-floor-bar-seg seg-turn" style={{ width: `${floorTurnoverPct}%` }} />
+                          <div className="matrix-floor-bar-seg seg-free" style={{ width: `${floorFreePct}%` }} />
+                        </div>
+                        <span className="matrix-floor-occ-rate">{floorOccPct}% Ocupado</span>
+                      </div>
+                    </div>
+
+                    <div className="matrix-room-tiles">
+                      {fRooms.map((roomId) => {
+                        const st = state.rooms[roomId] || "free";
+                        const isVisible = matrixFilterFn(roomId);
+                        const isHovered = hoveredRoom === roomId;
+                        const isSelected = selectedModalRoom === roomId;
+                        const guest = state.guests[roomId];
+                        const cleaner = state.assignedCleanings[roomId]?.staffName;
+                        const plan = state.servicePlans[roomId];
+                        const isVip = isVipRoom(plan);
+                        const icon = getRoomStatusIcon(st);
+
+                        return (
+                          <div
+                            className={`matrix-room-tile tile-${st} ${isVisible ? "" : "is-dimmed"} ${isHovered ? "is-hovered" : ""} ${isSelected ? "is-selected" : ""}`}
+                            key={roomId}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Habitación ${roomId}, estado ${statusLabels[st] || st}`}
+                            onClick={() => setSelectedModalRoom(roomId)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setSelectedModalRoom(roomId);
+                              }
+                            }}
+                            onMouseEnter={() => setHoveredRoom(roomId)}
+                            onMouseLeave={() => setHoveredRoom(null)}
+                          >
+                            {/* Architectural Blueprint Vector Overlay */}
+                            <div className="matrix-tile-blueprint" aria-hidden="true">
+                              <svg viewBox="0 0 100 80" preserveAspectRatio="none" className="tile-blueprint-svg">
+                                <rect
+                                  x="2"
+                                  y="2"
+                                  width="96"
+                                  height="76"
+                                  rx="8"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.2"
+                                  strokeDasharray="3 3"
+                                />
+                                <path
+                                  d="M 6 74 A 18 18 0 0 1 24 56"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.2"
+                                />
+                                <line
+                                  x1="6"
+                                  y1="74"
+                                  x2="6"
+                                  y2="56"
+                                  stroke="currentColor"
+                                  strokeWidth="1.2"
+                                />
+                              </svg>
                             </div>
-                            {isVip ? (
-                              <span className="matrix-tile-vip-badge" title="Huésped / Plan VIP">
-                                <span className="material-symbol" aria-hidden="true">star</span>
-                              </span>
-                            ) : (
-                              <span className="matrix-tile-dot" aria-hidden="true" />
+
+                            {/* Top: Icon Badge & Live Beacon Pulse / VIP */}
+                            <div className="matrix-tile-top">
+                              <div className="matrix-tile-icon-box">
+                                <span className="material-symbol" aria-hidden="true">{icon}</span>
+                              </div>
+                              <div className="matrix-tile-badges-row">
+                                {isVip && (
+                                  <span className="matrix-tile-vip-badge" title="Huésped / Plan VIP">
+                                    <span className="material-symbol" aria-hidden="true">star</span>
+                                    <span className="vip-text">VIP</span>
+                                  </span>
+                                )}
+                                <div className="matrix-tile-beacon" title={`Estado: ${statusLabels[st] || st}`}>
+                                  <span className={`matrix-beacon-ring beacon-${st}`} />
+                                  <span className={`matrix-beacon-dot beacon-${st}`} />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Middle: Door Plaque & Room Number */}
+                            <div className="matrix-tile-middle">
+                              <div className="matrix-tile-plaque">
+                                <span className="matrix-plaque-prefix">HAB</span>
+                                <strong className="matrix-tile-num">{roomId}</strong>
+                              </div>
+                              {plan && (
+                                <span className="matrix-tile-plan-pill" title={plan}>
+                                  {plan.length > 9 ? `${plan.slice(0, 8)}…` : plan}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Bottom: Contextual Graphic Chip (Guest Avatar / Cleaner / Status) */}
+                            <div className="matrix-tile-bottom">
+                              {st === "occupied" && guest ? (
+                                <div className="matrix-tile-guest-badge" title={`Huésped: ${guest}`}>
+                                  <span className="matrix-guest-avatar">{guest.charAt(0).toUpperCase()}</span>
+                                  <span className="matrix-guest-name">{guest.split(" ")[0]}</span>
+                                </div>
+                              ) : st === "cleaning" ? (
+                                <div className="matrix-tile-status-pill is-cleaning" title={`En limpieza por: ${cleaner || "Personal"}`}>
+                                  <span className="material-symbol spin-icon" aria-hidden="true">refresh</span>
+                                  <span>{cleaner ? cleaner.split(" ")[0] : "Limpiando"}</span>
+                                </div>
+                              ) : st === "pending" ? (
+                                <div className="matrix-tile-status-pill is-pending" title="Pendiente de aseo">
+                                  <span className="material-symbol" aria-hidden="true">schedule</span>
+                                  <span>Por limpiar</span>
+                                </div>
+                              ) : st === "finished" ? (
+                                <div className="matrix-tile-status-pill is-finished" title="Limpieza verificada y completada">
+                                  <span className="material-symbol" aria-hidden="true">verified</span>
+                                  <span>Lista</span>
+                                </div>
+                              ) : (
+                                <div className="matrix-tile-status-pill is-free" title="Habitación libre para entrega">
+                                  <span className="material-symbol" aria-hidden="true">check_circle</span>
+                                  <span>Disponible</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Interactive Hover Tooltip */}
+                            {isHovered && !selectedModalRoom && (
+                              <div className="matrix-tile-tooltip" role="tooltip">
+                                <div className="matrix-tooltip-head">
+                                  <div className="matrix-tooltip-title">
+                                    <span className="material-symbol" aria-hidden="true">{icon}</span>
+                                    <strong>Habitación {roomId}</strong>
+                                  </div>
+                                  <span className={`status-pill status-${st}`}>{statusLabels[st]}</span>
+                                </div>
+                                <div className="matrix-tooltip-body">
+                                  <div><small>Huésped:</small> <span>{guest || "Sin registro"}</span></div>
+                                  <div><small>Aseador:</small> <span>{cleaner || "Sin asignar"}</span></div>
+                                  {plan && <div><small>Plan:</small> <span>{plan}</span></div>}
+                                  {state.scheduledCleaningDates[roomId] && (
+                                    <div><small>Programada:</small> <span>{state.scheduledCleaningDates[roomId]}</span></div>
+                                  )}
+                                  <div className="matrix-tooltip-hint">
+                                    <span className="material-symbol" aria-hidden="true">touch_app</span>
+                                    <span>Clic para abrir opciones</span>
+                                  </div>
+                                </div>
+                              </div>
                             )}
                           </div>
-
-                          {/* Middle: Room Number */}
-                          <div className="matrix-tile-middle">
-                            <strong className="matrix-tile-num">{roomId}</strong>
-                          </div>
-
-                          {/* Bottom: Status Pill / Guest */}
-                          <div className="matrix-tile-bottom">
-                            <span className="matrix-tile-tag">
-                              {st === "occupied" && guest
-                                ? guest.split(" ")[0]
-                                : statusLabels[st] || st}
-                            </span>
-                          </div>
-
-                          {/* Interactive Hover Tooltip */}
-                          {isHovered && !selectedModalRoom && (
-                            <div className="matrix-tile-tooltip" role="tooltip">
-                              <div className="matrix-tooltip-head">
-                                <div className="matrix-tooltip-title">
-                                  <span className="material-symbol" aria-hidden="true">{icon}</span>
-                                  <strong>Habitación {roomId}</strong>
-                                </div>
-                                <span className={`status-pill status-${st}`}>{statusLabels[st]}</span>
-                              </div>
-                              <div className="matrix-tooltip-body">
-                                <div><small>Huésped:</small> <span>{guest || "Sin registro"}</span></div>
-                                <div><small>Aseador:</small> <span>{cleaner || "Sin asignar"}</span></div>
-                                {plan && <div><small>Plan:</small> <span>{plan}</span></div>}
-                                <div className="matrix-tooltip-hint">
-                                  <span className="material-symbol" aria-hidden="true">touch_app</span>
-                                  <span>Clic para abrir opciones</span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
 
           {/* Interactive Room Action Modal */}
@@ -859,10 +1019,62 @@ export function DashboardPage() {
           )}
 
           <div className="dashboard-matrix-legend-strip">
-            <span className="matrix-legend-item"><span className="matrix-dot dot-free" /> Libre</span>
-            <span className="matrix-legend-item"><span className="matrix-dot dot-occupied" /> Ocupada</span>
-            <span className="matrix-legend-item"><span className="matrix-dot dot-pending" /> Por Limpiar</span>
-            <span className="matrix-legend-item"><span className="matrix-dot dot-cleaning" /> En Limpieza</span>
+            <div className="matrix-legend-items" role="toolbar" aria-label="Filtro rápido por estados">
+              <button
+                type="button"
+                className={`matrix-legend-chip chip-free ${matrixFilter === "free" ? "active" : ""}`}
+                onClick={() => setMatrixFilter(matrixFilter === "free" ? "all" : "free")}
+                title="Filtrar habitaciones libres"
+              >
+                <span className="matrix-dot dot-free" aria-hidden="true" />
+                <span>Libres:</span>
+                <strong>{freeOnlyCount}</strong>
+              </button>
+              <button
+                type="button"
+                className={`matrix-legend-chip chip-occupied ${matrixFilter === "occupied" ? "active" : ""}`}
+                onClick={() => setMatrixFilter(matrixFilter === "occupied" ? "all" : "occupied")}
+                title="Filtrar habitaciones ocupadas"
+              >
+                <span className="matrix-dot dot-occupied" aria-hidden="true" />
+                <span>Ocupadas:</span>
+                <strong>{occupiedCount}</strong>
+              </button>
+              <button
+                type="button"
+                className={`matrix-legend-chip chip-pending ${matrixFilter === "pending" ? "active" : ""}`}
+                onClick={() => setMatrixFilter(matrixFilter === "pending" ? "all" : "pending")}
+                title="Filtrar habitaciones pendientes de aseo"
+              >
+                <span className="matrix-dot dot-pending" aria-hidden="true" />
+                <span>Por Limpiar:</span>
+                <strong>{pendingCount}</strong>
+              </button>
+              <button
+                type="button"
+                className={`matrix-legend-chip chip-cleaning ${matrixFilter === "cleaning" ? "active" : ""}`}
+                onClick={() => setMatrixFilter(matrixFilter === "cleaning" ? "all" : "cleaning")}
+                title="Filtrar habitaciones en limpieza"
+              >
+                <span className="matrix-dot dot-cleaning" aria-hidden="true" />
+                <span>En Limpieza:</span>
+                <strong>{cleaningCount}</strong>
+              </button>
+              <button
+                type="button"
+                className={`matrix-legend-chip chip-finished ${matrixFilter === "finished" ? "active" : ""}`}
+                onClick={() => setMatrixFilter(matrixFilter === "finished" ? "all" : "finished")}
+                title="Filtrar habitaciones finalizadas"
+              >
+                <span className="matrix-dot dot-finished" aria-hidden="true" />
+                <span>Finalizadas:</span>
+                <strong>{finishedCount}</strong>
+              </button>
+            </div>
+            <div className="matrix-legend-tip">
+              <span className="material-symbol" aria-hidden="true">touch_app</span>
+              <span>Clic en una habitación para gestionar</span>
+            </div>
           </div>
         </article>
       </section>
