@@ -98,8 +98,23 @@ export function HotelDataProvider({ children }: { children: ReactNode }) {
       setConnection("Sin conexión");
     }
 
+    const onFocus = () => {
+      if (active) void refresh();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible" && active) void refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const pollInterval = window.setInterval(() => {
+      if (active && document.visibilityState === "visible") void refresh();
+    }, 10_000);
+
     return () => {
       active = false;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.clearInterval(pollInterval);
       if (channel) void channel.unsubscribe();
     };
   }, [refresh]);

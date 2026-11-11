@@ -764,12 +764,13 @@ export async function startCleanerRoom(
 
   if (error && error.message.includes("Could not find the function")) {
     // Intentar actualización directa de estado como fallback
-    const { error: directError } = await supabase
+    const { data: updatedRows, error: directError } = await supabase
       .from("habitaciones")
       .update({ estado: "limpieza", actualizado_en: new Date().toISOString() })
-      .eq("id_habitacion", cleanRoomId);
+      .eq("id_habitacion", cleanRoomId)
+      .select("id_habitacion");
 
-    if (!directError) {
+    if (!directError && updatedRows && updatedRows.length > 0) {
       return;
     }
 

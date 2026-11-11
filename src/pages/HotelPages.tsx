@@ -2389,23 +2389,32 @@ export function CleaningPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "cleaning" | "unassigned" | "finished">("all");
 
   const allCleaningRooms = Object.keys(state.rooms)
-    .filter((room) => ["pending", "cleaning", "finished"].includes(state.rooms[room]))
+    .filter((room) =>
+      ["pending", "cleaning", "finished"].includes(state.rooms[room]) ||
+      Boolean(state.assignedCleanings[room]?.staffId) ||
+      Boolean(state.scheduledCleaningDates[room])
+    )
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-  const pendingCount = allCleaningRooms.filter((room) => state.rooms[room] === "pending").length;
+  const pendingCount = allCleaningRooms.filter((room) => {
+    const s = state.rooms[room];
+    return s === "pending" || (!["cleaning", "finished"].includes(s) && (Boolean(state.assignedCleanings[room]?.staffId) || Boolean(state.scheduledCleaningDates[room])));
+  }).length;
   const activeCount = allCleaningRooms.filter((room) => state.rooms[room] === "cleaning").length;
   const finishedCount = allCleaningRooms.filter((room) => state.rooms[room] === "finished").length;
   const unassignedCount = allCleaningRooms.filter(
-    (roomId) => ["pending", "cleaning"].includes(state.rooms[roomId]) && !state.assignedCleanings[roomId]?.staffId,
+    (roomId) => !["finished"].includes(state.rooms[roomId]) && !state.assignedCleanings[roomId]?.staffId,
   ).length;
 
   const filteredByStatus = allCleaningRooms.filter((roomId) => {
     const s = state.rooms[roomId];
     if (statusFilter === "all") return true;
-    if (statusFilter === "pending") return s === "pending";
+    if (statusFilter === "pending") {
+      return s === "pending" || (!["cleaning", "finished"].includes(s) && (Boolean(state.assignedCleanings[roomId]?.staffId) || Boolean(state.scheduledCleaningDates[roomId])));
+    }
     if (statusFilter === "cleaning") return s === "cleaning";
     if (statusFilter === "finished") return s === "finished";
-    if (statusFilter === "unassigned") return ["pending", "cleaning"].includes(s) && !state.assignedCleanings[roomId]?.staffId;
+    if (statusFilter === "unassigned") return !["finished"].includes(s) && !state.assignedCleanings[roomId]?.staffId;
     return true;
   });
 
@@ -2698,7 +2707,7 @@ export function CleaningPage() {
                       <div><dt>Huésped</dt><dd>{state.guests[roomId] || "No registrado"}</dd></div>
                     </dl>
                     <div className="cleaning-card-actions">
-                      {status === "pending" && (
+                      {status !== "cleaning" && status !== "finished" && (
                         <button
                           className="button button-primary"
                           disabled={busyRoom === roomId}
