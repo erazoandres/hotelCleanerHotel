@@ -30,6 +30,10 @@ export interface Database {
           fecha_limpieza_programada: string | null;
           id_personal_asignado: string | null;
           tipo_limpieza_asignada: string | null;
+          piso?: string | null;
+          tipo_espacio?: string | null;
+          tipo_habitacion?: string | null;
+          numero_doble?: string | null;
           actualizado_en: string;
         },
         "id_habitacion" | "estado"

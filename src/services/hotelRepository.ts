@@ -39,6 +39,121 @@ function dateInputValue(value: string | null): string | null {
     : date;
 }
 
+export function detectSpaceType(
+  roomId: string,
+  rawSpaceType?: string | null,
+): "habitacion" | "zona_comun" {
+  if (rawSpaceType === "zona_comun" || rawSpaceType === "habitacion") {
+    return rawSpaceType;
+  }
+  const lower = roomId.trim().toLowerCase();
+  const commonKeywords = [
+    "lobby",
+    "piscina",
+    "pasillo",
+    "zona",
+    "comun",
+    "común",
+    "terraza",
+    "restaurante",
+    "gimnasio",
+    "gym",
+    "recepcion",
+    "recepción",
+    "lavanderia",
+    "lavandería",
+    "parqueadero",
+    "estacionamiento",
+    "patio",
+    "jardin",
+    "jardín",
+    "spa",
+    "ascensor",
+    "elevador",
+    "salon",
+    "salón",
+    "cafeteria",
+    "cafetería",
+    "bar",
+  ];
+  if (commonKeywords.some((kw) => lower.includes(kw))) {
+    return "zona_comun";
+  }
+  return "habitacion";
+}
+
+export function detectRoomType(
+  roomId: string,
+  rawRoomType?: string | null,
+): "normal" | "doble" {
+  if (rawRoomType === "doble" || rawRoomType === "normal") {
+    return rawRoomType;
+  }
+  const cleanId = roomId.trim();
+  // Si contiene punto decimal seguido de dígitos (ej. "1.1", "1.2", "2.1", "101.1", etc.)
+  if (/\b\d+\.\d+\b/.test(cleanId) || /^\d+\.\d+$/.test(cleanId) || /\.\d+/.test(cleanId)) {
+    return "doble";
+  }
+  return "normal";
+}
+
+export function detectFloor(
+  roomId: string,
+  rawFloor?: string | null,
+  isCommonArea?: boolean,
+): string {
+  if (rawFloor && rawFloor.trim()) {
+    return rawFloor.trim();
+  }
+
+  const cleanId = roomId.trim();
+  const lower = cleanId.toLowerCase();
+
+  if (isCommonArea) {
+    if (lower.includes("piso 1") || lower.includes("nivel 1") || lower.includes("primer")) return "Piso 1";
+    if (lower.includes("piso 2") || lower.includes("nivel 2") || lower.includes("segundo")) return "Piso 2";
+    if (lower.includes("piso 3") || lower.includes("nivel 3") || lower.includes("tercer")) return "Piso 3";
+    if (lower.includes("piso 4") || lower.includes("nivel 4") || lower.includes("cuarto")) return "Piso 4";
+    if (lower.includes("terraza") || lower.includes("rooftop")) return "Terraza";
+    if (lower.includes("sotano") || lower.includes("sótano") || lower.includes("subsuelo")) return "Sótano";
+    if (lower.includes("planta baja") || lower.includes("pb")) return "Planta Baja";
+    return "Zonas Comunes";
+  }
+
+  // Formato decimal: "1.1", "2.3" -> Piso 1, Piso 2
+  const dotMatch = cleanId.match(/^(\d+)\.\d+/);
+  if (dotMatch) {
+    return `Piso ${dotMatch[1]}`;
+  }
+
+  // Prefijo con P: P1, P-1, P01, Piso 1
+  const prefixMatch = lower.match(/^p(?:iso)?[-_ ]?(\d+)/i);
+  if (prefixMatch) {
+    return `Piso ${parseInt(prefixMatch[1], 10)}`;
+  }
+
+  // Habitaciones numeradas comunes: "101", "204" -> Piso 1, Piso 2
+  const numMatch = cleanId.match(/^(\d{3,4})\b/);
+  if (numMatch) {
+    const numStr = numMatch[1];
+    if (numStr.length === 3) {
+      return `Piso ${numStr[0]}`;
+    } else if (numStr.length === 4) {
+      const floorNum = parseInt(numStr.slice(0, 2), 10);
+      return floorNum >= 10 ? `Piso ${floorNum}` : `Piso ${numStr[0]}`;
+    }
+  }
+
+  // 1 o 2 dígitos directos: "1", "02"
+  const singleDigitMatch = cleanId.match(/^(\d{1,2})[a-zA-Z]?$/);
+  if (singleDigitMatch) {
+    const n = parseInt(singleDigitMatch[1], 10);
+    return `Piso ${n}`;
+  }
+
+  return "Piso 1";
+}
+
 export async function fetchRemoteState(): Promise<RemoteHotelState> {
   const supabase = getSupabaseClient();
   const warnings: string[] = [];
@@ -158,6 +273,10 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
       cleaningType: event.tipo_limpieza,
       time: event.creado_en,
     })),
+    floors: {},
+    spaceTypes: {},
+    roomTypes: {},
+    doubleNumbers: {},
   };
 
   for (const room of rooms ?? []) {
@@ -178,10 +297,31 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
         cleaningType: room.tipo_limpieza_asignada ?? "",
       };
     }
+
+    const rawSpaceType = (room as { tipo_espacio?: string | null }).tipo_espacio;
+    const spaceType = detectSpaceType(room.id_habitacion, rawSpaceType);
+    state.spaceTypes[room.id_habitacion] = spaceType;
+
+    const rawFloor = (room as { piso?: string | null }).piso;
+    state.floors[room.id_habitacion] = detectFloor(
+      room.id_habitacion,
+      rawFloor,
+      spaceType === "zona_comun",
+    );
+
+    const rawRoomType = (room as { tipo_habitacion?: string | null }).tipo_habitacion;
+    state.roomTypes[room.id_habitacion] = detectRoomType(room.id_habitacion, rawRoomType);
+
+    const rawNumeroDoble = (room as { numero_doble?: string | null }).numero_doble;
+    if (rawNumeroDoble) {
+      state.doubleNumbers[room.id_habitacion] = rawNumeroDoble;
+    }
   }
 
   return state;
 }
+
+export const getRemoteHotelState = fetchRemoteState;
 
 export async function updateRoom(
   roomId: string,
@@ -196,6 +336,10 @@ export async function updateRoom(
     fecha_limpieza_programada?: string | null;
     id_personal_asignado?: string | null;
     tipo_limpieza_asignada?: string | null;
+    piso?: string | null;
+    tipo_espacio?: string | null;
+    tipo_habitacion?: string | null;
+    numero_doble?: string | null;
     actualizado_en: string;
   } = { actualizado_en: new Date().toISOString() };
 
@@ -216,8 +360,12 @@ export async function updateRoom(
     row.id_personal_asignado = updates.assignedCleaner?.staffId ?? null;
     row.tipo_limpieza_asignada = updates.assignedCleaningType ?? null;
   }
+  if (updates.piso !== undefined) row.piso = updates.piso;
+  if (updates.tipo_espacio !== undefined) row.tipo_espacio = updates.tipo_espacio;
+  if (updates.tipo_habitacion !== undefined) row.tipo_habitacion = updates.tipo_habitacion;
+  if (updates.numero_doble !== undefined) row.numero_doble = updates.numero_doble;
 
-  const { error } =
+  let { error } =
     row.estado === undefined
       ? await supabase
           .from("habitaciones")
@@ -226,7 +374,133 @@ export async function updateRoom(
       : await supabase
           .from("habitaciones")
           .upsert({ id_habitacion: String(roomId), ...row, estado: row.estado });
+
+  // Si falla por columnas que aún no existen en la BD, reintentar sin las columnas nuevas
+  if (
+    error &&
+    (updates.piso !== undefined ||
+      updates.tipo_espacio !== undefined ||
+      updates.tipo_habitacion !== undefined ||
+      updates.numero_doble !== undefined)
+  ) {
+    delete row.piso;
+    delete row.tipo_espacio;
+    delete row.tipo_habitacion;
+    delete row.numero_doble;
+    const retry =
+      row.estado === undefined
+        ? await supabase
+            .from("habitaciones")
+            .update(row)
+            .eq("id_habitacion", String(roomId))
+        : await supabase
+            .from("habitaciones")
+            .upsert({ id_habitacion: String(roomId), ...row, estado: row.estado });
+    error = retry.error;
+  }
+
   if (error) throw new Error(`No se pudo actualizar la habitación: ${error.message}`);
+}
+
+export async function createRoom(data: {
+  id: string;
+  piso?: string | null;
+  tipo_espacio?: "habitacion" | "zona_comun";
+  tipo_habitacion?: "normal" | "doble";
+  numero_doble?: string | null;
+  estado?: RoomStatus;
+  guest?: string | null;
+  plan?: string | null;
+}): Promise<void> {
+  const supabase = getSupabaseClient();
+  const roomId = data.id.trim();
+  if (!roomId) throw new Error("El identificador o nombre es obligatorio.");
+
+  const status = statusToDatabase[data.estado ?? "free"] ?? "libre";
+  const spaceType = data.tipo_espacio ?? detectSpaceType(roomId);
+  const floor = data.piso?.trim() || detectFloor(roomId, undefined, spaceType === "zona_comun");
+  const roomType = data.tipo_habitacion ?? detectRoomType(roomId);
+  const doubleNumber = data.numero_doble?.trim() || (roomType === "doble" ? roomId : null);
+
+  // Verificar si ya existe
+  const { data: existing } = await supabase
+    .from("habitaciones")
+    .select("id_habitacion")
+    .eq("id_habitacion", roomId)
+    .maybeSingle();
+
+  if (existing) {
+    throw new Error(`Ya existe un espacio con el identificador "${roomId}".`);
+  }
+
+  const fullRow = {
+    id_habitacion: roomId,
+    estado: status,
+    nombre_huesped: data.guest?.trim() || null,
+    plan_limpieza: data.plan?.trim() || null,
+    piso: floor,
+    tipo_espacio: spaceType,
+    tipo_habitacion: roomType,
+    numero_doble: doubleNumber,
+    actualizado_en: new Date().toISOString(),
+  };
+
+  const { error: fullError } = await supabase
+    .from("habitaciones")
+    .insert(fullRow);
+
+  if (fullError) {
+    // Si falla porque las columnas nuevas aún no existen en la BD, reintentar con las base
+    console.warn("Fallo al insertar con nuevas columnas, intentando inserción base:", fullError.message);
+    const baseRow = {
+      id_habitacion: roomId,
+      estado: status,
+      nombre_huesped: data.guest?.trim() || null,
+      plan_limpieza: data.plan?.trim() || null,
+      actualizado_en: new Date().toISOString(),
+    };
+    const { error: baseError } = await supabase
+      .from("habitaciones")
+      .insert(baseRow);
+    if (baseError) {
+      throw new Error(`No se pudo crear el espacio: ${baseError.message}`);
+    }
+  }
+
+  // Registrar evento inicial
+  try {
+    const spaceLabel = spaceType === "zona_comun" ? "Zona común creada" : "Habitación creada";
+    await addEvent({
+      room: roomId,
+      status: data.estado ?? "free",
+      action: `${spaceLabel} (${floor})`,
+      guest: data.guest?.trim() || null,
+      actor: "Sistema",
+      cleanerId: null,
+      cleaningType: null,
+      time: new Date().toISOString(),
+    });
+  } catch (eventErr) {
+    console.warn("No se pudo registrar evento inicial:", eventErr);
+  }
+}
+
+export async function deleteRoom(roomId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const cleanId = roomId.trim();
+  if (!cleanId) throw new Error("Identificador no válido.");
+
+  // Limpiar relaciones primero para evitar violaciones de clave foránea
+  await supabase.from("asignaciones_habitacion").delete().eq("id_habitacion", cleanId);
+  await supabase.from("trabajos_limpieza").delete().eq("id_habitacion", cleanId);
+  await supabase.from("eventos").delete().eq("id_habitacion", cleanId);
+
+  const { error } = await supabase
+    .from("habitaciones")
+    .delete()
+    .eq("id_habitacion", cleanId);
+
+  if (error) throw new Error(`No se pudo eliminar el espacio: ${error.message}`);
 }
 
 export async function addEvent(event: HotelEvent): Promise<void> {
@@ -309,10 +583,15 @@ async function invokeStaffAccount<T>(
 
 export async function createStaff(
   person: StaffMember,
+  customPassword?: string,
 ): Promise<string> {
   const digits = person.contact.replace(/\D/g, "");
   if (digits.length < 7) throw new Error("El personal debe tener un teléfono válido.");
-  const password = createTemporaryPassword();
+  const trimmed = customPassword?.trim();
+  if (trimmed && (trimmed.length < 6 || trimmed.length > 128)) {
+    throw new Error("La contraseña debe tener entre 6 y 128 caracteres.");
+  }
+  const password = trimmed || createTemporaryPassword();
   await invokeStaffAccount<{ id_personal: string }>({
     action: "create_staff",
     id_personal: person.id,
@@ -376,14 +655,48 @@ export async function linkCleanerAccount(
   });
 }
 
-export async function resetCleanerPassword(staffId: string): Promise<string> {
-  const password = createTemporaryPassword();
+export async function resetCleanerPassword(
+  staffId: string,
+  customPassword?: string,
+): Promise<string> {
+  const trimmed = customPassword?.trim();
+  if (trimmed && (trimmed.length < 6 || trimmed.length > 128)) {
+    throw new Error("La contraseña debe tener entre 6 y 128 caracteres.");
+  }
+  const password = trimmed || createTemporaryPassword();
   await invokeStaffAccount<{ id_personal: string }>({
     action: "reset_password",
     id_personal: staffId,
     password,
   });
   return password;
+}
+
+export async function changeStaffPassword(
+  staffId: string,
+  newPassword: string,
+): Promise<void> {
+  const trimmed = newPassword.trim();
+  if (trimmed.length < 6 || trimmed.length > 128) {
+    throw new Error("La contraseña debe tener entre 6 y 128 caracteres.");
+  }
+  await invokeStaffAccount<{ id_personal: string }>({
+    action: "reset_password",
+    id_personal: staffId,
+    password: trimmed,
+  });
+}
+
+export async function updateCleanerSelfPassword(newPassword: string): Promise<void> {
+  const trimmed = newPassword.trim();
+  if (trimmed.length < 6 || trimmed.length > 128) {
+    throw new Error("La contraseña debe tener entre 6 y 128 caracteres.");
+  }
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.auth.updateUser({ password: trimmed });
+  if (error) {
+    throw new Error(error.message || "No se pudo actualizar la contraseña.");
+  }
 }
 
 export async function loginCleaner(email: string, password: string): Promise<CleanerProfile> {
@@ -439,21 +752,39 @@ export async function startCleanerRoom(
   roomId: string,
 ): Promise<void> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc("iniciar_limpieza_aseador", {
-    p_id_habitacion: String(roomId),
-  });
-  if (error) {
-    const { error: fallbackError } = await supabase
-      .from("habitaciones")
-      .update({ estado: "limpieza", actualizado_en: new Date().toISOString() })
-      .eq("id_habitacion", roomId);
+  const cleanRoomId = String(roomId).trim();
 
-    if (fallbackError) {
-      throw new Error(`No se pudo iniciar la limpieza: ${error.message}`);
-    }
+  const { data, error } = await supabase.rpc("iniciar_limpieza_aseador", {
+    p_id_habitacion: cleanRoomId,
+  });
+
+  if (!error && data) {
     return;
   }
-  if (!data) throw new Error("No se pudo iniciar la limpieza.");
+
+  if (error && error.message.includes("Could not find the function")) {
+    // Intentar actualización directa de estado como fallback
+    const { error: directError } = await supabase
+      .from("habitaciones")
+      .update({ estado: "limpieza", actualizado_en: new Date().toISOString() })
+      .eq("id_habitacion", cleanRoomId);
+
+    if (!directError) {
+      return;
+    }
+
+    throw new Error(
+      "La función 'iniciar_limpieza_aseador' no está creada en tu base de datos de Supabase. " +
+      "Por favor ejecuta el script 'supabase/patches/fix-iniciar-limpieza.sql' en el Editor SQL de Supabase para crearla."
+    );
+  }
+
+  if (error) {
+    throw new Error(`No se pudo iniciar la limpieza: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error("No se pudo iniciar la limpieza: la habitación no está disponible o no está asignada.");
+  }
 }
 
 export async function finishCleanerRoom(
@@ -468,10 +799,47 @@ export async function finishCleanerRoom(
 }
 
 export async function removeStaff(id: string): Promise<void> {
-  await invokeStaffAccount<{ id_personal: string }>({
-    action: "deactivate_staff",
-    id_personal: id,
-  });
+  await deleteStaff(id);
+}
+
+export async function deleteStaff(id: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  const cleanId = id.trim();
+  if (!cleanId) throw new Error("Identificador de personal no válido.");
+
+  // 1. Limpiar dependencias en base de datos para evitar bloqueos por FK
+  try {
+    await supabase
+      .from("habitaciones")
+      .update({ id_personal_asignado: null, tipo_limpieza_asignada: null })
+      .eq("id_personal_asignado", cleanId);
+    await supabase.from("asignaciones_habitacion").delete().eq("id_personal", cleanId);
+    await supabase.from("asistencias").delete().eq("id_personal", cleanId);
+    await supabase.from("novedades").delete().eq("id_personal", cleanId);
+    await supabase.from("trabajos_limpieza").delete().eq("id_personal", cleanId);
+    await supabase.from("eventos").update({ id_personal: null }).eq("id_personal", cleanId);
+  } catch (cleanErr) {
+    console.warn("Advertencia limpiando dependencias de personal:", cleanErr);
+  }
+
+  // 2. Intentar llamar a staff-account para borrar cuenta en Supabase Auth y tabla
+  try {
+    await invokeStaffAccount<{ id_personal: string }>({
+      action: "delete_staff",
+      id_personal: cleanId,
+    });
+    return;
+  } catch (fnErr) {
+    console.warn("staff-account delete_staff no disponible o falló, aplicando borrado directo:", fnErr);
+  }
+
+  // 3. Borrado directo en tabla personal
+  const { error } = await supabase.from("personal").delete().eq("id_personal", cleanId);
+  if (error) {
+    // Si falla el borrado por alguna restricción adicional, desactivarlo
+    const { error: deactErr } = await supabase.from("personal").update({ activo: false }).eq("id_personal", cleanId);
+    if (deactErr) throw new Error(`No se pudo eliminar el personal: ${error.message}`);
+  }
 }
 
 export async function saveAttendance(record: AttendanceRecord): Promise<void> {

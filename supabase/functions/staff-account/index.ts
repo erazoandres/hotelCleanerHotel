@@ -79,8 +79,8 @@ Deno.serve(async (request) => {
       if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return response({ error: "Escribe un correo electrónico válido." }, 400);
       }
-      if (password.length < 12 || password.length > 128) {
-        return response({ error: "La contraseña temporal debe tener entre 12 y 128 caracteres." }, 400);
+      if (password.length < 6 || password.length > 128) {
+        return response({ error: "La contraseña debe tener entre 6 y 128 caracteres." }, 400);
       }
 
       const { data: created, error: createError } = await admin.auth.admin.createUser({
@@ -267,8 +267,8 @@ Deno.serve(async (request) => {
       if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return response({ error: "La ficha debe tener un correo electrónico válido para crear el acceso." }, 400);
       }
-      if (password.length < 12 || password.length > 128) {
-        return response({ error: "La contraseña temporal debe tener entre 12 y 128 caracteres." }, 400);
+      if (password.length < 6 || password.length > 128) {
+        return response({ error: "La contraseña debe tener entre 6 y 128 caracteres." }, 400);
       }
 
       const { data: created, error: createError } = await admin.auth.admin.createUser({
@@ -303,8 +303,8 @@ Deno.serve(async (request) => {
       if (!staff.activo || !staff.auth_user_id) {
         return response({ error: "El personal no tiene una cuenta de acceso activa." }, 409);
       }
-      if (password.length < 12 || password.length > 128) {
-        return response({ error: "La contraseña temporal debe tener entre 12 y 128 caracteres." }, 400);
+      if (password.length < 6 || password.length > 128) {
+        return response({ error: "La contraseña debe tener entre 6 y 128 caracteres." }, 400);
       }
       const { error: updateError } = await admin.auth.admin.updateUserById(
         staff.auth_user_id,
@@ -387,21 +387,37 @@ Deno.serve(async (request) => {
       return response({ id_personal: staffId });
     }
 
-    if (action === "deactivate_staff") {
+    if (action === "deactivate_staff" || action === "delete_staff") {
       const { error: roomsError } = await admin.from("habitaciones")
         .update({ id_personal_asignado: null, tipo_limpieza_asignada: null })
         .eq("id_personal_asignado", staffId);
       if (roomsError) throw roomsError;
-      const { error: deactivateError } = await admin.from("personal")
-        .update({ activo: false })
-        .eq("id_personal", staffId);
-      if (deactivateError) throw deactivateError;
+
+      // Limpiar relaciones que puedan violar foreign keys
+      await admin.from("asignaciones_habitacion").delete().eq("id_personal", staffId);
+      await admin.from("asistencias").delete().eq("id_personal", staffId);
+      await admin.from("novedades").delete().eq("id_personal", staffId);
+      await admin.from("trabajos_limpieza").delete().eq("id_personal", staffId);
+      await admin.from("eventos").update({ id_personal: null }).eq("id_personal", staffId);
+
+      if (action === "delete_staff") {
+        const { error: deleteStaffError } = await admin.from("personal")
+          .delete()
+          .eq("id_personal", staffId);
+        if (deleteStaffError) {
+          await admin.from("personal").update({ activo: false }).eq("id_personal", staffId);
+        }
+      } else {
+        const { error: deactivateError } = await admin.from("personal")
+          .update({ activo: false })
+          .eq("id_personal", staffId);
+        if (deactivateError) throw deactivateError;
+      }
+
       if (staff.auth_user_id) {
         const { error: deleteError } = await admin.auth.admin.deleteUser(staff.auth_user_id);
         if (deleteError) {
-          return response({
-            error: `La ficha quedó desactivada, pero no se pudo eliminar la cuenta: ${deleteError.message}`,
-          }, 500);
+          console.error("No se pudo eliminar auth user", deleteError.message);
         }
       }
       return response({ id_personal: staffId });

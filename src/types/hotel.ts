@@ -104,6 +104,10 @@ export interface RemoteHotelState {
   novelties: NoveltyRecord[];
   staff: StaffMember[];
   events: HotelEvent[];
+  floors: Record<string, string>;
+  spaceTypes: Record<string, "habitacion" | "zona_comun">;
+  roomTypes: Record<string, "normal" | "doble">;
+  doubleNumbers: Record<string, string>;
 }
 
 export interface RoomUpdate {
@@ -114,4 +118,8 @@ export interface RoomUpdate {
   scheduledCleaningDate?: string | null;
   assignedCleaner?: Pick<CleanerAssignment, "staffId"> | null;
   assignedCleaningType?: string | null;
+  piso?: string | null;
+  tipo_espacio?: "habitacion" | "zona_comun";
+  tipo_habitacion?: "normal" | "doble";
+  numero_doble?: string | null;
 }

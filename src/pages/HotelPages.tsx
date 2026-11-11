@@ -7,7 +7,14 @@ import { DashboardHeroSlider } from "../components/DashboardHeroSlider";
 import { ModernAvatar3D, Avatar3DStylePicker } from "../components/ModernAvatar3D";
 import {
   addEvent,
+  changeStaffPassword,
+  createRoom,
   createStaff,
+  deleteRoom,
+  deleteStaff,
+  detectFloor,
+  detectRoomType,
+  detectSpaceType,
   finishCleanerRoom,
   startCleanerRoom,
   getCleanerHistory,
@@ -1220,7 +1227,7 @@ export function DashboardPage() {
   );
 }
 
-function RoomCard({ roomId }: { roomId: string }) {
+function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void }) {
   const { state, refresh } = useHotelData();
   const { session } = useHotelAuth();
   const roomStatus = state.rooms[roomId] ?? "unknown";
@@ -1230,19 +1237,30 @@ function RoomCard({ roomId }: { roomId: string }) {
   const roomCleaningDetails = state.cleaningDetails[roomId] ?? "";
   const roomScheduledCleaningDate = state.scheduledCleaningDates[roomId] ?? "";
   const assignment = state.assignedCleanings[roomId];
+  const roomFloor = state.floors[roomId] || detectFloor(roomId);
+  const roomSpaceType = state.spaceTypes[roomId] || detectSpaceType(roomId);
+  const initialRoomType = (state.roomTypes[roomId] || detectRoomType(roomId)) as "normal" | "doble";
+  const initialDoubleNumber = state.doubleNumbers?.[roomId] || (initialRoomType === "doble" ? roomId : "");
+
   const [status, setStatus] = useState(roomStatus);
   const [guest, setGuest] = useState(roomGuest);
   const [servicePlan, setServicePlan] = useState(roomServicePlan);
   const [cleaningDetails, setCleaningDetails] = useState(roomCleaningDetails);
   const [scheduledCleaningDate, setScheduledCleaningDate] = useState(roomScheduledCleaningDate);
   const [staffId, setStaffId] = useState(assignment?.staffId ?? "");
-  const [cleaningType, setCleaningType] = useState(
-    assignment?.cleaningType ?? "",
-  );
+  const [cleaningType, setCleaningType] = useState(assignment?.cleaningType ?? "");
+  const [piso, setPiso] = useState(roomFloor);
+  const [tipoEspacio, setTipoEspacio] = useState<"habitacion" | "zona_comun">(roomSpaceType);
+  const [tipoHabitacion, setTipoHabitacion] = useState<"normal" | "doble">(initialRoomType);
+  const [numeroDoble, setNumeroDoble] = useState(initialDoubleNumber);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  const isCommonArea = tipoEspacio === "zona_comun";
 
   function handleCancel() {
     setStatus(roomStatus);
@@ -1252,6 +1270,10 @@ function RoomCard({ roomId }: { roomId: string }) {
     setScheduledCleaningDate(roomScheduledCleaningDate);
     setStaffId(assignment?.staffId ?? "");
     setCleaningType(assignment?.cleaningType ?? "");
+    setPiso(roomFloor);
+    setTipoEspacio(roomSpaceType);
+    setTipoHabitacion(initialRoomType);
+    setNumeroDoble(initialDoubleNumber);
     setError(null);
     setSuccess(null);
     setIsEditing(false);
@@ -1265,8 +1287,12 @@ function RoomCard({ roomId }: { roomId: string }) {
     setScheduledCleaningDate(roomScheduledCleaningDate);
     setStaffId(assignment?.staffId ?? "");
     setCleaningType(assignment?.cleaningType ?? "");
+    setPiso(roomFloor);
+    setTipoEspacio(roomSpaceType);
+    setTipoHabitacion(initialRoomType);
+    setNumeroDoble(initialDoubleNumber);
     setIsEditing(false);
-  }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, roomScheduledCleaningDate, assignment?.staffId, assignment?.cleaningType]);
+  }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, roomScheduledCleaningDate, assignment?.staffId, assignment?.cleaningType, roomFloor, roomSpaceType, initialRoomType, initialDoubleNumber]);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1283,6 +1309,10 @@ function RoomCard({ roomId }: { roomId: string }) {
         scheduledCleaningDate: scheduledCleaningDate || null,
         assignedCleaner: staffId ? { staffId } : null,
         assignedCleaningType: staffId ? cleaningType.trim() || null : null,
+        piso: piso.trim() || null,
+        tipo_espacio: tipoEspacio,
+        tipo_habitacion: tipoEspacio === "habitacion" ? tipoHabitacion : "normal",
+        numero_doble: tipoEspacio === "habitacion" && tipoHabitacion === "doble" ? (numeroDoble.trim() || roomId) : null,
       });
 
       if (previousStatus !== status) {
@@ -1301,7 +1331,7 @@ function RoomCard({ roomId }: { roomId: string }) {
         } catch (eventError: unknown) {
           await refresh();
           throw new Error(
-            `La habitación se guardó, pero el historial no: ${messageOf(eventError)}`,
+            `El espacio se guardó, pero el historial no: ${messageOf(eventError)}`,
           );
         }
       }
@@ -1316,21 +1346,106 @@ function RoomCard({ roomId }: { roomId: string }) {
     }
   }
 
+  async function handleDelete() {
+    const noun = isCommonArea ? "la zona común" : "la habitación";
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar ${noun} "${roomId}"? Se eliminarán también sus historiales y asignaciones.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteRoom(roomId);
+      await refresh();
+      onDelete?.();
+    } catch (err) {
+      setError(messageOf(err));
+      setDeleting(false);
+    }
+  }
+
   return (
     <article className={`room-card room-editor-card ${!isEditing ? "is-disabled" : "is-editing"}`}>
       <header className="room-editor-heading">
         <div className="room-editor-title">
           <span className="room-editor-icon">
-            <span className="material-symbol" aria-hidden="true">{isEditing ? "edit" : "bed"}</span>
+            <span className="material-symbol" aria-hidden="true">
+              {isEditing ? "edit" : isCommonArea ? "domain" : "bed"}
+            </span>
           </span>
           <div>
-            <p className="eyebrow">Habitación</p>
+            <p className="eyebrow">{isCommonArea ? "Zona Común" : `Habitación · ${piso || "Sin piso"}`}</p>
             <h2>{roomId}</h2>
           </div>
           <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
+          {!isCommonArea && tipoHabitacion === "doble" && (
+            <span className="room-tag-badge room-tag-double">
+              <span className="material-symbol" style={{ fontSize: "14px" }}>bed</span>
+              Habitación Doble {numeroDoble && numeroDoble !== roomId ? `(${numeroDoble})` : ""}
+            </span>
+          )}
+          {isCommonArea ? (
+            <span className="room-tag-badge room-tag-common">
+              <span className="material-symbol" style={{ fontSize: "14px" }}>domain</span>
+              Zona Común
+            </span>
+          ) : piso ? (
+            <span className="room-tag-badge room-tag-floor">
+              <span className="material-symbol" style={{ fontSize: "14px" }}>layers</span>
+              {piso}
+            </span>
+          ) : null}
         </div>
       </header>
       <form className="form-grid room-editor-form" onSubmit={handleSave}>
+        <label>
+          Tipo de espacio
+          <select
+            disabled={!isEditing || saving}
+            value={tipoEspacio}
+            onChange={(e) => setTipoEspacio(e.target.value as "habitacion" | "zona_comun")}
+          >
+            <option value="habitacion">Habitación</option>
+            <option value="zona_comun">Zona Común</option>
+          </select>
+        </label>
+        {!isCommonArea && (
+          <label>
+            Tipo de habitación
+            <select
+              disabled={!isEditing || saving}
+              value={tipoHabitacion}
+              onChange={(e) => {
+                const next = e.target.value as "normal" | "doble";
+                setTipoHabitacion(next);
+                if (next === "doble" && !numeroDoble) {
+                  setNumeroDoble(roomId);
+                }
+              }}
+            >
+              <option value="normal">Habitación Normal</option>
+              <option value="doble">Habitación Doble (ej. 1.1, 1.2)</option>
+            </select>
+          </label>
+        )}
+        {!isCommonArea && tipoHabitacion === "doble" && (
+          <label>
+            Sub-número / Designación Doble
+            <input
+              disabled={!isEditing || saving}
+              value={numeroDoble}
+              placeholder="Ej. 1.1, 1.2, Habitación 1.1"
+              onChange={(event) => setNumeroDoble(event.target.value)}
+            />
+          </label>
+        )}
+        <label>
+          Piso / Ubicación
+          <input
+            disabled={!isEditing || saving}
+            value={piso}
+            placeholder={isCommonArea ? "Ej. Planta Baja, Terraza" : "Ej. Piso 1, Piso 2"}
+            onChange={(event) => setPiso(event.target.value)}
+          />
+        </label>
         <label>
           Estado
           <select disabled={!isEditing || saving} value={status} onChange={(event) => setStatus(event.target.value as RoomStatus)}>
@@ -1341,7 +1456,7 @@ function RoomCard({ roomId }: { roomId: string }) {
           </select>
         </label>
         <label>
-          Huésped
+          {isCommonArea ? "Responsable / Observación" : "Huésped"}
           <input disabled={!isEditing || saving} value={guest} onChange={(event) => setGuest(event.target.value)} />
         </label>
         <label>
@@ -1404,20 +1519,20 @@ function RoomCard({ roomId }: { roomId: string }) {
               }}
             >
               <span className="material-symbol" aria-hidden="true">edit</span>
-              Editar habitación
+              Editar {isCommonArea ? "zona común" : "habitación"}
             </button>
           ) : (
             <div className="room-editor-actions-group">
               <button
                 type="button"
                 className="button button-secondary room-editor-cancel-btn"
-                disabled={saving}
+                disabled={saving || deleting}
                 onClick={handleCancel}
               >
                 <span className="material-symbol" aria-hidden="true">close</span>
                 Cancelar
               </button>
-              <button className="button button-primary room-editor-save" disabled={saving}>
+              <button className="button button-primary room-editor-save" disabled={saving || deleting}>
                 <span className="material-symbol" aria-hidden="true">
                   {saving ? "hourglass_top" : "save"}
                 </span>
@@ -1426,6 +1541,19 @@ function RoomCard({ roomId }: { roomId: string }) {
             </div>
           )}
         </div>
+        {isEditing && (
+          <div className="form-wide room-editor-delete-wrap">
+            <button
+              type="button"
+              className="button button-danger room-editor-delete-btn"
+              disabled={saving || deleting}
+              onClick={handleDelete}
+            >
+              <span className="material-symbol" aria-hidden="true">delete</span>
+              {deleting ? "Eliminando..." : `Eliminar ${isCommonArea ? "zona común" : "habitación"}`}
+            </button>
+          </div>
+        )}
       </form>
     </article>
   );
@@ -1438,6 +1566,8 @@ function RoomPickerCard({
   servicePlan,
   cleanerName,
   cleanerId,
+  floor,
+  isCommonArea,
   onSelect,
 }: {
   roomId: string;
@@ -1446,10 +1576,13 @@ function RoomPickerCard({
   servicePlan: string;
   cleanerName: string;
   cleanerId?: string | null;
+  floor?: string;
+  isCommonArea?: boolean;
   onSelect: () => void;
 }) {
   const navigate = useNavigate();
   const { state } = useHotelData();
+  const isDoubleRoom = !isCommonArea && (state.roomTypes[roomId] === "doble" || detectRoomType(roomId) === "doble");
   const photoIndex = Array.from(roomId).reduce(
     (total, character) => total + character.charCodeAt(0),
     0,
@@ -1474,7 +1607,7 @@ function RoomPickerCard({
     <button className={`room-picker-card room-picker-card-${status}`} onClick={onSelect} type="button">
       <span className="room-picker-art">
         <img
-          alt={`Habitación ${roomId}`}
+          alt={isCommonArea ? `Zona común ${roomId}` : `Habitación ${roomId}`}
           className="room-picker-image"
           src={roomPhotos[photoIndex]}
           loading="lazy"
@@ -1489,14 +1622,33 @@ function RoomPickerCard({
         <span className="room-picker-heading">
           <span className="room-picker-room-name">
             <strong>{roomId}</strong>
+            {isDoubleRoom && (
+              <span className="room-tag-badge room-tag-double" title="Habitación Doble">
+                <span className="material-symbol" style={{ fontSize: "13px" }}>bed</span>
+                Doble
+              </span>
+            )}
+            {isCommonArea ? (
+              <span className="room-tag-badge room-tag-common">
+                <span className="material-symbol" style={{ fontSize: "13px" }}>domain</span>
+                Zona Común
+              </span>
+            ) : floor ? (
+              <span className="room-tag-badge room-tag-floor">
+                <span className="material-symbol" style={{ fontSize: "13px" }}>layers</span>
+                {floor}
+              </span>
+            ) : null}
           </span>
           <span className="material-symbol room-picker-arrow" aria-hidden="true">arrow_forward</span>
         </span>
         <span className="room-picker-details">
           <span className="room-picker-meta">
-            <span className="material-symbol" aria-hidden="true">person</span>
+            <span className="material-symbol" aria-hidden="true">
+              {isCommonArea ? "location_on" : "person"}
+            </span>
             <span className="room-picker-meta-copy">
-              <strong>{guest || "Sin huésped"}</strong>
+              <strong>{guest || (isCommonArea ? "Área Compartida" : "Sin huésped")}</strong>
             </span>
           </span>
           <span className="room-picker-secondary">
@@ -1533,25 +1685,457 @@ function RoomPickerCard({
   );
 }
 
+function CreateRoomModal({
+  isOpen,
+  onClose,
+  onCreated,
+  existingFloors,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated: (roomId: string) => void;
+  existingFloors: string[];
+}) {
+  const [spaceType, setSpaceType] = useState<"habitacion" | "zona_comun">("habitacion");
+
+  // Habitación
+  const [selectedFloor, setSelectedFloor] = useState(existingFloors[0] || "Piso 1");
+  const [isCustomFloor, setIsCustomFloor] = useState(false);
+  const [customFloor, setCustomFloor] = useState("");
+  const [roomNumber, setRoomNumber] = useState("");
+  const [roomType, setRoomType] = useState<"normal" | "doble">("normal");
+  const [roomStatus, setRoomStatus] = useState<RoomStatus>("free");
+  const [guest, setGuest] = useState("");
+  const [servicePlan, setServicePlan] = useState("");
+
+  // Zona Común
+  const [commonFloor, setCommonFloor] = useState("Planta Baja");
+  const [customCommonFloor, setCustomCommonFloor] = useState("");
+  const [isCustomCommonFloor, setIsCustomCommonFloor] = useState(false);
+  const [commonName, setCommonName] = useState("");
+  const [commonStatus, setCommonStatus] = useState<RoomStatus>("free");
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const commonFloorSuggestions = [
+    "Planta Baja",
+    "Piso 1",
+    "Piso 2",
+    "Piso 3",
+    "Terraza",
+    "Sótano",
+    "General",
+  ];
+
+  const commonSuggestions = [
+    "Lobby Principal",
+    "Piscina",
+    "Restaurante",
+    "Gimnasio",
+    "Lavandería",
+    "Pasillo Piso 1",
+    "Pasillo Piso 2",
+    "Terraza Bar",
+    "Spa",
+  ];
+
+  const effectiveFloor =
+    spaceType === "habitacion"
+      ? (isCustomFloor ? customFloor.trim() : selectedFloor)
+      : (isCustomCommonFloor ? customCommonFloor.trim() : commonFloor);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const targetId = spaceType === "habitacion" ? roomNumber.trim() : commonName.trim();
+    if (!targetId) {
+      setError(
+        spaceType === "habitacion"
+          ? "Por favor escribe el número de la habitación."
+          : "Por favor escribe el nombre de la zona común.",
+      );
+      return;
+    }
+
+    if (spaceType === "habitacion" && roomType === "doble") {
+      if (!/^\d+(\.\d+)$/.test(targetId)) {
+        setError("Las habitaciones dobles requieren formato con punto (ej. 1.1 o 1.2).");
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      await createRoom({
+        id: targetId,
+        piso: effectiveFloor || (spaceType === "habitacion" ? "Piso 1" : "General"),
+        tipo_espacio: spaceType,
+        tipo_habitacion: spaceType === "habitacion" ? roomType : "normal",
+        numero_doble: spaceType === "habitacion" && roomType === "doble" ? targetId : null,
+        estado: spaceType === "habitacion" ? roomStatus : commonStatus,
+        guest: spaceType === "habitacion" ? guest.trim() || null : null,
+        plan: spaceType === "habitacion" ? servicePlan.trim() || null : null,
+      });
+
+      onCreated(targetId);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al crear el espacio.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="matrix-modal-backdrop"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-space-modal-title"
+    >
+      <div className="matrix-modal-dialog create-space-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="compact-modal-header">
+          <div className="compact-modal-title">
+            <span className="material-symbol" style={{ color: "#2563eb", fontSize: "20px" }}>
+              {spaceType === "habitacion" ? "bed" : "deck"}
+            </span>
+            <h3 id="create-space-modal-title">
+              {spaceType === "habitacion" ? "Nueva Habitación" : "Nueva Zona Común"}
+            </h3>
+          </div>
+          <button
+            type="button"
+            className="matrix-modal-close"
+            onClick={onClose}
+            aria-label="Cerrar modal"
+          >
+            <span className="material-symbol" aria-hidden="true">close</span>
+          </button>
+        </div>
+
+        {error && <p className="form-error" role="alert" style={{ margin: "4px 0" }}>{error}</p>}
+
+        <div className="compact-space-tabs">
+          <button
+            type="button"
+            className={`compact-space-tab ${spaceType === "habitacion" ? "active" : ""}`}
+            onClick={() => setSpaceType("habitacion")}
+          >
+            <span className="material-symbol" style={{ fontSize: "17px" }}>bedroom_parent</span>
+            Habitación
+          </button>
+          <button
+            type="button"
+            className={`compact-space-tab ${spaceType === "zona_comun" ? "active" : ""}`}
+            onClick={() => setSpaceType("zona_comun")}
+          >
+            <span className="material-symbol" style={{ fontSize: "17px" }}>deck</span>
+            Zona Común
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="compact-space-form">
+          {spaceType === "habitacion" ? (
+            <div className="compact-form-grid">
+              {/* Columna Izquierda */}
+              <div className="compact-col">
+                <div className="compact-field">
+                  <label>Piso o Nivel</label>
+                  <select
+                    value={isCustomFloor ? "custom" : selectedFloor}
+                    onChange={(e) => {
+                      if (e.target.value === "custom") {
+                        setIsCustomFloor(true);
+                      } else {
+                        setIsCustomFloor(false);
+                        setSelectedFloor(e.target.value);
+                        if (roomType === "doble") {
+                          const base = e.target.value.match(/\d+/)?.[0] || "1";
+                          setRoomNumber(`${base}.1`);
+                        }
+                      }
+                    }}
+                  >
+                    {existingFloors.map((fl) => (
+                      <option key={fl} value={fl}>{fl}</option>
+                    ))}
+                    <option value="custom">+ Otro piso personalizado...</option>
+                  </select>
+                  {isCustomFloor && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Piso 4, Terraza"
+                      value={customFloor}
+                      onChange={(e) => setCustomFloor(e.target.value)}
+                      style={{ marginTop: "4px" }}
+                    />
+                  )}
+                </div>
+
+                <div className="compact-field">
+                  <label>Tipo de Habitación</label>
+                  <div className="compact-type-switch">
+                    <button
+                      type="button"
+                      className={`compact-type-btn ${roomType === "normal" ? "active" : ""}`}
+                      onClick={() => {
+                        setRoomType("normal");
+                        if (roomNumber.includes(".")) {
+                          const base = (isCustomFloor ? customFloor : selectedFloor).match(/\d+/)?.[0] || "1";
+                          setRoomNumber(`${base}01`);
+                        }
+                      }}
+                    >
+                      <span className="material-symbol">single_bed</span> Normal
+                    </button>
+                    <button
+                      type="button"
+                      className={`compact-type-btn ${roomType === "doble" ? "active" : ""}`}
+                      onClick={() => {
+                        setRoomType("doble");
+                        if (!roomNumber.includes(".")) {
+                          const base = (isCustomFloor ? customFloor : selectedFloor).match(/\d+/)?.[0] || "1";
+                          setRoomNumber(`${base}.1`);
+                        }
+                      }}
+                    >
+                      <span className="material-symbol">bed</span> Doble
+                    </button>
+                  </div>
+                </div>
+
+                <div className="compact-field">
+                  <label>{roomType === "doble" ? "Número (ej. 1.1 o 1.2)" : "Número de Habitación"}</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={roomType === "doble" ? "Ej. 1.1 o 1.2" : "Ej. 101, 201"}
+                    value={roomNumber}
+                    onChange={(e) => setRoomNumber(e.target.value)}
+                  />
+                  {roomType === "doble" && (
+                    <small className="field-hint">Formato decimal obligatorio (ej. 1.1, 1.2)</small>
+                  )}
+                </div>
+              </div>
+
+              {/* Columna Derecha */}
+              <div className="compact-col">
+                <div className="compact-field">
+                  <label>Estado Inicial</label>
+                  <select
+                    value={roomStatus}
+                    onChange={(e) => setRoomStatus(e.target.value as RoomStatus)}
+                  >
+                    <option value="free">Libre (disponible)</option>
+                    <option value="occupied">Ocupada</option>
+                    <option value="pending">Por atender / Pendiente</option>
+                    <option value="cleaning">En Limpieza</option>
+                  </select>
+                </div>
+
+                <div className="compact-field">
+                  <label>Huésped (opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Nombre del huésped"
+                    value={guest}
+                    onChange={(e) => setGuest(e.target.value)}
+                  />
+                </div>
+
+                <div className="compact-field">
+                  <label>Plan de Limpieza (opcional)</label>
+                  <select
+                    value={servicePlan}
+                    onChange={(e) => setServicePlan(e.target.value)}
+                  >
+                    <option value="">Sin servicio asignado</option>
+                    {cleaningServicePlans.map((plan) => (
+                      <option key={plan} value={plan}>{plan}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="compact-form-grid">
+              {/* Columna Izquierda Zona Común */}
+              <div className="compact-col">
+                <div className="compact-field">
+                  <label>Ubicación / Piso</label>
+                  <select
+                    value={isCustomCommonFloor ? "custom" : commonFloor}
+                    onChange={(e) => {
+                      if (e.target.value === "custom") {
+                        setIsCustomCommonFloor(true);
+                      } else {
+                        setIsCustomCommonFloor(false);
+                        setCommonFloor(e.target.value);
+                      }
+                    }}
+                  >
+                    {commonFloorSuggestions.map((fl) => (
+                      <option key={fl} value={fl}>{fl}</option>
+                    ))}
+                    <option value="custom">+ Otra ubicación...</option>
+                  </select>
+                  {isCustomCommonFloor && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Terraza Norte, Jardín"
+                      value={customCommonFloor}
+                      onChange={(e) => setCustomCommonFloor(e.target.value)}
+                      style={{ marginTop: "4px" }}
+                    />
+                  )}
+                </div>
+
+                <div className="compact-field">
+                  <label>Nombre de la Zona Común</label>
+                  <input
+                    list="common-suggestions-list"
+                    type="text"
+                    required
+                    placeholder="Ej. Lobby Principal, Piscina..."
+                    value={commonName}
+                    onChange={(e) => setCommonName(e.target.value)}
+                  />
+                  <datalist id="common-suggestions-list">
+                    {commonSuggestions.map((sug) => (
+                      <option key={sug} value={sug} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
+              {/* Columna Derecha Zona Común */}
+              <div className="compact-col">
+                <div className="compact-field">
+                  <label>Estado Inicial</label>
+                  <select
+                    value={commonStatus}
+                    onChange={(e) => setCommonStatus(e.target.value as RoomStatus)}
+                  >
+                    <option value="free">Libre / Habilitado</option>
+                    <option value="cleaning">En Limpieza</option>
+                    <option value="pending">Pendiente de Aseo</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="compact-modal-footer">
+            <button
+              type="button"
+              className="button button-secondary button-small"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="button button-primary button-small"
+              disabled={saving}
+            >
+              <span className="material-symbol" aria-hidden="true">
+                {saving ? "hourglass_top" : "check"}
+              </span>
+              {saving
+                ? "Guardando..."
+                : spaceType === "habitacion"
+                ? "Crear Habitación"
+                : "Crear Zona Común"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function RoomsPage() {
   const { state, loading, error, refresh } = useHotelData();
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [roomTypeFilter, setRoomTypeFilter] = useState<"all" | "normal" | "doble">("all");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   const roomIds = useMemo(
     () => Object.keys(state.rooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [state.rooms],
   );
+
+  const availableFloors = useMemo(() => {
+    const set = new Set<string>();
+    for (const id of roomIds) {
+      if (state.spaceTypes[id] !== "zona_comun") {
+        const f = state.floors[id] || detectFloor(id);
+        if (f) set.add(f);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [roomIds, state.floors, state.spaceTypes]);
+
+  const commonAreasCount = useMemo(() => {
+    return roomIds.filter((id) => state.spaceTypes[id] === "zona_comun").length;
+  }, [roomIds, state.spaceTypes]);
+
+  const doubleRoomsCount = useMemo(() => {
+    return roomIds.filter(
+      (id) => state.spaceTypes[id] !== "zona_comun" && (state.roomTypes[id] === "doble" || detectRoomType(id) === "doble"),
+    ).length;
+  }, [roomIds, state.roomTypes, state.spaceTypes]);
+
+  const normalRoomsCount = useMemo(() => {
+    return roomIds.filter(
+      (id) => state.spaceTypes[id] !== "zona_comun" && (state.roomTypes[id] !== "doble" && detectRoomType(id) !== "doble"),
+    ).length;
+  }, [roomIds, state.roomTypes, state.spaceTypes]);
+
   const visibleRoomIds = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return roomIds.filter((roomId) => {
+      const isCommonArea = state.spaceTypes[roomId] === "zona_comun";
+      const roomFloor = state.floors[roomId] || detectFloor(roomId, undefined, isCommonArea);
+      const isDouble = !isCommonArea && (state.roomTypes[roomId] === "doble" || detectRoomType(roomId) === "doble");
+
+      if (selectedFilter === "zonas_comunes" && !isCommonArea) {
+        return false;
+      }
+      if (selectedFilter !== "all" && selectedFilter !== "zonas_comunes") {
+        if (isCommonArea || roomFloor !== selectedFilter) {
+          return false;
+        }
+      }
+
+      if (!isCommonArea) {
+        if (roomTypeFilter === "doble" && !isDouble) return false;
+        if (roomTypeFilter === "normal" && isDouble) return false;
+      } else if (roomTypeFilter !== "all") {
+        return false;
+      }
+
       return !query || [
         roomId,
         state.guests[roomId] ?? "",
         state.servicePlans[roomId] ?? "",
         state.assignedCleanings[roomId]?.staffName ?? "",
+        roomFloor,
+        isCommonArea ? "zona comun común" : (isDouble ? "doble habitacion suite 1.1 1.2" : "normal estándar individual"),
       ].some((value) => value.toLocaleLowerCase().includes(query));
     });
-  }, [roomIds, search, state.assignedCleanings, state.guests, state.servicePlans]);
+  }, [roomIds, search, selectedFilter, roomTypeFilter, state.assignedCleanings, state.floors, state.guests, state.roomTypes, state.servicePlans, state.spaceTypes]);
+
   const roomSummary = [
     { label: "Libres", icon: "door_open", includes: (status: RoomStatus) => status === "free" },
     { label: "Ocupadas", icon: "bed", includes: (status: RoomStatus) => status === "occupied" },
@@ -1564,6 +2148,7 @@ export function RoomsPage() {
     ...item,
     count: Object.values(state.rooms).filter(item.includes).length,
   }));
+
   const legacyRoomCount = useMemo(() => {
     try {
       const saved = localStorage.getItem("control-habitaciones-state-v3");
@@ -1585,15 +2170,29 @@ export function RoomsPage() {
     }
   }, []);
 
+  function handleRoomCreated(newRoomId: string) {
+    refresh().then(() => {
+      setSelectedRoom(newRoomId);
+    });
+  }
+
   return (
     <div className="page-stack rooms-page">
       <div className="page-heading">
         <div>
           <p className="eyebrow">Inventario</p>
-          <h1>Habitaciones</h1>
-          <p className="page-description">Cada espacio, su estado y los detalles para atenderlo.</p>
+          <h1>Habitaciones y Espacios</h1>
+          <p className="page-description">Control de pisos, habitaciones y zonas comunes del hotel.</p>
         </div>
         <div className="room-heading-actions">
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            <span className="material-symbol" aria-hidden="true">domain_add</span>
+            Nueva habitación / Zona común
+          </button>
           <button className="button button-refresh" onClick={() => void refresh()}>
             <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
           </button>
@@ -1621,21 +2220,102 @@ export function RoomsPage() {
             type="button"
           >
             <span className="material-symbol" aria-hidden="true">arrow_back</span>
-            Todas las habitaciones
+            Todos los espacios
           </button>
-          <RoomCard key={selectedRoom} roomId={selectedRoom} />
+          <RoomCard key={selectedRoom} roomId={selectedRoom} onDelete={() => setSelectedRoom(null)} />
         </section>
       ) : (
         <section className="room-selection">
+          {/* Pestañas de Filtro por Piso y Zonas Comunes */}
+          <div className="room-filter-tabs-wrapper">
+            <div className="room-filter-tabs" role="tablist" aria-label="Filtrar por piso o zonas comunes">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedFilter === "all"}
+                className={`room-filter-tab ${selectedFilter === "all" ? "is-active" : ""}`}
+                onClick={() => setSelectedFilter("all")}
+              >
+                <span className="material-symbol" aria-hidden="true">dashboard</span>
+                <span>Todos los espacios</span>
+                <span className="room-filter-tab-count">{roomIds.length}</span>
+              </button>
+
+              {availableFloors.map((floor) => {
+                const count = roomIds.filter(
+                  (id) => state.spaceTypes[id] !== "zona_comun" && (state.floors[id] || detectFloor(id)) === floor,
+                ).length;
+                return (
+                  <button
+                    key={floor}
+                    type="button"
+                    role="tab"
+                    aria-selected={selectedFilter === floor}
+                    className={`room-filter-tab ${selectedFilter === floor ? "is-active" : ""}`}
+                    onClick={() => setSelectedFilter(floor)}
+                  >
+                    <span className="material-symbol" aria-hidden="true">layers</span>
+                    <span>{floor}</span>
+                    <span className="room-filter-tab-count">{count}</span>
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedFilter === "zonas_comunes"}
+                className={`room-filter-tab ${selectedFilter === "zonas_comunes" ? "is-active" : ""}`}
+                onClick={() => setSelectedFilter("zonas_comunes")}
+              >
+                <span className="material-symbol" aria-hidden="true">domain</span>
+                <span>Zonas Comunes</span>
+                <span className="room-filter-tab-count">{commonAreasCount}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-filtro de tipo de habitación: Todas / Normales / Dobles */}
+          <div className="room-type-filter-wrapper">
+            <span className="room-type-filter-label">Tipo de habitación:</span>
+            <div className="room-subfilter-chips" role="group" aria-label="Filtrar por tipo de habitación">
+              <button
+                type="button"
+                className={`subfilter-chip ${roomTypeFilter === "all" ? "is-active" : ""}`}
+                onClick={() => setRoomTypeFilter("all")}
+              >
+                Todas ({roomIds.length})
+              </button>
+              <button
+                type="button"
+                className={`subfilter-chip ${roomTypeFilter === "normal" ? "is-active" : ""}`}
+                onClick={() => setRoomTypeFilter("normal")}
+                title="Filtrar habitaciones estándar / normales"
+              >
+                <span className="material-symbol" aria-hidden="true" style={{ fontSize: "14px" }}>single_bed</span>
+                Normales ({normalRoomsCount})
+              </button>
+              <button
+                type="button"
+                className={`subfilter-chip subfilter-chip-double ${roomTypeFilter === "doble" ? "is-active" : ""}`}
+                onClick={() => setRoomTypeFilter("doble")}
+                title="Filtrar habitaciones dobles con sub-número decimal (ej. 1.1, 1.2)"
+              >
+                <span className="material-symbol" aria-hidden="true" style={{ fontSize: "14px" }}>bed</span>
+                Dobles ({doubleRoomsCount})
+              </button>
+            </div>
+          </div>
+
           <div className="room-selection-toolbar">
             <div className="room-selection-controls">
               <label className="search-field">
                 <span className="search-input-wrap">
                   <span className="material-symbol" aria-hidden="true">search</span>
                   <input
-                    aria-label="Buscar habitación"
+                    aria-label="Buscar habitación o espacio"
                     autoComplete="off"
-                    placeholder="Habitación, huésped o personal"
+                    placeholder="Habitación, zona común, huésped o personal..."
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
@@ -1653,11 +2333,11 @@ export function RoomsPage() {
               </label>
             </div>
             <p className="room-results-count">
-              {visibleRoomIds.length} {visibleRoomIds.length === 1 ? "habitación" : "habitaciones"}
+              {visibleRoomIds.length} {visibleRoomIds.length === 1 ? "espacio" : "espacios"}
             </p>
           </div>
           {visibleRoomIds.length === 0 ? (
-            <p className="empty-state">No hay habitaciones que coincidan con la búsqueda.</p>
+            <p className="empty-state">No hay espacios que coincidan con la búsqueda o filtro seleccionado.</p>
           ) : (
             <div className="room-picker-grid">
               {visibleRoomIds.map((roomId) => (
@@ -1669,6 +2349,8 @@ export function RoomsPage() {
                   servicePlan={state.servicePlans[roomId] ?? ""}
                   cleanerName={state.assignedCleanings[roomId]?.staffName ?? ""}
                   cleanerId={state.assignedCleanings[roomId]?.staffId ?? null}
+                  floor={state.floors[roomId] || detectFloor(roomId, undefined, state.spaceTypes[roomId] === "zona_comun")}
+                  isCommonArea={state.spaceTypes[roomId] === "zona_comun"}
                   onSelect={() => setSelectedRoom(roomId)}
                 />
               ))}
@@ -1686,6 +2368,13 @@ export function RoomsPage() {
           </section>
         </section>
       )}
+
+      <CreateRoomModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={handleRoomCreated}
+        existingFloors={availableFloors.length > 0 ? availableFloors : ["Piso 1", "Piso 2", "Piso 3"]}
+      />
     </div>
   );
 }
@@ -2139,9 +2828,29 @@ export function StaffPage() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
+  const [customPassword, setCustomPassword] = useState("");
+  const [passwordModalStaff, setPasswordModalStaff] = useState<StaffMember | null>(null);
+  const [adminNewPassword, setAdminNewPassword] = useState("");
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState("");
+  const [adminPasswordSaving, setAdminPasswordSaving] = useState(false);
+  const [adminPasswordError, setAdminPasswordError] = useState<string | null>(null);
+  const [staffToDelete, setStaffToDelete] = useState<StaffMember | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [staffFilter, setStaffFilter] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(() => staffParamId ?? null);
+  const selectedStaffId = useMemo(() => {
+    if (staffParamId) {
+      const match = state.staff.find((person) => person.id === staffParamId);
+      if (match) return match.id;
+    }
+    if (staffParamName) {
+      const match = state.staff.find((person) => person.name.trim().toLowerCase() === staffParamName.trim().toLowerCase());
+      if (match) return match.id;
+    }
+    return null;
+  }, [staffParamId, staffParamName, state.staff]);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editContact, setEditContact] = useState("");
@@ -2159,21 +2868,6 @@ export function StaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (staffParamId) {
-      if (state.staff.some((person) => person.id === staffParamId)) {
-        setSelectedStaffId(staffParamId);
-      }
-    } else if (staffParamName) {
-      const match = state.staff.find((person) => person.name.trim().toLowerCase() === staffParamName.trim().toLowerCase());
-      if (match) {
-        setSelectedStaffId(match.id);
-      }
-    } else if (selectedStaffId && !state.staff.some((person) => person.id === selectedStaffId)) {
-      setSelectedStaffId(null);
-    }
-  }, [staffParamId, staffParamName, selectedStaffId, state.staff]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setReportNow(Date.now()), 60_000);
@@ -2297,25 +2991,38 @@ export function StaffPage() {
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const trimmedCustom = customPassword.trim();
+    if (trimmedCustom && trimmedCustom.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
     setSaving(true);
     setError(null);
     setSuccess(null);
     try {
-      const password = await createStaff({
-        id: crypto.randomUUID(),
-        name: name.trim(),
-        contact: contact.trim(),
-        email: email.trim().toLowerCase(),
-        hasAccount: false,
-      });
+      const password = await createStaff(
+        {
+          id: crypto.randomUUID(),
+          name: name.trim(),
+          contact: contact.trim(),
+          email: email.trim().toLowerCase(),
+          hasAccount: false,
+        },
+        trimmedCustom || undefined,
+      );
       setNewPassword(password);
       setCredentialUsername(email.trim().toLowerCase());
       setCredentialName(`${name.trim()} (${email.trim().toLowerCase()})`);
       setName("");
       setContact("");
       setEmail("");
+      setCustomPassword("");
       setShowCreateForm(false);
-      setSuccess("Registro creado. Copia la clave temporal; solo se mostrará una vez.");
+      setSuccess(
+        trimmedCustom
+          ? "Personal registrado y cuenta creada con la contraseña establecida."
+          : "Registro creado. Copia la clave temporal; solo se mostrará una vez.",
+      );
       await refresh();
     } catch (createError: unknown) {
       setError(messageOf(createError));
@@ -2324,19 +3031,74 @@ export function StaffPage() {
     }
   }
 
-  async function handleResetPassword(personId: string, personName: string) {
-    if (!window.confirm(`¿Generar una nueva contraseña temporal para ${personName}?`)) return;
-    setError(null);
-    setSuccess(null);
+  async function handleAdminPasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!passwordModalStaff) return;
+    setAdminPasswordError(null);
+    const trimmed = adminNewPassword.trim();
+    if (trimmed.length < 6) {
+      setAdminPasswordError("La nueva contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    if (trimmed !== adminConfirmPassword.trim()) {
+      setAdminPasswordError("Las contraseñas no coinciden.");
+      return;
+    }
+    setAdminPasswordSaving(true);
     try {
-      const password = await resetCleanerPassword(personId);
-      const person = state.staff.find((member) => member.id === personId);
-      setCredentialUsername(person?.email ?? "");
-      setCredentialName(personName);
+      await changeStaffPassword(passwordModalStaff.id, trimmed);
+      setCredentialUsername(passwordModalStaff.email ?? "");
+      setCredentialName(`${passwordModalStaff.name} (${passwordModalStaff.email ?? ""})`);
+      setNewPassword(trimmed);
+      setSuccess(`Contraseña de ${passwordModalStaff.name} actualizada correctamente.`);
+      setPasswordModalStaff(null);
+      setAdminNewPassword("");
+      setAdminConfirmPassword("");
+    } catch (err: unknown) {
+      setAdminPasswordError(messageOf(err));
+    } finally {
+      setAdminPasswordSaving(false);
+    }
+  }
+
+  async function handleAdminGenerateRandom(person: StaffMember) {
+    setAdminPasswordSaving(true);
+    setAdminPasswordError(null);
+    try {
+      const password = await resetCleanerPassword(person.id);
+      setCredentialUsername(person.email ?? "");
+      setCredentialName(`${person.name} (${person.email ?? ""})`);
       setNewPassword(password);
-      setSuccess("Nueva contraseña temporal generada. La anterior ya no es válida.");
-    } catch (resetError: unknown) {
-      setError(messageOf(resetError));
+      setSuccess(`Nueva contraseña provisional generada para ${person.name}.`);
+      setPasswordModalStaff(null);
+      setAdminNewPassword("");
+      setAdminConfirmPassword("");
+    } catch (err: unknown) {
+      setAdminPasswordError(messageOf(err));
+    } finally {
+      setAdminPasswordSaving(false);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!staffToDelete) return;
+    if (deleteConfirmName.trim() !== staffToDelete.name.trim()) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteStaff(staffToDelete.id);
+      const deletedName = staffToDelete.name;
+      if (selectedStaffId === staffToDelete.id) {
+        setSearchParams({}, { replace: true });
+      }
+      setStaffToDelete(null);
+      setDeleteConfirmName("");
+      setSuccess(`El empleado "${deletedName}" ha sido eliminado exitosamente.`);
+      await refresh();
+    } catch (err: unknown) {
+      setDeleteError(messageOf(err));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -2453,8 +3215,7 @@ export function StaffPage() {
             <button
               className="button staff-back-button"
               onClick={() => {
-                setSelectedStaffId(null);
-                setSearchParams({});
+                setSearchParams({}, { replace: true });
                 setEditingStaffId(null);
                 setError(null);
                 setSuccess(null);
@@ -2529,14 +3290,32 @@ export function StaffPage() {
                   {selectedStaff.hasAccount && (
                     <button
                       className="button button-small button-ghost staff-action-pill"
-                      onClick={() => void handleResetPassword(selectedStaff.id, selectedStaff.name)}
+                      onClick={() => {
+                        setPasswordModalStaff(selectedStaff);
+                        setAdminNewPassword("");
+                        setAdminConfirmPassword("");
+                        setAdminPasswordError(null);
+                      }}
                       type="button"
-                      title="Generar nueva contraseña provisional"
+                      title="Cambiar contraseña del empleado"
                     >
                       <span className="material-symbol" aria-hidden="true">lock_reset</span>
-                      Contraseña
+                      Cambiar contraseña
                     </button>
                   )}
+                  <button
+                    className="staff-delete-icon-btn"
+                    onClick={() => {
+                      setStaffToDelete(selectedStaff);
+                      setDeleteConfirmName("");
+                      setDeleteError(null);
+                    }}
+                    type="button"
+                    title={`Eliminar a ${selectedStaff.name}`}
+                    aria-label={`Eliminar a ${selectedStaff.name}`}
+                  >
+                    <span className="material-symbol" aria-hidden="true">delete</span>
+                  </button>
                 </div>
               </header>
 
@@ -2799,6 +3578,18 @@ export function StaffPage() {
                   <label>Nombre completo<input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
                   <label>Teléfono<input required maxLength={30} type="tel" value={contact} onChange={(event) => setContact(event.target.value)} /></label>
                   <label>Correo de acceso<input required autoComplete="email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+                  <label className="staff-create-password-field">
+                    <span>Contraseña (opcional, mín. 6 caracteres. Si se deja vacía se genera automáticamente)</span>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      maxLength={128}
+                      value={customPassword}
+                      onChange={(event) => setCustomPassword(event.target.value)}
+                      placeholder="Dejar vacía para generar automáticamente"
+                    />
+                  </label>
                   <button className="button button-primary" disabled={saving}>
                     {saving ? "Guardando…" : "Crear ficha y cuenta"}
                   </button>
@@ -2859,7 +3650,6 @@ export function StaffPage() {
                         className="staff-directory-card"
                         key={person.id}
                         onClick={() => {
-                          setSelectedStaffId(person.id);
                           setSearchParams({ id: person.id });
                           setEditingStaffId(null);
                           setError(null);
@@ -2925,6 +3715,208 @@ export function StaffPage() {
           </div>
         )}
       </section>
+
+      {passwordModalStaff && (
+        <div
+          className="matrix-modal-backdrop"
+          onClick={() => setPasswordModalStaff(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-pwd-modal-title"
+        >
+          <div
+            className="matrix-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="matrix-modal-header">
+              <div className="matrix-modal-title-group">
+                <div className="matrix-modal-icon-badge status-cleaning">
+                  <span className="material-symbol" aria-hidden="true">lock_reset</span>
+                </div>
+                <div>
+                  <h3 id="admin-pwd-modal-title">Cambiar contraseña</h3>
+                  <span className="page-description" style={{ fontSize: "12px", color: "#64748b" }}>
+                    {passwordModalStaff.name} {passwordModalStaff.email ? `• ${passwordModalStaff.email}` : ""}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="matrix-modal-close"
+                onClick={() => setPasswordModalStaff(null)}
+                aria-label="Cerrar modal"
+              >
+                <span className="material-symbol" aria-hidden="true">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminPasswordSubmit}>
+              <div style={{ display: "grid", gap: "14px", margin: "16px 0" }}>
+                <label style={{ display: "grid", gap: "6px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#334155" }}>Nueva contraseña personalizada</span>
+                  <input
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    minLength={6}
+                    maxLength={128}
+                    value={adminNewPassword}
+                    onChange={(e) => setAdminNewPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres (ej. hotel2025)"
+                  />
+                </label>
+                <label style={{ display: "grid", gap: "6px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#334155" }}>Confirmar nueva contraseña</span>
+                  <input
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    minLength={6}
+                    maxLength={128}
+                    value={adminConfirmPassword}
+                    onChange={(e) => setAdminConfirmPassword(e.target.value)}
+                    placeholder="Repite la contraseña"
+                  />
+                </label>
+                {adminPasswordError && (
+                  <p className="form-error" role="alert" style={{ margin: 0 }}>{adminPasswordError}</p>
+                )}
+              </div>
+              <div className="matrix-modal-footer">
+                <button
+                  type="button"
+                  className="button button-ghost button-small"
+                  disabled={adminPasswordSaving}
+                  onClick={() => void handleAdminGenerateRandom(passwordModalStaff)}
+                  title="Generar una contraseña aleatoria y asignarla"
+                >
+                  <span className="material-symbol" aria-hidden="true">autorenew</span>
+                  Generar clave aleatoria
+                </button>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    type="button"
+                    className="button button-secondary button-small"
+                    onClick={() => setPasswordModalStaff(null)}
+                    disabled={adminPasswordSaving}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="button button-primary button-small"
+                    disabled={adminPasswordSaving}
+                  >
+                    <span className="material-symbol" aria-hidden="true">save</span>
+                    {adminPasswordSaving ? "Guardando…" : "Guardar contraseña"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {staffToDelete && (
+        <div className="matrix-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-staff-title">
+          <div className="matrix-modal-dialog delete-staff-dialog">
+            <div className="matrix-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span className="material-symbol" style={{ color: "#dc2626", fontSize: "28px" }} aria-hidden="true">
+                  warning
+                </span>
+                <div>
+                  <h3 id="delete-staff-title" style={{ margin: 0, fontSize: "16px", color: "#991b1b" }}>
+                    ¿Eliminar a {staffToDelete.name}?
+                  </h3>
+                  <span className="page-description" style={{ fontSize: "12px", color: "#64748b" }}>
+                    Esta acción no se puede deshacer. Se desvincularán sus asignaciones y turnos.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="matrix-modal-close"
+                onClick={() => {
+                  if (!deleting) {
+                    setStaffToDelete(null);
+                    setDeleteConfirmName("");
+                    setDeleteError(null);
+                  }
+                }}
+                aria-label="Cerrar modal"
+                disabled={deleting}
+              >
+                <span className="material-symbol" aria-hidden="true">close</span>
+              </button>
+            </div>
+
+            <div className="delete-staff-body" style={{ margin: "16px 0", display: "grid", gap: "12px" }}>
+              <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>
+                Para confirmar la eliminación permanente de este empleado, escribe exactamente su nombre:{" "}
+                <strong style={{ userSelect: "all", color: "#111827", backgroundColor: "#f3f4f6", padding: "2px 6px", borderRadius: "4px" }}>
+                  {staffToDelete.name}
+                </strong>
+              </p>
+
+              <label style={{ display: "grid", gap: "6px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "#4b5563" }}>
+                  Escribe el nombre del empleado para confirmar
+                </span>
+                <input
+                  type="text"
+                  autoFocus
+                  disabled={deleting}
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={staffToDelete.name}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid",
+                    borderColor: deleteConfirmName.trim() === staffToDelete.name.trim() ? "#dc2626" : "#cbd5e1",
+                    outline: "none",
+                    boxShadow: deleteConfirmName.trim() === staffToDelete.name.trim() ? "0 0 0 2px rgba(220,38,38,0.2)" : undefined
+                  }}
+                />
+              </label>
+
+              {deleteError && (
+                <div className="banner banner-error" style={{ margin: 0 }}>
+                  <span className="material-symbol" aria-hidden="true">error</span>
+                  <span>{deleteError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="matrix-modal-footer">
+              <button
+                type="button"
+                className="button button-secondary button-small"
+                onClick={() => {
+                  setStaffToDelete(null);
+                  setDeleteConfirmName("");
+                  setDeleteError(null);
+                }}
+                disabled={deleting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="button button-small button-danger-solid"
+                disabled={deleteConfirmName.trim() !== staffToDelete.name.trim() || deleting}
+                onClick={() => void handleConfirmDelete()}
+              >
+                <span className="material-symbol" aria-hidden="true">
+                  {deleting ? "hourglass_empty" : "delete_forever"}
+                </span>
+                {deleting ? "Eliminando…" : "Entiendo las consecuencias, eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2939,6 +3931,36 @@ export function CleanerPortal() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyRoom, setBusyRoom] = useState<string | null>(null);
+  const [startedRooms, setStartedRooms] = useState<Set<string>>(() => {
+    try {
+      const saved = sessionStorage.getItem("cleaner_started_rooms");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  function markRoomStarted(roomId: string) {
+    setStartedRooms((prev) => {
+      const next = new Set(prev);
+      next.add(roomId);
+      try {
+        sessionStorage.setItem("cleaner_started_rooms", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  }
+
+  function markRoomFinished(roomId: string) {
+    setStartedRooms((prev) => {
+      const next = new Set(prev);
+      next.delete(roomId);
+      try {
+        sessionStorage.setItem("cleaner_started_rooms", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  }
 
   async function loadCleanerData() {
     const [assignedRooms, completedRooms] = await Promise.all([
@@ -3004,6 +4026,14 @@ export function CleanerPortal() {
     setError(null);
     try {
       await startCleanerRoom(roomId);
+      markRoomStarted(roomId);
+      setRooms((prev) =>
+        prev.map((r) =>
+          r.id_habitacion === roomId
+            ? { ...r, estado: "limpieza" }
+            : r
+        )
+      );
       await loadCleanerData();
     } catch (startError: unknown) {
       setError(messageOf(startError));
@@ -3017,6 +4047,14 @@ export function CleanerPortal() {
     setError(null);
     try {
       await finishCleanerRoom(roomId);
+      markRoomFinished(roomId);
+      setRooms((prev) =>
+        prev.map((r) =>
+          r.id_habitacion === roomId
+            ? { ...r, estado: "finalizado" }
+            : r
+        )
+      );
       await loadCleanerData();
     } catch (finishError: unknown) {
       setError(messageOf(finishError));
@@ -3034,6 +4072,10 @@ export function CleanerPortal() {
       setLoading(false);
       return;
     }
+    try {
+      sessionStorage.removeItem("cleaner_started_rooms");
+    } catch {}
+    setStartedRooms(new Set());
     setProfile(null);
     setRooms([]);
     setHistory([]);
@@ -3077,15 +4119,21 @@ export function CleanerPortal() {
           ) : (
             <section className="room-grid">
               {rooms.map((room) => {
-                const currentStatus = statusFromDb(room.estado);
-                const isCleaning = room.estado === "limpieza" || currentStatus === "cleaning";
-                const isFinished = room.estado === "finalizado" || currentStatus === "finished";
+                const isFinished = room.estado === "finalizado" || statusFromDb(room.estado) === "finished";
+                const isCleaning = !isFinished && startedRooms.has(room.id_habitacion);
+                const displayStatus: RoomStatus = isFinished
+                  ? "finished"
+                  : isCleaning
+                  ? "cleaning"
+                  : "pending";
 
                 return (
                   <article className="room-card cleaner-room-card" key={room.id_habitacion}>
                     <div className="room-card-heading">
                       <div><p className="eyebrow">Habitación</p><h2>{room.id_habitacion}</h2></div>
-                      <span className={`status-pill status-${currentStatus}`}>{statusLabels[currentStatus] || room.estado}</span>
+                      <span className={`status-pill status-${displayStatus}`}>
+                        {statusLabels[displayStatus] || (isCleaning ? "En limpieza" : "Por atender")}
+                      </span>
                     </div>
                     <dl className="details-list">
                       <div><dt>Huésped</dt><dd>{room.nombre_huesped || "No registrado"}</dd></div>

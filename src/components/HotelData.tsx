@@ -27,6 +27,10 @@ const emptyState: RemoteHotelState = {
   novelties: [],
   staff: [],
   events: [],
+  floors: {},
+  spaceTypes: {},
+  roomTypes: {},
+  doubleNumbers: {},
 };
 
 interface HotelDataContextValue {

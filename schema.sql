@@ -76,6 +76,10 @@ CREATE TABLE IF NOT EXISTS public.habitaciones (
   detalles_limpieza TEXT,
   id_personal_asignado TEXT REFERENCES public.personal(id_personal) ON DELETE SET NULL,
   tipo_limpieza_asignada TEXT,
+  piso TEXT,
+  tipo_espacio TEXT DEFAULT 'habitacion',
+  tipo_habitacion TEXT DEFAULT 'normal',
+  numero_doble TEXT,
   actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -92,6 +96,14 @@ ALTER TABLE public.habitaciones
   REFERENCES public.personal(id_personal) ON DELETE SET NULL;
 ALTER TABLE public.habitaciones
   ADD COLUMN IF NOT EXISTS tipo_limpieza_asignada TEXT;
+ALTER TABLE public.habitaciones
+  ADD COLUMN IF NOT EXISTS piso TEXT;
+ALTER TABLE public.habitaciones
+  ADD COLUMN IF NOT EXISTS tipo_espacio TEXT DEFAULT 'habitacion';
+ALTER TABLE public.habitaciones
+  ADD COLUMN IF NOT EXISTS tipo_habitacion TEXT DEFAULT 'normal';
+ALTER TABLE public.habitaciones
+  ADD COLUMN IF NOT EXISTS numero_doble TEXT;
 ALTER TABLE public.habitaciones
   ADD COLUMN IF NOT EXISTS actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
@@ -285,9 +297,10 @@ RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public, auth, pg_temp
-AS $
+AS $$
 DECLARE
   trabajador RECORD;
+  hab RECORD;
   tipo TEXT;
 BEGIN
   SELECT p.id_personal, p.nombre
@@ -301,30 +314,45 @@ BEGIN
     RAISE EXCEPTION 'No hay una cuenta de aseo activa asociada a esta sesion.';
   END IF;
 
+  SELECT h.id_habitacion, h.estado, h.tipo_limpieza_asignada, h.id_personal_asignado
+  INTO hab
+  FROM public.habitaciones h
+  WHERE h.id_habitacion = p_id_habitacion;
+
+  IF hab.id_habitacion IS NULL THEN
+    RAISE EXCEPTION 'La habitacion no existe.';
+  END IF;
+
+  IF hab.id_personal_asignado IS DISTINCT FROM trabajador.id_personal THEN
+    RAISE EXCEPTION 'La habitacion no esta asignada a este trabajador.';
+  END IF;
+
+  IF hab.estado = 'limpieza' THEN
+    RETURN TRUE;
+  END IF;
+
+  IF hab.estado = 'finalizado' THEN
+    RAISE EXCEPTION 'La habitacion ya se encuentra finalizada.';
+  END IF;
+
   UPDATE public.habitaciones h
   SET estado = 'limpieza',
       actualizado_en = NOW()
   WHERE h.id_habitacion = p_id_habitacion
     AND h.id_personal_asignado = trabajador.id_personal
-    AND h.estado <> 'limpieza'
-    AND h.estado <> 'finalizado'
   RETURNING h.tipo_limpieza_asignada INTO tipo;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'La habitacion no esta asignada o ya esta en limpieza o finalizada.';
-  END IF;
 
   INSERT INTO public.eventos (
     id_habitacion, estado, accion, responsable, id_personal, tipo_limpieza
   )
   VALUES (
     p_id_habitacion, 'limpieza', 'Limpieza iniciada por personal',
-    trabajador.nombre, trabajador.id_personal, tipo
+    trabajador.nombre, trabajador.id_personal, COALESCE(tipo, hab.tipo_limpieza_asignada)
   );
 
   RETURN TRUE;
 END;
-$;
+$$;
 
 -- El trabajador solo puede finalizar una habitacion que tiene asignada.
 CREATE OR REPLACE FUNCTION public.finalizar_habitacion_aseador(
