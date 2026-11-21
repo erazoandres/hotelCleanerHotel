@@ -310,6 +310,182 @@ body {
   color: var(--th-text-main) !important;
 }
 
+/* ==========================================================================
+   HABITACIONES LIBRES: TONOS SUAVES ALTERNADOS DE 1 EN 1
+   Sustituye el color blanco por una paleta suave, armónica y editorial
+   intercambiando de 1 en 1 de forma rítmica.
+   ========================================================================== */
+
+/* --- TONO 1: Menta / Salvia Editorial Suave --- */
+.room-picker-card.room-picker-card-free.room-picker-tone-1,
+.room-picker-grid > .room-picker-card-free:nth-child(2n+1) {
+  background: linear-gradient(160deg, #eff7f2 0%, #e2f1ea 100%) !important;
+  border-color: #c0dfcf !important;
+  box-shadow: 0 6px 18px rgba(62, 138, 101, 0.08) !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-1 .room-picker-main,
+.room-picker-grid > .room-picker-card-free:nth-child(2n+1) .room-picker-main {
+  background: linear-gradient(160deg, #eff7f2 0%, #e2f1ea 100%) !important;
+  border-top: 2px solid #78ba97 !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-1:hover,
+.room-picker-grid > .room-picker-card-free:nth-child(2n+1):hover {
+  background: linear-gradient(160deg, #e4f4ea 0%, #d5ebe0 100%) !important;
+  border-color: #5ea882 !important;
+  box-shadow: 0 14px 28px rgba(50, 130, 91, 0.16) !important;
+  transform: translateY(-3px);
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-1 .room-picker-room-name strong,
+.room-picker-grid > .room-picker-card-free:nth-child(2n+1) .room-picker-room-name strong {
+  color: #174731 !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-1:hover .room-picker-arrow,
+.room-picker-grid > .room-picker-card-free:nth-child(2n+1):hover .room-picker-arrow {
+  color: #246e49 !important;
+  transform: translateX(3px);
+}
+
+/* --- TONO 2: Arena / Lino Cálido Hotelero --- */
+.room-picker-card.room-picker-card-free.room-picker-tone-2,
+.room-picker-grid > .room-picker-card-free:nth-child(2n) {
+  background: linear-gradient(160deg, #faf5ea 0%, #f3ebe0 100%) !important;
+  border-color: #e5d9c7 !important;
+  box-shadow: 0 6px 18px rgba(158, 126, 82, 0.08) !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-2 .room-picker-main,
+.room-picker-grid > .room-picker-card-free:nth-child(2n) .room-picker-main {
+  background: linear-gradient(160deg, #faf5ea 0%, #f3ebe0 100%) !important;
+  border-top: 2px solid #c8b193 !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-2:hover,
+.room-picker-grid > .room-picker-card-free:nth-child(2n):hover {
+  background: linear-gradient(160deg, #f4eee0 0%, #eae0cf 100%) !important;
+  border-color: #b89c77 !important;
+  box-shadow: 0 14px 28px rgba(160, 122, 72, 0.16) !important;
+  transform: translateY(-3px);
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-2 .room-picker-room-name strong,
+.room-picker-grid > .room-picker-card-free:nth-child(2n) .room-picker-room-name strong {
+  color: #4b3720 !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-2:hover .room-picker-arrow,
+.room-picker-grid > .room-picker-card-free:nth-child(2n):hover .room-picker-arrow {
+  color: #77552d !important;
+  transform: translateX(3px);
+}
+
+/* --- TONO 3 (Variante opcional Brisa Marina) --- */
+.room-picker-card.room-picker-card-free.room-picker-tone-3 {
+  background: linear-gradient(160deg, #eff6fa 0%, #e1edf5 100%) !important;
+  border-color: #c4dee9 !important;
+  box-shadow: 0 6px 18px rgba(50, 120, 155, 0.08) !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-3 .room-picker-main {
+  background: linear-gradient(160deg, #eff6fa 0%, #e1edf5 100%) !important;
+  border-top: 2px solid #7cb1ca !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-3:hover {
+  background: linear-gradient(160deg, #e3f0f7 0%, #d3e6f1 100%) !important;
+  border-color: #649ebc !important;
+  box-shadow: 0 14px 28px rgba(45, 115, 150, 0.16) !important;
+  transform: translateY(-3px);
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-3 .room-picker-room-name strong {
+  color: #143e50 !important;
+}
+
+.room-picker-card.room-picker-card-free.room-picker-tone-3:hover .room-picker-arrow {
+  color: #21617e !important;
+  transform: translateX(3px);
+}
+
+/* --- Adaptación Obsidian Noir (Modo Oscuro) --- */
+html[data-theme="dark"] .room-picker-card.room-picker-card-free.room-picker-tone-1,
+html[data-theme="dark"] .room-picker-grid > .room-picker-card-free:nth-child(2n+1) {
+  background: linear-gradient(160deg, #0e1b16 0%, #08120e 100%) !important;
+  border-color: #1b382b !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3) !important;
+}
+
+html[data-theme="dark"] .room-picker-card.room-picker-card-free.room-picker-tone-1 .room-picker-main,
+html[data-theme="dark"] .room-picker-grid > .room-picker-card-free:nth-child(2n+1) .room-picker-main {
+  background: transparent !important;
+  border-top: 2px solid #2d6148 !important;
+}
+
+html[data-theme="dark"] .room-picker-card.room-picker-card-free.room-picker-tone-1:hover,
+html[data-theme="dark"] .room-picker-grid > .room-picker-card-free:nth-child(2n+1):hover {
+  background: linear-gradient(160deg, #13241d 0%, #0d1914 100%) !important;
+  border-color: #3b8261 !important;
+  box-shadow: 0 14px 28px rgba(35, 85, 60, 0.25) !important;
+}
+
+html[data-theme="dark"] .room-picker-card.room-picker-card-free.room-picker-tone-1 .room-picker-room-name strong,
+html[data-theme="dark"] .room-picker-grid > .room-picker-card-free:nth-child(2n+1) .room-picker-room-name strong {
+  color: #9fe2c2 !important;
+}
+
+html[data-theme="dark"] .room-picker-card.room-picker-card-free.room-picker-tone-2,
+html[data-theme="dark"] .room-picker-grid > .room-picker-card-free:nth-child(2n) {
+  background: linear-gradient(160deg, #1b1710 0%, #13100a 100%) !important;
+  border-color: #36291a !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3) !important;
+}
+
+html[data-theme="dark"] .room-picker-card.room-picker-card-free.room-picker-tone-2 .room-picker-main,
+html[data-theme="dark"] .room-picker-grid > .room-picker-card-free:nth-child(2n) .room-picker-main {
+  background: transparent !important;
+  border-top: 2px solid #5b4329 !important;
+}
+
+html[data-theme="dark"] .room-picker-card.room-picker-card-free.room-picker-tone-2:hover,
+html[data-theme="dark"] .room-picker-grid > .room-picker-card-free:nth-child(2n):hover {
+  background: linear-gradient(160deg, #241f15 0%, #19140d 100%) !important;
+  border-color: #7d5e38 !important;
+  box-shadow: 0 14px 28px rgba(90, 68, 38, 0.25) !important;
+}
+
+html[data-theme="dark"] .room-picker-card.room-picker-card-free.room-picker-tone-2 .room-picker-room-name strong,
+html[data-theme="dark"] .room-picker-grid > .room-picker-card-free:nth-child(2n) .room-picker-room-name strong {
+  color: #edd1aa !important;
+}
+
+/* --- Adaptación Champagne Cálido --- */
+html[data-theme="warm"] .room-picker-card.room-picker-card-free.room-picker-tone-1,
+html[data-theme="warm"] .room-picker-grid > .room-picker-card-free:nth-child(2n+1) {
+  background: linear-gradient(160deg, #f2f7f1 0%, #e6f1e3 100%) !important;
+  border-color: #cbdfc7 !important;
+}
+
+html[data-theme="warm"] .room-picker-card.room-picker-card-free.room-picker-tone-1 .room-picker-main,
+html[data-theme="warm"] .room-picker-grid > .room-picker-card-free:nth-child(2n+1) .room-picker-main {
+  background: linear-gradient(160deg, #f2f7f1 0%, #e6f1e3 100%) !important;
+  border-top: 2px solid #94b98c !important;
+}
+
+html[data-theme="warm"] .room-picker-card.room-picker-card-free.room-picker-tone-2,
+html[data-theme="warm"] .room-picker-grid > .room-picker-card-free:nth-child(2n) {
+  background: linear-gradient(160deg, #fcf7ec 0%, #f6edd7 100%) !important;
+  border-color: #ebdcc0 !important;
+}
+
+html[data-theme="warm"] .room-picker-card.room-picker-card-free.room-picker-tone-2 .room-picker-main,
+html[data-theme="warm"] .room-picker-grid > .room-picker-card-free:nth-child(2n) .room-picker-main {
+  background: linear-gradient(160deg, #fcf7ec 0%, #f6edd7 100%) !important;
+  border-top: 2px solid #c9b187 !important;
+}
+
 .metric-card strong {
   color: var(--th-accent) !important;
 }
@@ -489,6 +665,43 @@ tbody tr:hover {
 }
 
 /* Filtros y Chips */
+.room-filter-tabs {
+  background: var(--th-surface-subtle) !important;
+  border-color: var(--th-border) !important;
+}
+
+.room-filter-tab {
+  color: var(--th-text-secondary) !important;
+}
+
+.room-filter-tab:hover {
+  background: var(--th-surface-raised) !important;
+  color: var(--th-text-main) !important;
+}
+
+.room-filter-tab.is-active {
+  background: var(--th-surface) !important;
+  border-color: var(--th-border) !important;
+  color: var(--th-text-main) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--th-border-subtle) !important;
+}
+
+.room-filter-tab .material-symbol {
+  color: var(--th-accent) !important;
+}
+
+.room-filter-tab-count {
+  background: var(--th-surface-raised) !important;
+  color: var(--th-text-muted) !important;
+  border: 1px solid var(--th-border-subtle, transparent);
+}
+
+.room-filter-tab.is-active .room-filter-tab-count {
+  background: var(--th-accent-subtle) !important;
+  color: var(--th-accent) !important;
+  border-color: transparent;
+}
+
 .room-type-filter-wrapper {
   background: var(--th-surface-subtle) !important;
   border-color: var(--th-border) !important;
@@ -661,6 +874,38 @@ tbody tr:hover {
   background: var(--th-accent) !important;
   border-color: var(--th-accent) !important;
   color: var(--th-accent-contrast) !important;
+}
+
+/* Radar Telemetry Card Theming */
+.radar-stat-pill {
+  background: var(--th-surface-subtle) !important;
+  border-color: var(--th-border) !important;
+  color: var(--th-text-main) !important;
+}
+
+.radar-stat-pill:hover {
+  background: var(--th-surface-raised) !important;
+  border-color: var(--th-border-focus) !important;
+}
+
+.radar-donut-percent {
+  color: var(--th-text-main) !important;
+}
+
+.radar-donut-sub {
+  color: var(--th-text-muted) !important;
+}
+
+.radar-stat-pill-rate {
+  color: var(--th-text-secondary) !important;
+}
+
+html[data-theme="dark"] .radar-stat-pill.active {
+  box-shadow: 0 0 0 2px var(--th-accent) !important;
+}
+
+html[data-theme="amber"] .radar-stat-pill.active {
+  box-shadow: 0 0 0 2px var(--th-accent) !important;
 }
 
 /* Room Matrix Tiles */
@@ -1928,4 +2173,81 @@ html[data-theme="dark"] .theme-segment-btn:hover {
   .theme-modal-footer {
     padding: 16px;
   }
+}
+
+/* --------------------------------------------------------------------------
+   6. HISTORIAL Y AUDITORÍA - TEMAS
+   -------------------------------------------------------------------------- */
+
+html[data-theme="dark"] .history-cat-btn {
+  background: #1e293b;
+  color: #94a3b8;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .history-cat-btn:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .history-cat-btn.active {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+}
+
+html[data-theme="dark"] .status-created {
+  background: #064e3b;
+  color: #6ee7b7;
+  border-color: #047857;
+}
+
+html[data-theme="dark"] .status-deleted {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #991b1b;
+}
+
+html[data-theme="dark"] .status-novelty {
+  background: #78350f;
+  color: #fcd34d;
+  border-color: #92400e;
+}
+
+html[data-theme="dark"] .history-room-tag.is-deleted {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #991b1b;
+}
+
+html[data-theme="dark"] .history-room-tag.is-created {
+  background: #064e3b;
+  color: #6ee7b7;
+  border-color: #047857;
+}
+
+html[data-theme="dark"] .history-room-tag.is-novelty {
+  background: #78350f;
+  color: #fcd34d;
+  border-color: #92400e;
+}
+
+html[data-theme="dark"] .history-time-stamp {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .history-actor-name {
+  color: #cbd5e1;
+}
+
+html[data-theme="forest"] .history-cat-btn.active {
+  background: #15803d;
+  border-color: #15803d;
+  color: #ffffff;
+}
+
+html[data-theme="amber"] .history-cat-btn.active {
+  background: #d97706;
+  border-color: #d97706;
+  color: #ffffff;
 }

@@ -483,6 +483,30 @@ td {
   color: #5e7175;
 }
 
+.status-created {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.status-deleted {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.status-novelty {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.status-maintenance {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
 .form-grid,
 .form-stack {
   display: grid;
@@ -6552,65 +6576,95 @@ textarea {
    ========================================================================== */
 
 /* Filter Tabs */
+/* Filter Tabs - Barra segmentada fluida (Cero scroll horizontal) */
 .room-filter-tabs-wrapper {
-  margin-bottom: 20px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
+  margin-bottom: 16px;
+  width: 100%;
+  overflow: visible;
+  padding: 0;
 }
 
 .room-filter-tabs {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
   align-items: center;
-  flex-wrap: nowrap;
-  min-width: max-content;
+  gap: 5px;
+  padding: 5px;
+  background: var(--th-surface-subtle, #f1f5f9);
+  border: 1px solid var(--th-border, #e2e8f0);
+  border-radius: 14px;
+  width: 100%;
+  min-width: 0;
 }
 
 .room-filter-tab {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: #475569;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 9999px;
+  gap: 7px;
+  padding: 6px 13px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--th-text-secondary, #64748b);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.16s ease;
   white-space: nowrap;
+  flex: 0 1 auto;
+  user-select: none;
 }
 
 .room-filter-tab:hover {
-  background: #f1f5f9;
-  color: #1e293b;
-  border-color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--th-text-main, #0f172a);
 }
 
 .room-filter-tab.is-active {
-  background: #0f172a;
-  color: #ffffff;
-  border-color: #0f172a;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+  background: var(--th-surface, #ffffff) !important;
+  color: var(--th-text-main, #0f172a) !important;
+  border-color: var(--th-border, #cbd5e1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--th-border-subtle, transparent) !important;
+  font-weight: 700;
 }
 
 .room-filter-tab .material-symbol {
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
+  color: var(--th-accent, #3b82f6);
+  opacity: 0.85;
+}
+
+.room-filter-tab.is-active .material-symbol {
+  opacity: 1;
 }
 
 .room-filter-tab-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
   padding: 2px 7px;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.07);
-  color: inherit;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--th-text-muted, #64748b);
+  min-width: 20px;
+  transition: all 0.16s ease;
+}
+
+.room-filter-tab.is-active .room-filter-tab-count {
+  background: var(--th-accent-subtle, rgba(59, 130, 246, 0.12));
+  color: var(--th-accent, #2563eb);
+}
+
+@media (max-width: 600px) {
+  .room-filter-tab {
+    flex: 1 1 calc(50% - 6px);
+    justify-content: center;
+  }
 }
 
 .room-filter-tab.is-active .room-filter-tab-count {
@@ -6979,4 +7033,128 @@ textarea {
 .button-danger-solid:disabled {
   opacity: 0.45 !important;
   cursor: not-allowed !important;
+}
+
+/* ==========================================================================
+   History Page — Cámara de Seguridad y Auditoría
+   ========================================================================== */
+
+.history-category-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.history-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgb(0 0 0 / 10%);
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.history-cat-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.history-cat-btn.active {
+  background: #1e293b;
+  color: #ffffff;
+  border-color: #1e293b;
+  box-shadow: 0 2px 6px rgb(30 41 59 / 20%);
+}
+
+.history-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 8%);
+  color: inherit;
+}
+
+.history-cat-btn.active .history-badge-count {
+  background: rgb(255 255 255 / 25%);
+  color: #ffffff;
+}
+
+.history-room-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.history-room-tag.is-deleted {
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px dashed #fca5a5;
+}
+
+.history-room-tag.is-created {
+  color: #15803d;
+  background: #dcfce7;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+}
+
+.history-room-tag.is-novelty {
+  color: #92400e;
+  background: #fef3c7;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #fde68a;
+}
+
+.history-time-stamp {
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.history-action-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.history-guest-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #0284c7;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.history-actor-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
 }

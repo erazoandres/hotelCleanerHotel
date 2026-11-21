@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useHotelAuth } from "../components/HotelAuth";
 import { FreshlyMark } from "../components/FreshlyBrand";
-import { HotelDataStatus, useHotelData } from "../components/HotelData";
+import { useHotelData } from "../components/HotelData";
 import { ModernAvatar3D, Avatar3DStylePicker } from "../components/ModernAvatar3D";
 import {
   addEvent,
@@ -344,9 +344,6 @@ export function DashboardPage() {
             <span className="material-symbol" aria-hidden="true">verified</span>
             <span>{operationalHealth}% Óptimo</span>
           </span>
-          <div className="dashboard-connection-pill">
-            <HotelDataStatus showStatus={false} />
-          </div>
         </div>
       </div>
 
@@ -489,8 +486,8 @@ export function DashboardPage() {
         </article>
       </section>
 
-      {/* 3. CORE MODULAR GRID: ROOM MATRIX (LEFT) + CAPACITY DONUT RADAR (RIGHT) */}
-      <section className="dash-core-grid">
+      {/* 3. MATRIZ DE HABITACIONES (100% DE ANCHO EN DESKTOP) */}
+      <section className="dash-matrix-section">
         {/* Card A: Pure Graphical Room Matrix */}
         <article className="dash-small-card dash-matrix-canvas-card">
           <div className="matrix-header-compact">
@@ -711,17 +708,25 @@ export function DashboardPage() {
             </button>
           </div>
         </article>
+      </section>
 
+      {/* 4. FILA INFERIOR: 4 TARJETAS DE TELEMETRÍA (CAPACIDAD + FLUJO + PLANES + AGENDA) */}
+      <section className="dash-bottom-grid">
         {/* Card B: Pure Graphical Capacity Radar (Interactive Telemetry) */}
-        <article className="dash-small-card dash-radar-card">
-          <div className="radar-header-compact">
-            <div className="radar-title">
-              <span className="material-symbol" style={{ fontSize: 16, color: "#17221f" }}>pie_chart</span>
-              <span>Capacidad</span>
+        <article className="dash-small-card dash-radar-card dash-card-bottom">
+          <div className="dash-card-header radar-header-compact">
+            <div className="dash-card-header-left radar-title">
+              <div className="dash-card-header-icon">
+                <span className="material-symbol" aria-hidden="true">pie_chart</span>
+              </div>
+              <div>
+                <p className="dash-card-eyebrow">Ocupación y Flujo</p>
+                <h2 className="dash-card-title">Capacidad</h2>
+              </div>
             </div>
-            <strong style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: 12.5, color: "#17221f" }}>
-              {occupiedCount} <span style={{ color: "#94a3b8" }}>/</span> {totalRooms}
-            </strong>
+            <span className="dash-card-badge">
+              {occupiedCount} / {totalRooms}
+            </span>
           </div>
 
           <div className="radar-body-compact">
@@ -817,10 +822,7 @@ export function DashboardPage() {
             </div>
           </div>
         </article>
-      </section>
 
-      {/* 4. BOTTOM ROW: 3 COMPACT CARDS (ACTIVITY + PROTOCOLS + AGENDACRITICA) */}
-      <section className="dash-bottom-grid">
         {/* Card 1: Hourly Operational Load */}
         <article className="dash-small-card dash-card-bottom">
           <div className="dash-card-header">
@@ -1085,24 +1087,55 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
         tiempo_limpieza: tiempoLimpieza > 0 ? tiempoLimpieza : 30,
       });
 
+      const changes: string[] = [];
       if (previousStatus !== status) {
+        changes.push(`Estado: ${statusLabels[previousStatus] ?? previousStatus} → ${statusLabels[status] ?? status}`);
+      }
+      const cleanGuest = guest.trim() || null;
+      const prevGuest = roomGuest.trim() || null;
+      if (cleanGuest !== prevGuest) {
+        if (!prevGuest && cleanGuest) {
+          changes.push(`Check-in: ${cleanGuest}`);
+        } else if (prevGuest && !cleanGuest) {
+          changes.push(`Check-out: Salida huésped (${prevGuest})`);
+        } else {
+          changes.push(`Huésped: ${prevGuest} → ${cleanGuest}`);
+        }
+      }
+      const cleanServicePlan = servicePlan.trim().toLowerCase() === "salida" ? null : servicePlan.trim() || null;
+      const prevServicePlan = roomServicePlan.trim() || null;
+      if (cleanServicePlan !== prevServicePlan) {
+        changes.push(`Plan: ${cleanServicePlan || "Ninguno"}`);
+      }
+      const prevStaffId = assignment?.staffId || null;
+      const cleanStaffId = staffId || null;
+      if (cleanStaffId !== prevStaffId) {
+        if (cleanStaffId) {
+          const staffName = state.staff.find((s) => s.id === cleanStaffId)?.name || "Personal";
+          changes.push(`Asignado a: ${staffName}`);
+        } else {
+          changes.push("Personal desasignado");
+        }
+      }
+      if (cleaningDetails.trim() && cleaningDetails.trim() !== roomCleaningDetails.trim()) {
+        changes.push(`Detalles de limpieza actualizados`);
+      }
+
+      if (changes.length > 0) {
         const eventRecord: HotelEvent = {
           room: roomId,
           status,
-          action: `Estado cambiado a ${statusLabels[status]}`,
-          guest: guest.trim() || null,
-          actor: session?.user.email ?? "Administrador",
-          cleanerId: staffId || null,
+          action: changes.join(" | "),
+          guest: cleanGuest,
+          actor: session?.user?.email ?? "Administrador",
+          cleanerId: cleanStaffId,
           cleaningType: cleaningType.trim() || null,
           time: new Date().toISOString(),
         };
         try {
           await addEvent(eventRecord);
         } catch (eventError: unknown) {
-          await refresh();
-          throw new Error(
-            `El espacio se guardó, pero el historial no: ${messageOf(eventError)}`,
-          );
+          console.warn("No se pudo registrar en la cámara de seguridad:", eventError);
         }
       }
 
@@ -1128,7 +1161,12 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
     setDeleting(true);
     setDeleteModalError(null);
     try {
-      await deleteRoom(roomId);
+      await deleteRoom(roomId, session?.user?.email ?? "Administrador", {
+        floor: piso,
+        spaceType: tipoEspacio,
+        guest: guest,
+        status: status,
+      });
       await refresh();
       setShowDeleteModal(false);
       onDelete?.();
@@ -1465,6 +1503,7 @@ function RoomPickerCard({
   cleanerId,
   floor,
   isCommonArea,
+  freeToneIndex,
   onSelect,
 }: {
   roomId: string;
@@ -1475,6 +1514,7 @@ function RoomPickerCard({
   cleanerId?: string | null;
   floor?: string;
   isCommonArea?: boolean;
+  freeToneIndex?: number;
   onSelect: () => void;
 }) {
   const navigate = useNavigate();
@@ -1500,8 +1540,11 @@ function RoomPickerCard({
     }
   };
 
+  const isFree = status === "free";
+  const toneClass = isFree && freeToneIndex !== undefined ? `room-picker-tone-${(freeToneIndex % 2) + 1}` : "";
+
   return (
-    <button className={`room-picker-card room-picker-card-${status}`} onClick={onSelect} type="button">
+    <button className={`room-picker-card room-picker-card-${status} ${toneClass}`.trim()} onClick={onSelect} type="button">
       <span className="room-picker-art">
         <img
           alt={isCommonArea ? `Zona común ${roomId}` : `Habitación ${roomId}`}
@@ -1593,6 +1636,7 @@ function CreateRoomModal({
   onCreated: (roomId: string) => void;
   existingFloors: string[];
 }) {
+  const { session } = useHotelAuth();
   const [spaceType, setSpaceType] = useState<"habitacion" | "zona_comun">("habitacion");
 
   // Habitación
@@ -1677,6 +1721,7 @@ function CreateRoomModal({
         guest: spaceType === "habitacion" ? guest.trim() || null : null,
         plan: spaceType === "habitacion" ? servicePlan.trim() || null : null,
         tiempo_limpieza: cleaningDuration > 0 ? cleaningDuration : 30,
+        actor: session?.user?.email ?? "Administrador",
       });
 
       onCreated(targetId);
@@ -2142,9 +2187,6 @@ export function RoomsPage() {
             <span className="material-symbol" aria-hidden="true">domain_add</span>
             Nueva habitación / Zona común
           </button>
-          <button className="button button-refresh" onClick={() => void refresh()}>
-            <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
-          </button>
         </div>
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -2289,20 +2331,30 @@ export function RoomsPage() {
             <p className="empty-state">No hay espacios que coincidan con la búsqueda o filtro seleccionado.</p>
           ) : (
             <div className="room-picker-grid">
-              {visibleRoomIds.map((roomId) => (
-                <RoomPickerCard
-                  key={roomId}
-                  roomId={roomId}
-                  status={state.rooms[roomId] ?? "unknown"}
-                  guest={state.guests[roomId] ?? ""}
-                  servicePlan={state.servicePlans[roomId] ?? ""}
-                  cleanerName={state.assignedCleanings[roomId]?.staffName ?? ""}
-                  cleanerId={state.assignedCleanings[roomId]?.staffId ?? null}
-                  floor={state.floors[roomId] || detectFloor(roomId, undefined, state.spaceTypes[roomId] === "zona_comun")}
-                  isCommonArea={state.spaceTypes[roomId] === "zona_comun"}
-                  onSelect={() => handleSelectRoom(roomId)}
-                />
-              ))}
+              {(() => {
+                let freeCardCounter = 0;
+                return visibleRoomIds.map((roomId) => {
+                  const roomStatus = state.rooms[roomId] ?? "unknown";
+                  const isFree = roomStatus === "free";
+                  const freeToneIndex = isFree ? freeCardCounter++ : undefined;
+
+                  return (
+                    <RoomPickerCard
+                      key={roomId}
+                      roomId={roomId}
+                      status={roomStatus}
+                      guest={state.guests[roomId] ?? ""}
+                      servicePlan={state.servicePlans[roomId] ?? ""}
+                      cleanerName={state.assignedCleanings[roomId]?.staffName ?? ""}
+                      cleanerId={state.assignedCleanings[roomId]?.staffId ?? null}
+                      floor={state.floors[roomId] || detectFloor(roomId, undefined, state.spaceTypes[roomId] === "zona_comun")}
+                      isCommonArea={state.spaceTypes[roomId] === "zona_comun"}
+                      freeToneIndex={freeToneIndex}
+                      onSelect={() => handleSelectRoom(roomId)}
+                    />
+                  );
+                });
+              })()}
             </div>
           )}
           <section className="room-summary room-selection-summary" aria-label="Estado de habitaciones">
@@ -2445,7 +2497,6 @@ export function CleaningPage() {
           <h1>Limpiezas</h1>
           <p className="page-description">Filtra y supervisa en tiempo real las habitaciones pendientes, en curso o finalizadas.</p>
         </div>
-        <div className="cleaning-connection"><HotelDataStatus showStatus={false} /></div>
       </header>
 
       {/* Functional Cleaning Statuses Filter */}
@@ -2713,30 +2764,192 @@ export function CleaningPage() {
 }
 
 export function HistoryPage() {
-  const { state, loading, error, refresh } = useHotelData();
+  const { state, loading, error } = useHotelData();
   const [filter, setFilter] = useState("");
-  const events = state.events.filter((event) => {
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "lifecycle" | "novelty" | "status" | "cleaning">("all");
+
+  const allRecords = useMemo(() => {
+    type HistoryCategory = "all" | "lifecycle" | "novelty" | "status" | "cleaning";
+    interface UnifiedHistoryRecord {
+      id: string;
+      time: string;
+      room: string;
+      category: HistoryCategory;
+      kind: "created" | "deleted" | "novelty" | "status" | "cleaning" | "other";
+      statusPillClass: string;
+      statusLabel: string;
+      action: string;
+      actor: string;
+      guest?: string | null;
+    }
+
+    const unifiedFromEvents: UnifiedHistoryRecord[] = (state.events || []).map((ev, index) => {
+      const actionLower = (ev.action || "").toLowerCase();
+      let category: HistoryCategory = "status";
+      let kind: UnifiedHistoryRecord["kind"] = "status";
+      let statusPillClass = `status-${ev.status || "free"}`;
+      let statusLabel = statusLabels[ev.status] || "Registrado";
+
+      if (actionLower.includes("cread")) {
+        category = "lifecycle";
+        kind = "created";
+        statusPillClass = "status-created";
+        statusLabel = "Creación";
+      } else if (actionLower.includes("eliminad")) {
+        category = "lifecycle";
+        kind = "deleted";
+        statusPillClass = "status-deleted";
+        statusLabel = "Baja / Eliminada";
+      } else if (actionLower.includes("novedad")) {
+        category = "novelty";
+        kind = "novelty";
+        statusPillClass = "status-novelty";
+        statusLabel = "Novedad";
+      } else if (actionLower.includes("limpie") || actionLower.includes("aseo")) {
+        category = "cleaning";
+        kind = "cleaning";
+        statusPillClass = `status-${ev.status || "cleaning"}`;
+        statusLabel = statusLabels[ev.status] || "Limpieza";
+      }
+
+      return {
+        id: `ev-${ev.room}-${ev.time}-${index}`,
+        time: ev.time || new Date().toISOString(),
+        room: ev.room,
+        category,
+        kind,
+        statusPillClass,
+        statusLabel,
+        action: ev.action,
+        actor: ev.actor || "Sistema",
+        guest: ev.guest || null,
+      };
+    });
+
+    const unifiedFromNovelties: UnifiedHistoryRecord[] = (state.novelties || [])
+      .filter((nov) => {
+        return !state.events.some(
+          (ev) =>
+            ev.action?.includes(nov.label || nov.type) &&
+            (ev.actor === nov.staffName || ev.time?.slice(0, 10) === nov.date),
+        );
+      })
+      .map((nov, index) => {
+        const notePart = nov.notes ? ` - ${nov.notes}` : "";
+        const extraMin = nov.extraMinutes ? ` (${nov.extraMinutes} min)` : "";
+        return {
+          id: `nov-${nov.id || index}`,
+          time: nov.createdAt || `${nov.date}T12:00:00.000Z`,
+          room: "Personal / Novedad",
+          category: "novelty" as HistoryCategory,
+          kind: "novelty" as const,
+          statusPillClass: "status-novelty",
+          statusLabel: nov.label || "Novedad",
+          action: `Novedad [${nov.label || nov.type}]: ${nov.staffName || "Personal"}${notePart}${extraMin}`,
+          actor: nov.staffName || "Personal",
+          guest: null,
+        };
+      });
+
+    return [...unifiedFromEvents, ...unifiedFromNovelties].sort((a, b) => {
+      const timeA = new Date(a.time).getTime() || 0;
+      const timeB = new Date(b.time).getTime() || 0;
+      return timeB - timeA;
+    });
+  }, [state.events, state.novelties]);
+
+  const counts = useMemo(() => {
+    return {
+      all: allRecords.length,
+      lifecycle: allRecords.filter((r) => r.category === "lifecycle").length,
+      novelty: allRecords.filter((r) => r.category === "novelty").length,
+      status: allRecords.filter((r) => r.category === "status").length,
+      cleaning: allRecords.filter((r) => r.category === "cleaning").length,
+    };
+  }, [allRecords]);
+
+  const filteredRecords = useMemo(() => {
     const query = filter.trim().toLocaleLowerCase();
-    return !query || [
-      event.room,
-      event.action,
-      event.actor ?? "",
-      event.guest ?? "",
-    ].some((value) => value.toLocaleLowerCase().includes(query));
-  });
+    return allRecords.filter((rec) => {
+      if (categoryFilter !== "all" && rec.category !== categoryFilter) {
+        return false;
+      }
+      if (!query) return true;
+      return [
+        rec.room,
+        rec.action,
+        rec.actor,
+        rec.guest ?? "",
+        rec.statusLabel,
+      ].some((val) => val.toLocaleLowerCase().includes(query));
+    });
+  }, [allRecords, categoryFilter, filter]);
 
   return (
     <div className="page-stack history-page">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">Registro de actividad</p>
-          <h1>Historial</h1>
-          <p className="page-description">Sigue los movimientos del hotel y encuentra cualquier registro.</p>
+          <p className="eyebrow">
+            <span className="material-symbol" style={{ fontSize: "14px", verticalAlign: "middle", marginRight: "4px" }}>
+              videocam
+            </span>
+            Caja Negra &amp; Auditoría del Hotel
+          </p>
+          <h1>Historial Operativo</h1>
+          <p className="page-description">
+            Cámara de seguridad de la app: registro inmutable de creaciones, bajas de habitaciones, novedades de personal y cambios de estado.
+          </p>
         </div>
-        <button className="button button-refresh" onClick={() => void refresh()}>
-          <span className="material-symbol" aria-hidden="true">refresh</span> Actualizar
+      </div>
+
+      <div className="history-category-tabs">
+        <button
+          type="button"
+          className={`history-cat-btn ${categoryFilter === "all" ? "active" : ""}`}
+          onClick={() => setCategoryFilter("all")}
+        >
+          <span className="material-symbol" aria-hidden="true">visibility</span>
+          Todos
+          <span className="history-badge-count">{counts.all}</span>
+        </button>
+        <button
+          type="button"
+          className={`history-cat-btn ${categoryFilter === "lifecycle" ? "active" : ""}`}
+          onClick={() => setCategoryFilter("lifecycle")}
+        >
+          <span className="material-symbol" aria-hidden="true">domain</span>
+          Altas y Bajas
+          <span className="history-badge-count">{counts.lifecycle}</span>
+        </button>
+        <button
+          type="button"
+          className={`history-cat-btn ${categoryFilter === "novelty" ? "active" : ""}`}
+          onClick={() => setCategoryFilter("novelty")}
+        >
+          <span className="material-symbol" aria-hidden="true">warning</span>
+          Novedades
+          <span className="history-badge-count">{counts.novelty}</span>
+        </button>
+        <button
+          type="button"
+          className={`history-cat-btn ${categoryFilter === "status" ? "active" : ""}`}
+          onClick={() => setCategoryFilter("status")}
+        >
+          <span className="material-symbol" aria-hidden="true">swap_horiz</span>
+          Estados &amp; Huéspedes
+          <span className="history-badge-count">{counts.status}</span>
+        </button>
+        <button
+          type="button"
+          className={`history-cat-btn ${categoryFilter === "cleaning" ? "active" : ""}`}
+          onClick={() => setCategoryFilter("cleaning")}
+        >
+          <span className="material-symbol" aria-hidden="true">cleaning_services</span>
+          Limpiezas
+          <span className="history-badge-count">{counts.cleaning}</span>
         </button>
       </div>
+
       <div className="room-selection-toolbar">
         <div className="room-selection-controls">
           <label className="search-field">
@@ -2745,7 +2958,7 @@ export function HistoryPage() {
               <input
                 aria-label="Buscar en historial"
                 autoComplete="off"
-                placeholder="Introduce nombre de personal, habitación o fecha (dd/mm/aa)"
+                placeholder="Introduce habitación, personal, acción, huésped o fecha"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
               />
@@ -2763,32 +2976,75 @@ export function HistoryPage() {
           </label>
         </div>
         <p className="room-results-count">
-          {events.length} {events.length === 1 ? "registro" : "registros"}
+          {filteredRecords.length} {filteredRecords.length === 1 ? "registro" : "registros"}
         </p>
       </div>
+
       {error && <p className="form-error" role="alert">{error}</p>}
       {loading && state.events.length === 0 ? (
         <p className="empty-state">Cargando historial…</p>
-      ) : events.length === 0 ? (
-        <p className="empty-state">No hay movimientos que coincidan.</p>
+      ) : filteredRecords.length === 0 ? (
+        <p className="empty-state">No hay movimientos que coincidan con los filtros aplicados.</p>
       ) : (
         <section className="page-card table-scroll">
           <table>
             <thead>
-              <tr><th>Fecha</th><th>Habitación</th><th>Estado</th><th>Acción</th><th>Responsable</th></tr>
+              <tr>
+                <th style={{ width: "160px" }}>Fecha y Hora</th>
+                <th style={{ width: "170px" }}>Espacio / Origen</th>
+                <th style={{ width: "140px" }}>Evento / Tipo</th>
+                <th>Detalle de Acción / Novedad</th>
+                <th style={{ width: "180px" }}>Responsable</th>
+              </tr>
             </thead>
             <tbody>
-              {events.map((event, index) => (
-                <tr key={`${event.room}-${event.time}-${index}`}>
-                  <td>{formatDate(event.time)}</td>
-                  <td><strong>Hab. {event.room}</strong></td>
+              {filteredRecords.map((item) => (
+                <tr key={item.id}>
                   <td>
-                    <span className={`status-pill status-${event.status}`}>
-                      {statusLabels[event.status]}
+                    <span className="history-time-stamp">{formatDate(item.time)}</span>
+                  </td>
+                  <td>
+                    {item.kind === "deleted" ? (
+                      <span className="history-room-tag is-deleted">
+                        <span className="material-symbol" aria-hidden="true">delete_forever</span>
+                        {item.room}
+                      </span>
+                    ) : item.kind === "created" ? (
+                      <span className="history-room-tag is-created">
+                        <span className="material-symbol" aria-hidden="true">add_circle</span>
+                        {item.room}
+                      </span>
+                    ) : item.kind === "novelty" ? (
+                      <span className="history-room-tag is-novelty">
+                        <span className="material-symbol" aria-hidden="true">badge</span>
+                        {item.room}
+                      </span>
+                    ) : (
+                      <strong>Hab. {item.room}</strong>
+                    )}
+                  </td>
+                  <td>
+                    <span className={`status-pill ${item.statusPillClass}`}>
+                      {item.statusLabel}
                     </span>
                   </td>
-                  <td>{event.action}</td>
-                  <td>{event.actor || "No registrado"}</td>
+                  <td>
+                    <div className="history-action-cell">
+                      <span>{item.action}</span>
+                      {item.guest && (
+                        <small className="history-guest-note">
+                          <span className="material-symbol" aria-hidden="true">person</span>
+                          {item.guest}
+                        </small>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <span className="history-actor-name">
+                      <span className="material-symbol" aria-hidden="true">account_circle</span>
+                      {item.actor}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -3192,7 +3448,6 @@ export function StaffPage() {
               Agregar personal
             </button>
           )}
-          <HotelDataStatus showStatus={false} />
         </div>
       </div>
       <ActionMessage error={error} success={success} />

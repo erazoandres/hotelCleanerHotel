@@ -422,6 +422,7 @@ export async function createRoom(data: {
   estado?: RoomStatus;
   guest?: string | null;
   plan?: string | null;
+  actor?: string | null;
 }): Promise<void> {
   const supabase = getSupabaseClient();
   const roomId = data.id.trim();
@@ -480,15 +481,17 @@ export async function createRoom(data: {
     }
   }
 
-  // Registrar evento inicial
+  // Registrar evento inicial en la cámara de seguridad
   try {
     const spaceLabel = spaceType === "zona_comun" ? "Zona común creada" : "Habitación creada";
+    const detailType = spaceType === "habitacion" ? ` (${roomType === "doble" ? "Doble" : "Estándar"})` : "";
+    const creator = data.actor?.trim() || "Administrador";
     await addEvent({
       room: roomId,
       status: data.estado ?? "free",
-      action: `${spaceLabel} (${floor})`,
+      action: `${spaceLabel}${detailType}: ${roomId} (${floor})`,
       guest: data.guest?.trim() || null,
-      actor: "Sistema",
+      actor: creator,
       cleanerId: null,
       cleaningType: null,
       time: new Date().toISOString(),
@@ -498,22 +501,83 @@ export async function createRoom(data: {
   }
 }
 
-export async function deleteRoom(roomId: string): Promise<void> {
+export async function deleteRoom(
+  roomId: string,
+  actor?: string | null,
+  roomDetails?: {
+    floor?: string | null;
+    spaceType?: string | null;
+    guest?: string | null;
+    status?: RoomStatus;
+  },
+): Promise<void> {
   const supabase = getSupabaseClient();
   const cleanId = roomId.trim();
   if (!cleanId) throw new Error("Identificador no válido.");
 
-  // Limpiar relaciones primero para evitar violaciones de clave foránea
-  await supabase.from("asignaciones_habitacion").delete().eq("id_habitacion", cleanId);
-  await supabase.from("trabajos_limpieza").delete().eq("id_habitacion", cleanId);
-  await supabase.from("eventos").delete().eq("id_habitacion", cleanId);
+  // Obtener información del espacio para la auditoría (cámara de seguridad)
+  let floor = roomDetails?.floor;
+  let spaceType = roomDetails?.spaceType;
+  let guest = roomDetails?.guest;
+  let status: RoomStatus = roomDetails?.status ?? "free";
 
+  if (!floor) {
+    try {
+      const { data: existing } = await supabase
+        .from("habitaciones")
+        .select("piso, tipo_espacio, nombre_huesped, estado")
+        .eq("id_habitacion", cleanId)
+        .maybeSingle();
+      if (existing) {
+        floor = existing.piso || undefined;
+        spaceType = existing.tipo_espacio || undefined;
+        guest = existing.nombre_huesped || undefined;
+        status = statusFromDatabase[existing.estado] ?? "free";
+      }
+    } catch {
+      // Continuar con valores por defecto
+    }
+  }
+
+  const auditActor = actor?.trim() || "Administrador";
+  const spaceLabel = spaceType === "zona_comun" ? "Zona común eliminada" : "Habitación eliminada";
+  const actionText = `${spaceLabel} permanentemente: ${cleanId}${floor ? ` (${floor})` : ""}`;
+
+  // 1. Limpiar asignaciones activas de personal
+  await supabase.from("asignaciones_habitacion").delete().eq("id_habitacion", cleanId);
+
+  // 2. Registrar evento de eliminación permanente en auditoría (cámara de seguridad)
+  // NOTA CRÍTICA: Jamás se eliminan eventos de la tabla 'eventos' para garantizar trazabilidad de auditoría completa.
+  try {
+    await addEvent({
+      room: cleanId,
+      status: status,
+      action: actionText,
+      guest: guest ?? null,
+      actor: auditActor,
+      cleanerId: null,
+      cleaningType: null,
+      time: new Date().toISOString(),
+    });
+  } catch (evErr) {
+    console.warn("No se pudo registrar el evento de auditoría de eliminación previa:", evErr);
+  }
+
+  // 3. Eliminar el registro de habitación
   const { error } = await supabase
     .from("habitaciones")
     .delete()
     .eq("id_habitacion", cleanId);
 
-  if (error) throw new Error(`No se pudo eliminar el espacio: ${error.message}`);
+  if (error) {
+    if (error.code === "23503") {
+      throw new Error(
+        `No se pudo eliminar el espacio porque Supabase tiene activa la clave foránea en eventos. ` +
+        `Por favor ejecuta el script 'supabase/patches/historial-camara-seguridad.sql' en el Editor SQL de Supabase para desvincularla y conservar el historial.`
+      );
+    }
+    throw new Error(`No se pudo eliminar el espacio: ${error.message}`);
+  }
 }
 
 export async function addEvent(event: HotelEvent): Promise<void> {
@@ -882,6 +946,25 @@ export async function addNovelty(record: NoveltyRecord): Promise<void> {
     creado_en: record.createdAt || new Date().toISOString(),
   });
   if (error) throw new Error(`No se pudo guardar la novedad: ${error.message}`);
+
+  // Registrar en eventos generales como cámara de seguridad
+  try {
+    const noteSummary = record.notes ? ` - ${record.notes}` : "";
+    const detail = `Novedad de personal [${record.label || record.type}]: ${record.staffName || "Personal"}${noteSummary}`;
+    await addEvent({
+      room: "GENERAL",
+      status: "pending",
+      action: detail.slice(0, 300),
+      guest: null,
+      actor: record.staffName || "Personal",
+      cleanerId: record.staffId || null,
+      cleaningType: null,
+      time: record.createdAt || new Date().toISOString(),
+    });
+  } catch (evErr) {
+    // Si aún existe restricción FK contra id_habitacion en la base de datos, no detener el guardado de novedad
+    console.warn("No se pudo duplicar novedad en eventos centrales:", evErr);
+  }
 }
 
 export function subscribeRealtime(

@@ -140,22 +140,20 @@ export function useHotelData() {
 }
 
 export function HotelDataStatus({ showStatus = true }: { showStatus?: boolean }) {
-  const { connection, error, loading, refresh } = useHotelData();
+  const { connection, error, loading } = useHotelData();
   if (showStatus && loading && connection === "Conectando") {
     return <p className="status-badge">Conectando con Supabase…</p>;
   }
+  if (!showStatus && !error) return null;
   return (
     <div className="status-stack">
-      <div className="status-row">
-        {showStatus && (
+      {showStatus && (
+        <div className="status-row">
           <p className={error ? "status-badge status-error" : "status-badge"}>
             {connection}
           </p>
-        )}
-        <button className="button button-small" onClick={() => void refresh()}>
-          Actualizar
-        </button>
-      </div>
+        </div>
+      )}
       {error && (
         <details className="data-warning">
           <summary>Ver problemas de lectura</summary>

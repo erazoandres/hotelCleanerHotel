@@ -5776,14 +5776,20 @@ textarea {
 .dash-donut-bar.mint { background: #26b7a6; }
 .dash-donut-bar.purple { background: #8d73ff; }
 
-/* Bottom Row: 3 Compact Cards (Activity, Protocols, Agenda) */
+/* Bottom Row: 4 Compact Cards (Capacity, Activity, Protocols, Agenda) */
 .dash-bottom-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
+  .dash-bottom-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
   .dash-bottom-grid {
     grid-template-columns: 1fr;
   }
@@ -7360,20 +7366,25 @@ textarea {
 
 
 /* ==========================================================
-   MINIMALIST GRAPHICAL CORE GRID (Maximum Visual Telemetry, Zero Noise)
+   MATRIZ DE HABITACIONES AL 100% DE ANCHO EN DESKTOP
    ========================================================== */
 
-.dash-core-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
-  gap: 14px;
-  align-items: stretch;
+.dash-matrix-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-@media (max-width: 1080px) {
-  .dash-core-grid {
-    grid-template-columns: 1fr;
-  }
+.dash-matrix-canvas-card {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.dash-core-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
 }
 
 /* ==========================================================================
@@ -7957,6 +7968,41 @@ textarea {
 
 .radar-stat-pill.active {
   box-shadow: 0 0 0 2px #17221f;
+}
+
+/* Adaptación del Radar de Capacidad como Tarjeta Inferior de Telemetría */
+.dash-card-bottom.dash-radar-card {
+  min-height: 250px;
+  justify-content: flex-start;
+}
+
+.dash-card-bottom.dash-radar-card .radar-body-compact {
+  padding: 10px 14px;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.dash-card-bottom.dash-radar-card .radar-donut-stage {
+  width: 125px;
+  height: 125px;
+}
+
+.dash-card-bottom.dash-radar-card .radar-donut-percent {
+  font-size: 20px;
+}
+
+.dash-card-bottom.dash-radar-card .radar-donut-sub {
+  font-size: 9px;
+  margin-top: 2px;
+}
+
+.dash-card-bottom.dash-radar-card .radar-interactive-pills {
+  gap: 5px;
+}
+
+.dash-card-bottom.dash-radar-card .radar-stat-pill {
+  padding: 5px 9px;
+  font-size: 11px;
 }
 
 /* Clickable room heading links */
