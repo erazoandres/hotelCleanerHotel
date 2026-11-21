@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Propuesta de Rediseño: Ficha de Personal — Stitch Hotel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Fraunces:opsz,wght@9..144,400..700&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <style>
+    :root, html[data-theme="dark"] {
+      --th-bg: #0c0e14;
+      --th-workspace-bg: #10131d;
+      --th-surface: #151824;
+      --th-surface-raised: #1c2132;
+      --th-surface-subtle: #121522;
+      --th-border: #23293d;
+      --th-border-subtle: #1b1f30;
+      --th-border-focus: #818cf8;
+      --th-text-main: #f8fafc;
+      --th-text-secondary: #cbd5e1;
+      --th-text-muted: #94a3b8;
+      --th-accent: #6366f1;
+      --th-accent-hover: #4f46e5;
+      --th-accent-subtle: rgba(99, 102, 241, 0.15);
+      --th-emerald: #10b981;
+      --th-emerald-bg: rgba(16, 185, 129, 0.12);
+      --th-rose: #f43f5e;
+      --th-rose-bg: rgba(244, 63, 94, 0.12);
+      --th-amber: #f59e0b;
+      --th-amber-bg: rgba(245, 158, 11, 0.12);
+      --th-purple: #8b5cf6;
+      --th-purple-bg: rgba(139, 92, 246, 0.12);
+      --th-cyan: #06b6d4;
+      --th-cyan-bg: rgba(6, 182, 212, 0.12);
+      --th-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    html[data-theme="light"] {
+      --th-bg: #f8f7f4;
+      --th-workspace-bg: #fbfaf7;
+      --th-surface: #ffffff;
+      --th-surface-raised: #fbfaf7;
+      --th-surface-subtle: #f5f2ea;
+      --th-border: #e6e0d2;
+      --th-border-subtle: #eeeae1;
+      --th-border-focus: #255843;
+      --th-text-main: #1c2420;
+      --th-text-secondary: #56645c;
+      --th-text-muted: #7e8d85;
+      --th-accent: #255843;
+      --th-accent-hover: #1b4533;
+      --th-accent-subtle: #edf5f0;
+      --th-emerald: #059669;
+      --th-emerald-bg: #ecfdf5;
+      --th-rose: #e11d48;
+      --th-rose-bg: #fff1f2;
+      --th-amber: #d97706;
+      --th-amber-bg: #fffbeb;
+      --th-purple: #7c3aed;
+      --th-purple-bg: #f5f3ff;
+      --th-cyan: #0891b2;
+      --th-cyan-bg: #ecfeff;
+      --th-card-shadow: 0 4px 18px rgba(35, 45, 38, 0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: var(--th-bg);
+      color: var(--th-text-main);
+      padding: 24px 32px 64px 32px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-size: 18px;
+      line-height: 1;
+      vertical-align: middle;
+    }
+
+    .proposal-container {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* BANNER SUPERIOR DE PROPUESTA */
+    .proposal-banner {
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 12px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .proposal-banner strong {
+      color: #818cf8;
+      font-size: 13.5px;
+    }
+    .proposal-banner p {
+      font-size: 12px;
+      color: var(--th-text-secondary);
+      margin-top: 2px;
+    }
+
+    .theme-toggle-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      color: var(--th-text-secondary);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .theme-toggle-btn:hover {
+      color: var(--th-text-main);
+      border-color: var(--th-border-focus);
+    }
+
+    /* TOP BAR CON BREADCRUMB Y BOTÓN VOLVER */
+    .detail-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 9px;
+      color: var(--th-text-secondary);
+      font-size: 12.5px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .back-btn:hover {
+      color: var(--th-text-main);
+      border-color: var(--th-border-focus);
+      background: var(--th-surface-raised);
+    }
+    .breadcrumb-trail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--th-text-muted);
+    }
+    .breadcrumb-trail strong {
+      color: var(--th-text-main);
+    }
+
+    /* 1. HERO PROFILE CARD (BENTO EXECUTIVE) */
+    .staff-hero-bento {
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: var(--th-card-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .staff-hero-bento::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--th-accent);
+    }
+
+    .hero-identity-group {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .hero-avatar-box {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      border-radius: 16px;
+      background: var(--th-surface-subtle);
+      border: 1.5px solid var(--th-border);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
+    .hero-avatar-box img {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+    }
+    .hero-shift-beacon {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--th-emerald);
+      border: 2.5px solid var(--th-surface);
+      box-shadow: 0 0 8px var(--th-emerald);
+    }
+
+    .hero-info-texts {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .hero-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .hero-staff-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--th-text-main);
+      letter-spacing: -0.015em;
+    }
+
+    .role-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: #818cf8;
+      background: rgba(99, 102, 241, 0.14);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .shift-badge-active {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--th-emerald);
+      background: var(--th-emerald-bg);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--th-emerald);
+      box-shadow: 0 0 6px var(--th-emerald);
+    }
+
+    .hero-quick-strip {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 12px;
+      color: var(--th-text-secondary);
+      flex-wrap: wrap;
+    }
+    .hero-quick-strip a {
+      color: inherit;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.15s ease;
+    }
+    .hero-quick-strip a:hover {
+      color: var(--th-accent);
+    }
+    .hero-quick-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .strip-dot {
+      color: var(--th-border);
+      font-size: 10px;
+    }
+
+    /* ACCIONES DE CABECERA */
+    .hero-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-action-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--th-accent);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+    }
+    .btn-action-primary:hover {
+      background: var(--th-accent-hover);
+      transform: translateY(-1px);
+    }
+    .btn-action-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--th-surface-subtle);
+      color: var(--th-text-secondary);
+      border: 1px solid var(--th-border);
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-action-secondary:hover {
+      color: var(--th-text-main);
+      border-color: var(--th-border-focus);
+    }
+    .btn-action-danger {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(244, 63, 94, 0.1);
+      border: 1px solid rgba(244, 63, 94, 0.25);
+      color: var(--th-rose);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-action-danger:hover {
+      background: var(--th-rose);
+      color: #ffffff;
+    }
+
+    /* 2. BENTO TELEMETRY METRIC CARDS (3 COLUMNAS) */
+    .staff-bento-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .staff-bento-grid { grid-template-columns: 1fr; }
+    }
+
+    .bento-metric-card {
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: var(--th-card-shadow);
+      transition: transform 0.18s ease, border-color 0.18s ease;
+    }
+    .bento-metric-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--th-border-focus);
+    }
+
+    .bento-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .bento-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--th-text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .bento-icon-box {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+    }
+    .icon-blue { background: rgba(99, 102, 241, 0.12); color: #818cf8; }
+    .icon-emerald { background: var(--th-emerald-bg); color: var(--th-emerald); }
+    .icon-amber { background: var(--th-amber-bg); color: var(--th-amber); }
+
+    .bento-pill-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .tag-emerald { background: var(--th-emerald-bg); color: var(--th-emerald); }
+    .tag-indigo { background: rgba(99, 102, 241, 0.14); color: #818cf8; }
+
+    .bento-main-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--th-text-main);
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .bento-sub-text {
+      font-size: 11.5px;
+      color: var(--th-text-secondary);
+      line-height: 1.4;
+    }
+
+    /* 3. HISTORIAL OPERATIVO Y ACTIVIDAD (CARD PRINCIPAL) */
+    .staff-activity-card {
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--th-card-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .activity-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .activity-header-title h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--th-text-main);
+    }
+    .activity-header-title p {
+      font-size: 12px;
+      color: var(--th-text-muted);
+      margin-top: 2px;
+    }
+
+    .activity-header-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .date-range-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--th-surface-subtle);
+      border: 1px solid var(--th-border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      color: var(--th-text-secondary);
+    }
+    .date-range-box input[type="date"] {
+      background: transparent;
+      border: none;
+      color: var(--th-text-main);
+      font-family: inherit;
+      font-size: 11.5px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .btn-export-csv {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--th-surface-subtle);
+      border: 1px solid var(--th-border);
+      border-radius: 8px;
+      color: var(--th-text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-export-csv:hover {
+      border-color: var(--th-border-focus);
+      background: var(--th-surface-raised);
+    }
+
+    /* Píldoras de Filtro por Estado */
+    .activity-filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .filter-chip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--th-border);
+      background: var(--th-surface-subtle);
+      color: var(--th-text-secondary);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .filter-chip-btn:hover {
+      color: var(--th-text-main);
+      border-color: var(--th-border-focus);
+    }
+    .filter-chip-btn.is-active {
+      background: var(--th-accent);
+      color: #ffffff;
+      border-color: var(--th-accent);
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+    }
+    .filter-chip-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.15);
+      color: inherit;
+    }
+
+    /* TABLA EJECUTIVA COMPACTA DE ACTIVIDAD */
+    .activity-table-wrapper {
+      border: 1px solid var(--th-border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--th-surface-subtle);
+    }
+    .activity-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 12px;
+    }
+    .activity-table th {
+      background: var(--th-surface);
+      color: var(--th-text-muted);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--th-border);
+    }
+    .activity-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--th-border-subtle);
+      color: var(--th-text-secondary);
+      vertical-align: middle;
+    }
+    .activity-table tr:last-child td {
+      border-bottom: none;
+    }
+    .activity-table tr:hover td {
+      background: var(--th-surface-raised);
+      color: var(--th-text-main);
+    }
+
+    .cat-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .cat-limpieza { background: rgba(139, 92, 246, 0.12); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.25); }
+    .cat-checkout { background: rgba(6, 182, 212, 0.12); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.25); }
+    .cat-turno { background: rgba(99, 102, 241, 0.14); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .cat-aseo { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.25); }
+
+    .room-badge {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      color: var(--th-text-main);
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 11.5px;
+    }
+    .room-sub {
+      font-size: 10px;
+      color: var(--th-text-muted);
+      margin-left: 4px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-badge.finished { color: var(--th-emerald); }
+    .status-badge.in-progress { color: var(--th-amber); }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-dot.pulse {
+      box-shadow: 0 0 6px currentColor;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="proposal-container">
+    
+    <!-- BANNER DE PROPUESTA -->
+    <div class="proposal-banner">
+      <div>
+        <strong>Propuesta de Rediseño: Ficha Individual de Personal (<code>/app/personal?id</code>)</strong>
+        <p>Arquitectura modular Bento: Perfil Ejecutivo + 3 Tarjetas de Telemetría + Historial Operativo consolidado con filtros en vivo.</p>
+      </div>
+      <button class="theme-toggle-btn" id="themeToggleBtn" title="Cambiar tema">
+        <span class="material-symbols-outlined" id="themeIcon">wb_sunny</span>
+      </button>
+    </div>
+
+    <!-- NAVEGACIÓN Y BREADCRUMB -->
+    <div class="detail-nav-bar">
+      <button class="back-btn" onclick="alert('Regresar a /app/personal')">
+        <span class="material-symbols-outlined" style="font-size: 16px;">arrow_back</span>
+        Volver al personal
+      </button>
+      <div class="breadcrumb-trail">
+        <span>OPERACIÓN EN VIVO</span>
+        <span>/</span>
+        <span>Personal</span>
+        <span>/</span>
+        <strong>Ficha de Nikol la mas tierna</strong>
+      </div>
+    </div>
+
+    <!-- 1. HERO BENTO CARD: IDENTIDAD Y ACCIONES RÁPIDAS -->
+    <section class="staff-hero-bento">
+      <div class="hero-identity-group">
+        <div class="hero-avatar-box">
+          <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=Nikol" alt="Avatar 3D">
+          <span class="hero-shift-beacon" title="En turno activo"></span>
+        </div>
+        <div class="hero-info-texts">
+          <div class="hero-title-row">
+            <h2 class="hero-staff-name">Nikol la mas tierna</h2>
+            <span class="role-badge">Supervisora</span>
+            <span class="shift-badge-active">
+              <span class="pulse-dot"></span>
+              En Turno (Desde 08:00 AM)
+            </span>
+          </div>
+          <div class="hero-quick-strip">
+            <a href="tel:3118083288" class="hero-quick-item" title="Llamar directamente">
+              <span class="material-symbols-outlined" style="font-size: 15px;">call</span>
+              311 808 3288
+            </a>
+            <span class="strip-dot">•</span>
+            <a href="mailto:nikol@gmail.com" class="hero-quick-item" title="Enviar correo">
+              <span class="material-symbols-outlined" style="font-size: 15px;">mail</span>
+              nikol@gmail.com
+            </a>
+            <span class="strip-dot">•</span>
+            <span class="hero-quick-item" style="color: var(--th-emerald);">
+              <span class="material-symbols-outlined" style="font-size: 15px;">verified_user</span>
+              Acceso Activo
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-actions-group">
+        <button class="btn-action-primary" type="button" onclick="alert('Abrir formulario de edición')">
+          <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+          Editar Ficha
+        </button>
+        <button class="btn-action-secondary" type="button" onclick="alert('Abrir modal de contraseña')">
+          <span class="material-symbols-outlined" style="font-size: 16px;">lock_reset</span>
+          Cambiar Contraseña
+        </button>
+        <button class="btn-action-danger" type="button" title="Eliminar empleado" onclick="alert('Confirmar eliminación')">
+          <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. BENTO TELEMETRY METRIC CARDS (3 COLUMNAS) -->
+    <div class="staff-bento-grid">
+      
+      <!-- Card 1: Horas -->
+      <article class="bento-metric-card">
+        <div class="bento-top-row">
+          <div class="bento-title-group">
+            <div class="bento-icon-box icon-blue">
+              <span class="material-symbols-outlined">timelapse</span>
+            </div>
+            <span>Horas en Periodo</span>
+          </div>
+          <span class="bento-pill-tag tag-indigo">+4.2 h vs sem ant</span>
+        </div>
+        <div class="bento-main-value">38.50 h</div>
+        <div class="bento-sub-text">
+          🧹 26.0 h en limpiezas (18 habs)<br>⏱️ 12.5 h en jornadas de turno
+        </div>
+      </article>
+
+      <!-- Card 2: Habitaciones -->
+      <article class="bento-metric-card">
+        <div class="bento-top-row">
+          <div class="bento-title-group">
+            <div class="bento-icon-box icon-emerald">
+              <span class="material-symbols-outlined">hotel</span>
+            </div>
+            <span>Habitaciones Atendidas</span>
+          </div>
+          <span class="bento-pill-tag tag-emerald">98% Calidad</span>
+        </div>
+        <div class="bento-main-value">18 Habs</div>
+        <div class="bento-sub-text">
+          15 Estándar · 3 Suites VIP<br>Promedio: 28 min por habitación
+        </div>
+      </article>
+
+      <!-- Card 3: Puntualidad -->
+      <article class="bento-metric-card">
+        <div class="bento-top-row">
+          <div class="bento-title-group">
+            <div class="bento-icon-box icon-amber">
+              <span class="material-symbols-outlined">event_available</span>
+            </div>
+            <span>Jornadas & Turnos</span>
+          </div>
+          <span class="bento-pill-tag tag-emerald">Al día</span>
+        </div>
+        <div class="bento-main-value">100%</div>
+        <div class="bento-sub-text">
+          5 turnos completados<br>0 novedades o retrasos reportados
+        </div>
+      </article>
+
+    </div>
+
+    <!-- 3. ACTIVIDAD Y REGISTRO DE OPERACIONES -->
+    <section class="staff-activity-card">
+      <div class="activity-card-header">
+        <div class="activity-header-title">
+          <h3>Historial Operativo y Registro de Actividad</h3>
+          <p>Consolidado detallado de turnos de asistencia, habitaciones atendidas y horas calculadas.</p>
+        </div>
+
+        <div class="activity-header-toolbar">
+          <div class="date-range-box" title="Filtrar por rango de fechas">
+            <span class="material-symbols-outlined" style="font-size: 15px;">calendar_today</span>
+            <input type="date" value="2026-11-01" aria-label="Fecha inicial">
+            <span>→</span>
+            <input type="date" value="2026-11-21" aria-label="Fecha final">
+          </div>
+          <button class="btn-export-csv" type="button" title="Descargar reporte en formato CSV">
+            <span class="material-symbols-outlined" style="font-size: 15px;">download</span>
+            CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros por Estado -->
+      <div class="activity-filter-bar">
+        <button class="filter-chip-btn is-active" type="button">
+          <span>Todos</span>
+          <span class="filter-chip-badge">18</span>
+        </button>
+        <button class="filter-chip-btn" type="button">
+          <span style="color: var(--th-emerald);">●</span>
+          <span>Terminadas</span>
+          <span class="filter-chip-badge">15</span>
+        </button>
+        <button class="filter-chip-btn" type="button">
+          <span style="color: var(--th-amber);">●</span>
+          <span>En curso</span>
+          <span class="filter-chip-badge">1</span>
+        </button>
+        <button class="filter-chip-btn" type="button">
+          <span style="color: #818cf8;">●</span>
+          <span>Jornadas</span>
+          <span class="filter-chip-badge">2</span>
+        </button>
+      </div>
+
+      <!-- Tabla de Telemetría -->
+      <div class="activity-table-wrapper">
+        <table class="activity-table">
+          <thead>
+            <tr>
+              <th>Fecha y Hora</th>
+              <th>Actividad</th>
+              <th>Espacio / Habitación</th>
+              <th>Detalle Operativo</th>
+              <th>Estado</th>
+              <th style="text-align: right;">Horas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>21 Nov 10:30</td>
+              <td><span class="cat-tag cat-limpieza">Limpieza Profunda</span></td>
+              <td><span class="room-badge">101</span><span class="room-sub">Suite VIP</span></td>
+              <td>Desinfección integral, cambio de lencería premium y reposición de amenities VIP.</td>
+              <td><span class="status-badge finished"><span class="status-dot"></span>Terminada</span></td>
+              <td style="text-align: right; font-weight: 700; color: var(--th-text-main);">1.50 h</td>
+            </tr>
+            <tr>
+              <td>21 Nov 09:15</td>
+              <td><span class="cat-tag cat-checkout">Check-out Express</span></td>
+              <td><span class="room-badge">203</span><span class="room-sub">Doble</span></td>
+              <td>Aseo exprés posterior a salida de huésped, verificación de inventario completada.</td>
+              <td><span class="status-badge finished"><span class="status-dot"></span>Terminada</span></td>
+              <td style="text-align: right; font-weight: 700; color: var(--th-text-main);">0.75 h</td>
+            </tr>
+            <tr>
+              <td>21 Nov 08:00</td>
+              <td><span class="cat-tag cat-turno">Jornada / Turno</span></td>
+              <td><span class="room-badge">Planta</span><span class="room-sub">Supervisión</span></td>
+              <td>Inicio de turno matutino, asignación de cuartos y control de inventario de pisos.</td>
+              <td><span class="status-badge in-progress"><span class="status-dot pulse"></span>En curso</span></td>
+              <td style="text-align: right; font-weight: 700; color: var(--th-text-main);">2.50 h</td>
+            </tr>
+            <tr>
+              <td>20 Nov 16:30</td>
+              <td><span class="cat-tag cat-aseo">Aseo Preventivo</span></td>
+              <td><span class="room-badge">104</span><span class="room-sub">Estándar</span></td>
+              <td>Reposición de toallas limpias y verificación de funcionamiento de aire acondicionado.</td>
+              <td><span class="status-badge finished"><span class="status-dot"></span>Terminada</span></td>
+              <td style="text-align: right; font-weight: 700; color: var(--th-text-main);">0.80 h</td>
+            </tr>
+            <tr>
+              <td>20 Nov 14:00</td>
+              <td><span class="cat-tag cat-limpieza">Limpieza Profunda</span></td>
+              <td><span class="room-badge">105</span><span class="room-sub">Suite</span></td>
+              <td>Limpieza exhaustiva previa a check-in programado para huésped frecuente.</td>
+              <td><span class="status-badge finished"><span class="status-dot"></span>Terminada</span></td>
+              <td style="text-align: right; font-weight: 700; color: var(--th-text-main);">1.25 h</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const themeBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    let currentTheme = 'dark';
+
+    themeBtn.addEventListener('click', () => {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      themeIcon.textContent = currentTheme === 'dark' ? 'wb_sunny' : 'dark_mode';
+    });
+
+    const filterBtns = document.querySelectorAll('.filter-chip-btn');
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+      });
+    });
+  </script>
+</body>
+</html>

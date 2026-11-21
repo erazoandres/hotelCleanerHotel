@@ -31,6 +31,7 @@ const emptyState: RemoteHotelState = {
   spaceTypes: {},
   roomTypes: {},
   doubleNumbers: {},
+  cleaningTimes: {},
 };
 
 interface HotelDataContextValue {

@@ -34,6 +34,7 @@ export interface Database {
           tipo_espacio?: string | null;
           tipo_habitacion?: string | null;
           numero_doble?: string | null;
+          tiempo_limpieza?: number | null;
           actualizado_en: string;
         },
         "id_habitacion" | "estado"

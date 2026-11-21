@@ -157,17 +157,180 @@ export const ModernAvatar3D: React.FC<ModernAvatar3DProps> = ({
  * Visual control for toggling between 3D avatar styles.
  */
 export const Avatar3DStylePicker: React.FC<{
-  variant?: "compact" | "aside" | "panel";
+  variant?: "compact" | "aside" | "panel" | "card" | "dropdown";
   compact?: boolean;
 }> = ({ variant, compact = false }) => {
   const [current, setCurrent] = useState<Avatar3DStyle>(getActiveAvatarStyle());
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleStyleChange = (e: Event) => {
+      const customEvent = e as CustomEvent<Avatar3DStyle>;
+      if (customEvent.detail) {
+        setCurrent(customEvent.detail);
+      }
+    };
+    window.addEventListener(STYLE_EVENT, handleStyleChange);
+    return () => window.removeEventListener(STYLE_EVENT, handleStyleChange);
+  }, []);
 
   const handleSelect = (style: Avatar3DStyle) => {
     setCurrent(style);
     setActiveAvatarStyle(style);
+    setIsOpen(false);
   };
 
   const mode = variant || (compact ? "compact" : "aside");
+
+  if (mode === "dropdown") {
+    const activeStyleObj =
+      AVATAR_3D_STYLES.find((s) => s.id === current) || AVATAR_3D_STYLES[0];
+    const previewUrl = get3DAvatarUrl("DemoStaff", current);
+
+    return (
+      <div className="avatar-3d-dropdown-wrap" style={{ position: "relative" }}>
+        <button
+          type="button"
+          className="avatar-picker-pill"
+          onClick={() => setIsOpen((prev) => !prev)}
+          title="Cambiar paquete visual de avatares 3D"
+          aria-expanded={isOpen}
+        >
+          <div className="pill-preview">
+            <img src={previewUrl} alt={activeStyleObj.label} key={current} />
+          </div>
+          <span>{activeStyleObj.label}</span>
+          <span className="material-symbol" style={{ fontSize: "16px" }} aria-hidden="true">
+            {isOpen ? "expand_less" : "expand_more"}
+          </span>
+        </button>
+
+        {isOpen && (
+          <div
+            className="avatar-3d-dropdown-menu"
+            style={{
+              position: "absolute",
+              top: "calc(100% + 6px)",
+              right: 0,
+              zIndex: 60,
+              minWidth: "190px",
+              background: "var(--th-surface)",
+              border: "1px solid var(--th-border)",
+              borderRadius: "10px",
+              boxShadow: "var(--th-card-shadow, 0 8px 24px rgba(0,0,0,0.3))",
+              padding: "5px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "2px",
+            }}
+          >
+            {AVATAR_3D_STYLES.map((st) => {
+              const isSelected = current === st.id;
+              return (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => handleSelect(st.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "7px 10px",
+                    borderRadius: "7px",
+                    border: "none",
+                    background: isSelected ? "var(--th-accent-subtle)" : "transparent",
+                    color: isSelected ? "var(--th-accent)" : "var(--th-text-main)",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: isSelected ? 700 : 500,
+                    textAlign: "left",
+                  }}
+                >
+                  <span className="material-symbol" style={{ fontSize: "16px" }} aria-hidden="true">
+                    {st.icon}
+                  </span>
+                  <span style={{ flex: 1 }}>{st.label}</span>
+                  {isSelected && (
+                    <span className="material-symbol" style={{ fontSize: "14px" }} aria-hidden="true">
+                      check
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (mode === "card") {
+    const activeStyleObj =
+      AVATAR_3D_STYLES.find((s) => s.id === current) || AVATAR_3D_STYLES[0];
+    const previewUrl = get3DAvatarUrl("DemoStaff", current);
+
+    return (
+      <section
+        className="page-card staff-card-view-settings"
+        aria-label="Ajuste de vista de avatares"
+      >
+        <div className="staff-card-header">
+          <div className="staff-header-info">
+            <p className="eyebrow">Personalización</p>
+            <h2>Ajuste de vista</h2>
+          </div>
+          <div
+            className="staff-active-avatar-pill"
+            title={`Estilo actual: ${activeStyleObj.label} (${activeStyleObj.description})`}
+          >
+            <div className="staff-mini-avatar-thumb">
+              <img src={previewUrl} alt={activeStyleObj.label} key={current} />
+            </div>
+            <div className="staff-mini-avatar-text">
+              <span className="staff-mini-status">Activo</span>
+              <strong className="staff-mini-active-name">
+                {activeStyleObj.label}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="staff-avatar-options-grid"
+          role="radiogroup"
+          aria-label="Seleccionar estilo 3D"
+        >
+          {AVATAR_3D_STYLES.map((st) => {
+            const isSelected = current === st.id;
+            return (
+              <button
+                key={st.id}
+                type="button"
+                className={`staff-avatar-chip-btn ${isSelected ? "selected" : ""}`}
+                onClick={() => handleSelect(st.id)}
+                role="radio"
+                aria-checked={isSelected}
+                title={st.description}
+              >
+                <span className="material-symbol chip-icon" aria-hidden="true">
+                  {st.icon}
+                </span>
+                <span className="staff-avatar-chip-label">{st.label}</span>
+                {isSelected && (
+                  <span
+                    className="material-symbol staff-avatar-chip-check"
+                    aria-hidden="true"
+                  >
+                    check
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
 
   if (mode === "aside") {
     const activeStyleObj =

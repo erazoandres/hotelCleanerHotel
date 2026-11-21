@@ -277,6 +277,7 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
     spaceTypes: {},
     roomTypes: {},
     doubleNumbers: {},
+    cleaningTimes: {},
   };
 
   for (const room of rooms ?? []) {
@@ -316,6 +317,11 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
     if (rawNumeroDoble) {
       state.doubleNumbers[room.id_habitacion] = rawNumeroDoble;
     }
+
+    const rawTiempoLimpieza = (room as { tiempo_limpieza?: number | null }).tiempo_limpieza;
+    if (typeof rawTiempoLimpieza === "number") {
+      state.cleaningTimes[room.id_habitacion] = rawTiempoLimpieza;
+    }
   }
 
   return state;
@@ -340,6 +346,7 @@ export async function updateRoom(
     tipo_espacio?: string | null;
     tipo_habitacion?: string | null;
     numero_doble?: string | null;
+    tiempo_limpieza?: number | null;
     actualizado_en: string;
   } = { actualizado_en: new Date().toISOString() };
 
@@ -364,6 +371,7 @@ export async function updateRoom(
   if (updates.tipo_espacio !== undefined) row.tipo_espacio = updates.tipo_espacio;
   if (updates.tipo_habitacion !== undefined) row.tipo_habitacion = updates.tipo_habitacion;
   if (updates.numero_doble !== undefined) row.numero_doble = updates.numero_doble;
+  if (updates.tiempo_limpieza !== undefined) row.tiempo_limpieza = updates.tiempo_limpieza;
 
   let { error } =
     row.estado === undefined
@@ -381,12 +389,14 @@ export async function updateRoom(
     (updates.piso !== undefined ||
       updates.tipo_espacio !== undefined ||
       updates.tipo_habitacion !== undefined ||
-      updates.numero_doble !== undefined)
+      updates.numero_doble !== undefined ||
+      updates.tiempo_limpieza !== undefined)
   ) {
     delete row.piso;
     delete row.tipo_espacio;
     delete row.tipo_habitacion;
     delete row.numero_doble;
+    delete row.tiempo_limpieza;
     const retry =
       row.estado === undefined
         ? await supabase
@@ -408,6 +418,7 @@ export async function createRoom(data: {
   tipo_espacio?: "habitacion" | "zona_comun";
   tipo_habitacion?: "normal" | "doble";
   numero_doble?: string | null;
+  tiempo_limpieza?: number | null;
   estado?: RoomStatus;
   guest?: string | null;
   plan?: string | null;
@@ -421,6 +432,7 @@ export async function createRoom(data: {
   const floor = data.piso?.trim() || detectFloor(roomId, undefined, spaceType === "zona_comun");
   const roomType = data.tipo_habitacion ?? detectRoomType(roomId);
   const doubleNumber = data.numero_doble?.trim() || (roomType === "doble" ? roomId : null);
+  const tiempoLimpieza = typeof data.tiempo_limpieza === "number" && data.tiempo_limpieza > 0 ? data.tiempo_limpieza : 30;
 
   // Verificar si ya existe
   const { data: existing } = await supabase
@@ -442,6 +454,7 @@ export async function createRoom(data: {
     tipo_espacio: spaceType,
     tipo_habitacion: roomType,
     numero_doble: doubleNumber,
+    tiempo_limpieza: tiempoLimpieza,
     actualizado_en: new Date().toISOString(),
   };
 

@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Propuesta de Rediseño: Matriz de Habitaciones — Stitch Hotel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Fraunces:opsz,wght@9..144,400..700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <style>
+    /* VARIABLES DE TEMA OBSIDIAN NOIR & LUZ EDITORIAL */
+    :root, html[data-theme="dark"] {
+      --th-bg: #0c0e14;
+      --th-workspace-bg: #10131d;
+      --th-surface: #151824;
+      --th-surface-raised: #1c2132;
+      --th-surface-subtle: #121522;
+      --th-border: #23293d;
+      --th-border-subtle: #1b1f30;
+      --th-border-focus: #818cf8;
+      --th-text-main: #f8fafc;
+      --th-text-secondary: #cbd5e1;
+      --th-text-muted: #94a3b8;
+      --th-accent: #6366f1;
+      --th-emerald: #10b981;
+      --th-emerald-bg: rgba(16, 185, 129, 0.12);
+      --th-rose: #f43f5e;
+      --th-rose-bg: rgba(244, 63, 94, 0.12);
+      --th-amber: #f59e0b;
+      --th-amber-bg: rgba(245, 158, 11, 0.12);
+      --th-purple: #8b5cf6;
+      --th-purple-bg: rgba(139, 92, 246, 0.12);
+      --th-cyan: #06b6d4;
+      --th-cyan-bg: rgba(6, 182, 212, 0.12);
+      --th-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      --matrix-canvas-bg: #f4f6fc;
+      --matrix-canvas-grid: rgba(99, 102, 241, 0.08);
+      --th-scrollbar-thumb: rgba(148, 163, 184, 0.3);
+      --th-scrollbar-thumb-hover: rgba(129, 140, 248, 0.7);
+    }
+
+    html[data-theme="light"] {
+      --th-bg: #f8f7f4;
+      --th-workspace-bg: #fbfaf7;
+      --th-surface: #ffffff;
+      --th-surface-raised: #fbfaf7;
+      --th-surface-subtle: #f5f2ea;
+      --th-border: #e6e0d2;
+      --th-border-subtle: #eeeae1;
+      --th-border-focus: #255843;
+      --th-text-main: #1c2420;
+      --th-text-secondary: #56645c;
+      --th-text-muted: #7e8d85;
+      --th-accent: #255843;
+      --th-emerald: #059669;
+      --th-emerald-bg: #ecfdf5;
+      --th-rose: #e11d48;
+      --th-rose-bg: #fff1f2;
+      --th-amber: #d97706;
+      --th-amber-bg: #fffbeb;
+      --th-purple: #7c3aed;
+      --th-purple-bg: #f5f3ff;
+      --th-cyan: #0891b2;
+      --th-cyan-bg: #ecfeff;
+      --th-card-shadow: 0 4px 18px rgba(35, 45, 38, 0.05);
+      --matrix-canvas-bg: #f4f2eb;
+      --th-scrollbar-thumb: rgba(37, 88, 67, 0.28);
+      --th-scrollbar-thumb-hover: rgba(37, 88, 67, 0.6);
+    }
+
+    /* SISTEMA DE SCROLLBAR MODERNO & REFINADO */
+    *, *::before, *::after {
+      scrollbar-width: thin;
+      scrollbar-color: var(--th-scrollbar-thumb, rgba(140, 150, 165, 0.35)) transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--th-scrollbar-thumb, rgba(140, 150, 165, 0.35));
+      border-radius: 999px;
+      border: 1.5px solid transparent;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: var(--th-scrollbar-thumb-hover, rgba(129, 140, 248, 0.7));
+    }
+    ::-webkit-scrollbar-button {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+      --matrix-canvas-grid: rgba(0, 0, 0, 0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: var(--th-bg);
+      color: var(--th-text-main);
+      padding: 24px 32px 64px 32px;
+      min-height: 100vh;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-size: 18px;
+      line-height: 1;
+      vertical-align: middle;
+    }
+
+    .proposal-container {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* BANNER SUPERIOR DE PROPUESTA */
+    .proposal-banner {
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 12px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .proposal-banner strong {
+      color: #818cf8;
+      font-size: 13.5px;
+    }
+    .proposal-banner p {
+      font-size: 12px;
+      color: var(--th-text-secondary);
+      margin-top: 2px;
+    }
+
+    .theme-toggle-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      color: var(--th-text-secondary);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .theme-toggle-btn:hover {
+      color: var(--th-text-main);
+      border-color: var(--th-border-focus);
+    }
+
+    /* ==========================================================================
+       LA CARD PRINCIPAL: .dash-small-card.dash-matrix-canvas-card
+       Rediseño de Alta Fidelidad, Compacto & Telemetría en Tiempo Real
+       ========================================================================== */
+    .dash-small-card.dash-matrix-canvas-card {
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--th-card-shadow);
+      display: flex;
+      flex-direction: column;
+      min-height: 480px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* 1. HEADER COMPACTO: Título + Ocupación + Filtro de Pisos */
+    .matrix-header-compact {
+      padding: 12px 18px;
+      background: var(--th-surface);
+      border-bottom: 1px solid var(--th-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .matrix-title-badge {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .matrix-icon-box {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--th-surface-subtle);
+      border: 1px solid var(--th-border);
+      color: var(--th-accent);
+      display: grid;
+      place-items: center;
+    }
+    .matrix-title-badge h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--th-text-main);
+      letter-spacing: -0.015em;
+    }
+    .matrix-live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--th-emerald);
+      background: var(--th-emerald-bg);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--th-emerald);
+      box-shadow: 0 0 6px var(--th-emerald);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Selector de pisos integrado en píldoras */
+    .matrix-stepper-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: var(--th-surface-subtle);
+      border: 1px solid var(--th-border);
+      padding: 3px;
+      border-radius: 9px;
+    }
+    .matrix-floor-btn {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--th-text-secondary);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .matrix-floor-btn:hover {
+      color: var(--th-text-main);
+    }
+    .matrix-floor-btn.is-active {
+      background: var(--th-surface-raised);
+      color: var(--th-text-main);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+      border: 1px solid var(--th-border);
+    }
+
+    /* 2. CUERPO SPATIAL/TELEMETRÍA (Lienzo arquitectónico con micro-grid) */
+    .matrix-spatial-body {
+      flex: 1;
+      padding: 16px 20px;
+      background-color: var(--matrix-canvas-bg);
+      background-image: 
+        radial-gradient(var(--matrix-canvas-grid) 1.2px, transparent 1.2px);
+      background-size: 16px 16px;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--th-scrollbar-thumb) transparent;
+    }
+
+    .matrix-spatial-body::-webkit-scrollbar {
+      width: 5px;
+    }
+    .matrix-spatial-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .matrix-spatial-body::-webkit-scrollbar-thumb {
+      background-color: var(--th-scrollbar-thumb);
+      border-radius: 999px;
+    }
+    .matrix-spatial-body::-webkit-scrollbar-thumb:hover {
+      background-color: var(--th-scrollbar-thumb-hover);
+    }
+
+    .matrix-floor-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .floor-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.75);
+      border-radius: 8px;
+      border: 1px solid rgba(99, 102, 241, 0.12);
+      backdrop-filter: blur(4px);
+    }
+    .floor-name-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .floor-count-tag {
+      font-size: 10px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #475569;
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      font-weight: 600;
+    }
+
+    /* Grilla de Room Pods Compactos */
+    .matrix-pod-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    /* ==========================================================================
+       ROOM POD (CELDA DE HABITACIÓN): Altura compacta (72px), alto contraste y glow
+       ========================================================================== */
+    .matrix-room-pod {
+      position: relative;
+      height: 72px;
+      background: #ffffff;
+      border: 1.5px solid rgba(226, 232, 240, 0.95);
+      border-radius: 11px;
+      padding: 9px 11px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease, box-shadow 0.18s ease;
+      user-select: none;
+      box-shadow: 0 2px 7px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+      overflow: visible;
+    }
+
+    .matrix-room-pod:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 22px rgba(99, 102, 241, 0.12), 0 2px 6px rgba(15, 23, 42, 0.04);
+      z-index: 20;
+    }
+
+    /* Estilos dinámicos por estado */
+    .matrix-room-pod.status-free {
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+    .matrix-room-pod.status-free:hover {
+      border-color: var(--th-emerald);
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+    }
+
+    .matrix-room-pod.status-occupied {
+      border-color: rgba(244, 63, 94, 0.35);
+    }
+    .matrix-room-pod.status-occupied:hover {
+      border-color: var(--th-rose);
+      box-shadow: 0 0 14px rgba(244, 63, 94, 0.25);
+    }
+
+    .matrix-room-pod.status-pending {
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+    .matrix-room-pod.status-pending:hover {
+      border-color: var(--th-amber);
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
+    }
+
+    .matrix-room-pod.status-cleaning {
+      border-color: rgba(139, 92, 246, 0.35);
+    }
+    .matrix-room-pod.status-cleaning:hover {
+      border-color: var(--th-purple);
+      box-shadow: 0 0 14px rgba(139, 92, 246, 0.25);
+    }
+
+    .matrix-room-pod.status-finished {
+      border-color: rgba(6, 182, 212, 0.35);
+    }
+    .matrix-room-pod.status-finished:hover {
+      border-color: var(--th-cyan);
+      box-shadow: 0 0 14px rgba(6, 182, 212, 0.25);
+    }
+
+    .matrix-room-pod.is-dimmed {
+      opacity: 0.2;
+      filter: grayscale(80%);
+      pointer-events: none;
+    }
+
+    /* Encabezado del Pod */
+    .pod-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .pod-number {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+    .pod-tags {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .pod-vip-pill {
+      font-size: 9px;
+      font-weight: 750;
+      color: #b45309;
+      background: #fef3c7;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 1px 4px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .pod-beacon {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+    .status-free .pod-beacon { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6); }
+    .status-occupied .pod-beacon { background: #f43f5e; box-shadow: 0 0 6px rgba(244, 63, 94, 0.6); }
+    .status-pending .pod-beacon { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.6); }
+    .status-cleaning .pod-beacon { background: #8b5cf6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.6); }
+    .status-finished .pod-beacon { background: #06b6d4; box-shadow: 0 0 6px rgba(6, 182, 212, 0.6); }
+
+    /* Pie del Pod: Estado y Datos Dinámicos */
+    .pod-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .pod-label {
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 90px;
+    }
+    .status-free .pod-label { color: #047857; }
+    .status-occupied .pod-label { color: #be123c; }
+    .status-pending .pod-label { color: #b45309; }
+    .status-cleaning .pod-label { color: #6d28d9; }
+    .status-finished .pod-label { color: #0e7490; }
+
+    .pod-subtext {
+      font-size: 10px;
+      color: #64748b;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Tooltip enriquecido al pasar el mouse */
+    .matrix-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--th-surface-raised);
+      border: 1px solid var(--th-border);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      padding: 10px 12px;
+      width: 190px;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .matrix-room-pod:hover .matrix-tooltip {
+      display: block;
+    }
+    .tooltip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--th-border-subtle);
+    }
+    .tooltip-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--th-text-main);
+    }
+    .tooltip-body {
+      display: grid;
+      gap: 3px;
+      font-size: 11px;
+      color: var(--th-text-secondary);
+    }
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+    }
+    .tooltip-row span:first-child {
+      color: var(--th-text-muted);
+    }
+
+    /* 3. FOOTER COMPACTO CON FILTROS CÁPSULA (Acción rápida sin redundancia) */
+    .matrix-footer-compact {
+      padding: 9px 18px;
+      background: var(--th-surface);
+      border-top: 1px solid var(--th-border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .matrix-capsule-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--th-text-secondary);
+      background: var(--th-surface-subtle);
+      border: 1px solid var(--th-border-subtle);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .matrix-capsule-btn:hover {
+      color: var(--th-text-main);
+      border-color: var(--th-border);
+    }
+    .matrix-capsule-btn.is-active {
+      background: var(--th-surface-raised);
+      color: var(--th-text-main);
+      border-color: var(--th-border-focus);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    .capsule-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="proposal-container">
+
+    <!-- BANNER DE PROPUESTA -->
+    <div class="proposal-banner">
+      <div>
+        <strong>Propuesta de Rediseño: <code>dash-matrix-canvas-card</code></strong>
+        <p>Matriz arquitectónica ultra-compacta (pods de 72px vs 98px), coherencia total con Obsidian Noir, micro-grid de telemetría y filtros interactivos en cápsula.</p>
+      </div>
+      <button class="theme-toggle-btn" id="themeBtn" title="Alternar Modo Oscuro / Modo Claro">
+        <span class="material-symbols-outlined" id="themeIcon">wb_sunny</span>
+      </button>
+    </div>
+
+    <!-- COMPONENTE: dash-small-card dash-matrix-canvas-card -->
+    <article class="dash-small-card dash-matrix-canvas-card">
+      
+      <!-- 1. HEADER COMPACTO -->
+      <div class="matrix-header-compact">
+        <div class="matrix-title-badge">
+          <div class="matrix-icon-box">
+            <span class="material-symbols-outlined">grid_view</span>
+          </div>
+          <h3>Habitaciones del Hotel</h3>
+          <span class="matrix-live-pill">
+            <span class="pulse-dot"></span>
+            72% Ocupado
+          </span>
+        </div>
+
+        <!-- Selector de pisos -->
+        <div class="matrix-stepper-wrap" role="tablist" aria-label="Filtrar por piso">
+          <button class="matrix-floor-btn is-active" data-floor="all" type="button">Todos</button>
+          <button class="matrix-floor-btn" data-floor="piso1" type="button">Piso 1</button>
+          <button class="matrix-floor-btn" data-floor="piso2" type="button">Piso 2</button>
+          <button class="matrix-floor-btn" data-floor="piso3" type="button">Piso 3</button>
+          <button class="matrix-floor-btn" data-floor="zonas" type="button">Zonas Comunes</button>
+        </div>
+      </div>
+
+      <!-- 2. CUERPO SPATIAL CON PISOS Y ROOM PODS DE 72PX -->
+      <div class="matrix-spatial-body" id="matrixBody">
+
+        <!-- Piso 1 -->
+        <section class="matrix-floor-section" data-floor-group="piso1">
+          <div class="floor-section-header">
+            <span class="floor-name-label">
+              <span class="material-symbols-outlined" style="font-size: 14px;">layers</span>
+              Piso 1
+            </span>
+            <span class="floor-count-tag">5 Habitaciones</span>
+          </div>
+          <div class="matrix-pod-row">
+            
+            <!-- 101: Ocupada -->
+            <div class="matrix-room-pod status-occupied" data-status="occupied">
+              <div class="pod-top">
+                <span class="pod-number">101</span>
+                <span class="pod-beacon"></span>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Carlos R.</span>
+                <span class="pod-subtext">Doble</span>
+              </div>
+              <!-- Tooltip -->
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 101</span>
+                  <span style="font-size: 10px; color: var(--th-rose); font-weight: 700;">Ocupada</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Huésped:</span> <strong>Carlos Ramírez</strong></div>
+                  <div class="tooltip-row"><span>Plan:</span> <strong>Todo Incluido</strong></div>
+                  <div class="tooltip-row"><span>Salida:</span> <strong>Mañana 12:00</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 102: Libre -->
+            <div class="matrix-room-pod status-free" data-status="free">
+              <div class="pod-top">
+                <span class="pod-number">102</span>
+                <span class="pod-beacon"></span>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Libre</span>
+                <span class="pod-subtext">Estándar</span>
+              </div>
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 102</span>
+                  <span style="font-size: 10px; color: var(--th-emerald); font-weight: 700;">Lista para check-in</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Tipo:</span> <strong>Individual</strong></div>
+                  <div class="tooltip-row"><span>Último aseo:</span> <strong>08:30 AM</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 103: En Ruta (Limpieza) -->
+            <div class="matrix-room-pod status-cleaning" data-status="cleaning">
+              <div class="pod-top">
+                <span class="pod-number">103</span>
+                <span class="pod-beacon"></span>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Limpieza</span>
+                <span class="pod-subtext">Diana L.</span>
+              </div>
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 103</span>
+                  <span style="font-size: 10px; color: var(--th-purple); font-weight: 700;">En Limpieza</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Camarera:</span> <strong>Diana Lucia</strong></div>
+                  <div class="tooltip-row"><span>Tiempo est:</span> <strong>25 min</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 104: Aseo Pendiente -->
+            <div class="matrix-room-pod status-pending" data-status="pending">
+              <div class="pod-top">
+                <span class="pod-number">104</span>
+                <span class="pod-beacon"></span>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Aseo</span>
+                <span class="pod-subtext">Prioridad</span>
+              </div>
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 104</span>
+                  <span style="font-size: 10px; color: var(--th-amber); font-weight: 700;">Pendiente de aseo</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Checkout:</span> <strong>Hace 20 min</strong></div>
+                  <div class="tooltip-row"><span>Estado:</span> <strong>Por asignar</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 105: Ocupada VIP -->
+            <div class="matrix-room-pod status-occupied" data-status="occupied">
+              <div class="pod-top">
+                <span class="pod-number">105</span>
+                <div class="pod-tags">
+                  <span class="pod-vip-pill">★ VIP</span>
+                  <span class="pod-beacon"></span>
+                </div>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Elena S.</span>
+                <span class="pod-subtext">Suite</span>
+              </div>
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 105 (Suite)</span>
+                  <span style="font-size: 10px; color: var(--th-rose); font-weight: 700;">Ocupada VIP</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Huésped:</span> <strong>Elena Sandoval</strong></div>
+                  <div class="tooltip-row"><span>Servicio:</span> <strong>Suite Presidencial</strong></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Piso 2 -->
+        <section class="matrix-floor-section" data-floor-group="piso2">
+          <div class="floor-section-header">
+            <span class="floor-name-label">
+              <span class="material-symbols-outlined" style="font-size: 14px;">layers</span>
+              Piso 2
+            </span>
+            <span class="floor-count-tag">4 Habitaciones</span>
+          </div>
+          <div class="matrix-pod-row">
+
+            <!-- 201: Ocupada -->
+            <div class="matrix-room-pod status-occupied" data-status="occupied">
+              <div class="pod-top">
+                <span class="pod-number">201</span>
+                <span class="pod-beacon"></span>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Mariana G.</span>
+                <span class="pod-subtext">Doble</span>
+              </div>
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 201</span>
+                  <span style="font-size: 10px; color: var(--th-rose); font-weight: 700;">Ocupada</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Huésped:</span> <strong>Mariana Gómez</strong></div>
+                  <div class="tooltip-row"><span>Plan:</span> <strong>Estándar</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 202: Libre -->
+            <div class="matrix-room-pod status-free" data-status="free">
+              <div class="pod-top">
+                <span class="pod-number">202</span>
+                <span class="pod-beacon"></span>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Libre</span>
+                <span class="pod-subtext">Estándar</span>
+              </div>
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 202</span>
+                  <span style="font-size: 10px; color: var(--th-emerald); font-weight: 700;">Lista</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Tipo:</span> <strong>Doble cama</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 203: Lista / Inspeccionada -->
+            <div class="matrix-room-pod status-finished" data-status="finished">
+              <div class="pod-top">
+                <span class="pod-number">203</span>
+                <span class="pod-beacon"></span>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Lista</span>
+                <span class="pod-subtext">Inspeccionada</span>
+              </div>
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 203</span>
+                  <span style="font-size: 10px; color: var(--th-cyan); font-weight: 700;">Lista</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Supervisora:</span> <strong>Nikol</strong></div>
+                  <div class="tooltip-row"><span>Inspección:</span> <strong>Aprobada</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 204: Libre VIP -->
+            <div class="matrix-room-pod status-free" data-status="free">
+              <div class="pod-top">
+                <span class="pod-number">204</span>
+                <div class="pod-tags">
+                  <span class="pod-vip-pill">★ VIP</span>
+                  <span class="pod-beacon"></span>
+                </div>
+              </div>
+              <div class="pod-bottom">
+                <span class="pod-label">Libre</span>
+                <span class="pod-subtext">Suite</span>
+              </div>
+              <div class="matrix-tooltip">
+                <div class="tooltip-header">
+                  <span class="tooltip-title">Habitación 204 (VIP)</span>
+                  <span style="font-size: 10px; color: var(--th-emerald); font-weight: 700;">Lista</span>
+                </div>
+                <div class="tooltip-body">
+                  <div class="tooltip-row"><span>Tipo:</span> <strong>Suite Ejecutiva</strong></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+
+      <!-- 3. FOOTER CÁPSULA (Filtros interactivos de estado) -->
+      <div class="matrix-footer-compact">
+        <button class="matrix-capsule-btn is-active" data-filter="all" type="button">
+          <span>● Total 9</span>
+        </button>
+        <button class="matrix-capsule-btn" data-filter="free" type="button">
+          <span class="capsule-dot" style="background: var(--th-emerald);"></span>
+          <span>3 Libres</span>
+        </button>
+        <button class="matrix-capsule-btn" data-filter="occupied" type="button">
+          <span class="capsule-dot" style="background: var(--th-rose);"></span>
+          <span>3 Ocupadas</span>
+        </button>
+        <button class="matrix-capsule-btn" data-filter="pending" type="button">
+          <span class="capsule-dot" style="background: var(--th-amber);"></span>
+          <span>1 Aseo</span>
+        </button>
+        <button class="matrix-capsule-btn" data-filter="cleaning" type="button">
+          <span class="capsule-dot" style="background: var(--th-purple);"></span>
+          <span>1 En Limpieza</span>
+        </button>
+        <button class="matrix-capsule-btn" data-filter="finished" type="button">
+          <span class="capsule-dot" style="background: var(--th-cyan);"></span>
+          <span>1 Lista</span>
+        </button>
+      </div>
+
+    </article>
+
+  </div>
+
+  <script>
+    // 1. Filtrado por Estado (Cápsulas del footer)
+    const capsuleBtns = document.querySelectorAll('.matrix-capsule-btn');
+    const pods = document.querySelectorAll('.matrix-room-pod');
+
+    capsuleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        capsuleBtns.forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        const filter = btn.getAttribute('data-filter');
+
+        pods.forEach(pod => {
+          const status = pod.getAttribute('data-status');
+          if (filter === 'all' || status === filter) {
+            pod.classList.remove('is-dimmed');
+          } else {
+            pod.classList.add('is-dimmed');
+          }
+        });
+      });
+    });
+
+    // 2. Filtrado por Piso
+    const floorBtns = document.querySelectorAll('.matrix-floor-btn');
+    const floorSections = document.querySelectorAll('.matrix-floor-section');
+
+    floorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        floorBtns.forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        const floor = btn.getAttribute('data-floor');
+
+        floorSections.forEach(sec => {
+          const secFloor = sec.getAttribute('data-floor-group');
+          if (floor === 'all' || secFloor === floor) {
+            sec.style.display = 'flex';
+          } else {
+            sec.style.display = 'none';
+          }
+        });
+      });
+    });
+
+    // 3. Toggle de Tema
+    const themeBtn = document.getElementById('themeBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    let currentTheme = 'dark';
+
+    themeBtn.addEventListener('click', () => {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      themeIcon.textContent = currentTheme === 'dark' ? 'wb_sunny' : 'dark_mode';
+    });
+  </script>
+</body>
+</html>

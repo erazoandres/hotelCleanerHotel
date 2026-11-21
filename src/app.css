@@ -17,6 +17,9 @@
   --sage: #a88cf8;
   --accent-soft: #f0ebff;
   --shadow-soft: 0 16px 42px rgb(47 31 91 / 9%);
+  --th-scrollbar-thumb: rgba(115, 84, 245, 0.35);
+  --th-scrollbar-thumb-hover: rgba(115, 84, 245, 0.7);
+  --th-scrollbar-track: transparent;
 }
 
 * {
@@ -367,6 +370,29 @@ h1 {
 
 .table-scroll {
   overflow-x: auto;
+}
+
+.page-card.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+@media (min-width: 768px) {
+  .page-card.table-scroll {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+.page-card.table-scroll tbody tr:nth-child(odd) {
+  background-color: var(--th-table-stripe-odd, #ffffff);
+}
+
+.page-card.table-scroll tbody tr:nth-child(even) {
+  background-color: var(--th-table-stripe-even, #f6f3eb);
 }
 
 table {

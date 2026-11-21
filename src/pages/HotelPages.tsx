@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useHotelAuth } from "../components/HotelAuth";
 import { FreshlyMark } from "../components/FreshlyBrand";
 import { HotelDataStatus, useHotelData } from "../components/HotelData";
-import { DashboardHeroSlider } from "../components/DashboardHeroSlider";
 import { ModernAvatar3D, Avatar3DStylePicker } from "../components/ModernAvatar3D";
 import {
   addEvent,
@@ -64,6 +63,7 @@ const editableStatuses: RoomStatus[] = [
 ];
 
 const cleaningServicePlans = ["Semanal", "Mensual", "Premium"] as const;
+const CLEANING_DURATION_OPTIONS = [30, 60, 90, 120, 150] as const;
 const roomPhotos = [
   "/images/rooms/bedroom-01.jpg",
   "/images/rooms/bedroom-02.jpg",
@@ -82,63 +82,91 @@ function ActionMessage({
   return null;
 }
 
+function MinimalVectorIcon({ status, isVip = false, className = "" }: { status: RoomStatus; isVip?: boolean; className?: string }) {
+  if (isVip) {
+    return (
+      <svg className={`min-icon min-icon-vip ${className}`} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 2l2.6 6.8L22 12l-7.4 3.2L12 22l-2.6-6.8L2 12l7.4-3.2z" />
+      </svg>
+    );
+  }
+  switch (status) {
+    case "free":
+      return (
+        <svg className={`min-icon min-icon-free ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M2 4v16M2 11h20M22 4v16M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4" />
+        </svg>
+      );
+    case "occupied":
+      return (
+        <svg className={`min-icon min-icon-occupied ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M18 20a6 6 0 0 0-12 0" />
+          <circle cx="12" cy="10" r="4" />
+        </svg>
+      );
+    case "cleaning":
+      return (
+        <svg className={`min-icon min-icon-cleaning icon-spin-orbit ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+          <path d="M21 21v-5h-5" />
+        </svg>
+      );
+    case "pending":
+      return (
+        <svg className={`min-icon min-icon-pending ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      );
+    case "finished":
+      return (
+        <svg className={`min-icon min-icon-finished ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+      );
+    default:
+      return (
+        <svg className={`min-icon ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="4" y="2" width="16" height="20" rx="2" />
+          <line x1="14" y1="12" x2="16" y2="12" />
+        </svg>
+      );
+  }
+}
+
+function MinimalArrowLink({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg
+      className={`min-icon-arrow-link ${className}`}
+      style={style}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="7" y1="17" x2="17" y2="7" />
+      <polyline points="7 7 17 7 17 17" />
+    </svg>
+  );
+}
+
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { state, refresh } = useHotelData();
-  const { session } = useHotelAuth();
+  const { state } = useHotelData();
   const [matrixFilter, setMatrixFilter] = useState<"all" | "free" | "occupied" | "pending" | "cleaning" | "finished">("all");
   const [selectedFloor, setSelectedFloor] = useState<string>("all");
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
-  const [selectedModalRoom, setSelectedModalRoom] = useState<string | null>(null);
-  const [modalBusy, setModalBusy] = useState(false);
-  const [modalFeedback, setModalFeedback] = useState<string | null>(null);
-
-  const getRoomStatusIcon = (st: RoomStatus) => {
-    switch (st) {
-      case "free":
-        return "bed";
-      case "finished":
-        return "task_alt";
-      case "occupied":
-        return "hotel";
-      case "pending":
-        return "schedule";
-      case "cleaning":
-        return "cleaning_services";
-      default:
-        return "door_front";
-    }
-  };
 
   const isVipRoom = (plan?: string) => {
     if (!plan) return false;
     const p = plan.toLowerCase();
     return p.includes("premium") || p.includes("vip") || p.includes("suite");
-  };
-
-  const handleQuickStatusChange = async (roomId: string, newStatus: RoomStatus) => {
-    setModalBusy(true);
-    setModalFeedback(null);
-    try {
-      await updateRoom(roomId, { status: newStatus });
-      await addEvent({
-        room: roomId,
-        status: newStatus,
-        action: `Estado cambiado a ${statusLabels[newStatus]} desde mapa`,
-        guest: state.guests[roomId] || null,
-        actor: session?.user.email ?? "Administrador",
-        cleanerId: state.assignedCleanings[roomId]?.staffId || null,
-        cleaningType: null,
-        time: new Date().toISOString(),
-      });
-      setModalFeedback(`¡Habitación ${roomId} actualizada a "${statusLabels[newStatus]}"!`);
-      if (refresh) await refresh();
-      setTimeout(() => setModalFeedback(null), 3000);
-    } catch (err: unknown) {
-      setModalFeedback(err instanceof Error ? err.message : "Error al actualizar la habitación");
-    } finally {
-      setModalBusy(false);
-    }
   };
 
   const roomIds = useMemo(
@@ -162,7 +190,7 @@ export function DashboardPage() {
   const activeStaffCount = state.attendance.filter((a) => !a.checkOut).length;
   const roomsPerActiveStaff = activeStaffCount > 0 ? (turnoverCount / activeStaffCount).toFixed(1) : String(turnoverCount);
 
-  // Operational health calculation (100 - penalties for overdue & unassigned)
+  // Operational health calculation
   const today = localDateValue(new Date());
   const nextWeekDate = new Date();
   nextWeekDate.setDate(nextWeekDate.getDate() + 7);
@@ -195,17 +223,41 @@ export function DashboardPage() {
 
   const operationalHealth = Math.max(70, Math.min(100, Math.round(100 - (overdueCount * 6) - (pendingCount * 2))));
 
-  // Group rooms by floors
+  // Group rooms by floors (extracts floor or detects, grouping common spaces into "Áreas Comunes")
   const floors = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const id of roomIds) {
-      const floorNum = id.length >= 3 ? id.slice(0, -2) : "1";
-      const key = `Piso ${floorNum}`;
+      const isCommon = state.spaceTypes[id] === "zona_comun";
+      let key = "Áreas Comunes";
+      if (!isCommon) {
+        if (state.floors[id]) {
+          key = state.floors[id];
+        } else {
+          const digitsMatch = id.match(/\d+/);
+          if (digitsMatch) {
+            const numStr = digitsMatch[0];
+            const floorNum = numStr.length >= 3 ? numStr.slice(0, -2) : "1";
+            key = `Piso ${parseInt(floorNum, 10) || 1}`;
+          } else {
+            key = "Piso 1";
+          }
+        }
+      }
       if (!map[key]) map[key] = [];
       map[key].push(id);
     }
-    return map;
-  }, [roomIds]);
+    // Sort Pisos first, then Áreas Comunes
+    const sortedMap: Record<string, string[]> = {};
+    const keys = Object.keys(map).sort((a, b) => {
+      if (a === "Áreas Comunes") return 1;
+      if (b === "Áreas Comunes") return -1;
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+    for (const k of keys) {
+      sortedMap[k] = map[k];
+    }
+    return sortedMap;
+  }, [roomIds, state.floors, state.spaceTypes]);
 
   // Hourly operational activity distribution from events
   const activityHours = useMemo(() => {
@@ -258,9 +310,9 @@ export function DashboardPage() {
     };
   }, [roomIds, state.servicePlans, totalRooms]);
 
-  // Donut SVG circumference calculation (r = 50, C = 2 * PI * 50 = 314.159)
+  // Donut SVG circumference calculation
   const donutRadius = 50;
-  const donutCircumference = 2 * Math.PI * donutRadius; // 314.159
+  const donutCircumference = 2 * Math.PI * donutRadius;
   const occStroke = (occupancyRate / 100) * donutCircumference;
   const freeStroke = (freeRate / 100) * donutCircumference;
   const turnStroke = (turnoverRate / 100) * donutCircumference;
@@ -268,49 +320,50 @@ export function DashboardPage() {
   // Filtered rooms for floor matrix
   const matrixFilterFn = (id: string) => {
     const s = state.rooms[id] || "free";
-    if (matrixFilter === "all") return true;
-    if (matrixFilter === "free") return s === "free";
-    if (matrixFilter === "occupied") return s === "occupied";
-    if (matrixFilter === "pending") return s === "pending";
-    if (matrixFilter === "cleaning") return s === "cleaning";
-    if (matrixFilter === "finished") return s === "finished";
+    if (matrixFilter !== "all" && s !== matrixFilter) return false;
     return true;
   };
 
   return (
-    <div className="page-stack dashboard-page">
-      <DashboardHeroSlider />
-
-      {/* Operational pulse & live status strip */}
-      <div className="dashboard-status-strip">
-        <div className="dashboard-live-badge">
-          <span className="dashboard-pulse-dot" aria-hidden="true" />
-          <span>Operación en Vivo</span>
-          <span className="dashboard-dot-separator" aria-hidden="true">•</span>
-          <strong>{totalRooms} habitaciones monitoreadas</strong>
+    <div className="page-stack dashboard-page dash-compact-page">
+      {/* 1. Header con la misma tipografía Fraunces y estilo de las otras secciones */}
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">Operación general</p>
+          <h1>Inicio</h1>
+          <p className="page-description">
+            Monitoreo en tiempo real de habitaciones, rotación de limpieza y ocupación general.
+          </p>
         </div>
-        <div className="dashboard-health-badge">
-          <span className="material-symbol" aria-hidden="true">verified</span>
-          <span>Índice Operativo: <strong>{operationalHealth}% Óptimo</strong></span>
-        </div>
-        <div className="dashboard-connection-pill">
-          <HotelDataStatus showStatus={false} />
+        <div className="dashboard-heading-badges">
+          <span className="dash-live-chip">
+            <span className="dashboard-pulse-dot" aria-hidden="true" />
+            <strong>{totalRooms}</strong> Habitaciones
+          </span>
+          <span className="dash-health-pill">
+            <span className="material-symbol" aria-hidden="true">verified</span>
+            <span>{operationalHealth}% Óptimo</span>
+          </span>
+          <div className="dashboard-connection-pill">
+            <HotelDataStatus showStatus={false} />
+          </div>
         </div>
       </div>
 
-      {/* Graphical KPI Cards with SVG Mini-Rings */}
-      <section className="dashboard-visual-kpis" aria-label="Indicadores gráficos clave">
-        <article className="dashboard-kpi-card kpi-occupancy">
-          <div className="kpi-card-header">
-            <span className="kpi-label">Ocupación Actual</span>
-            <span className="kpi-icon-pill coral"><span className="material-symbol" aria-hidden="true">hotel</span></span>
+      {/* 2. ROW OF 4 SMALL KPI CARDS */}
+      <section className="dash-kpis-grid" aria-label="Métricas clave de operación">
+        {/* KPI 1: Ocupación */}
+        <article className="dash-small-card dash-kpi-card">
+          <div className="dash-kpi-top">
+            <span className="dash-kpi-label">Ocupación</span>
+            <span className="dash-kpi-icon-pill coral"><span className="material-symbol" aria-hidden="true">hotel</span></span>
           </div>
-          <div className="kpi-card-body">
-            <div className="kpi-metric-main">
+          <div className="dash-kpi-center">
+            <div className="dash-kpi-number-wrap">
               <strong>{occupancyRate}%</strong>
-              <span>{occupiedCount} de {totalRooms} habitaciones</span>
+              <span>{occupiedCount} de {totalRooms} habs</span>
             </div>
-            <div className="kpi-mini-ring" aria-hidden="true">
+            <div className="dash-kpi-ring" aria-hidden="true">
               <svg viewBox="0 0 36 36" className="kpi-ring-svg">
                 <circle cx="18" cy="18" r="14" fill="none" stroke="#fce4e8" strokeWidth="3.5" />
                 <circle
@@ -327,22 +380,23 @@ export function DashboardPage() {
               </svg>
             </div>
           </div>
-          <div className="kpi-card-footer">
-            <span className="kpi-trend-pill">Capacidad: {occupiedCount}/{totalRooms} habs</span>
+          <div className="dash-kpi-footer">
+            <span className="dash-kpi-trend">Capacidad: {occupiedCount}/{totalRooms} habs</span>
           </div>
         </article>
 
-        <article className="dashboard-kpi-card kpi-ready">
-          <div className="kpi-card-header">
-            <span className="kpi-label">Disponibles / Listas</span>
-            <span className="kpi-icon-pill mint"><span className="material-symbol" aria-hidden="true">door_open</span></span>
+        {/* KPI 2: Disponibles */}
+        <article className="dash-small-card dash-kpi-card">
+          <div className="dash-kpi-top">
+            <span className="dash-kpi-label">Disponibles / Listas</span>
+            <span className="dash-kpi-icon-pill mint"><span className="material-symbol" aria-hidden="true">door_open</span></span>
           </div>
-          <div className="kpi-card-body">
-            <div className="kpi-metric-main">
+          <div className="dash-kpi-center">
+            <div className="dash-kpi-number-wrap">
               <strong>{freeCount}</strong>
-              <span>{freeRate}% listas para check-in</span>
+              <span>{freeRate}% listas check-in</span>
             </div>
-            <div className="kpi-mini-ring" aria-hidden="true">
+            <div className="dash-kpi-ring" aria-hidden="true">
               <svg viewBox="0 0 36 36" className="kpi-ring-svg">
                 <circle cx="18" cy="18" r="14" fill="none" stroke="#d5ede7" strokeWidth="3.5" />
                 <circle
@@ -359,22 +413,23 @@ export function DashboardPage() {
               </svg>
             </div>
           </div>
-          <div className="kpi-card-footer">
-            <span className="kpi-trend-pill green">Entrega Inmediata</span>
+          <div className="dash-kpi-footer">
+            <span className="dash-kpi-trend green">Entrega Inmediata</span>
           </div>
         </article>
 
-        <article className="dashboard-kpi-card kpi-turnover">
-          <div className="kpi-card-header">
-            <span className="kpi-label">En Rotación / Aseo</span>
-            <span className="kpi-icon-pill purple"><span className="material-symbol" aria-hidden="true">cleaning_services</span></span>
+        {/* KPI 3: Rotación / Aseo */}
+        <article className="dash-small-card dash-kpi-card">
+          <div className="dash-kpi-top">
+            <span className="dash-kpi-label">En Rotación</span>
+            <span className="dash-kpi-icon-pill purple"><span className="material-symbol" aria-hidden="true">cleaning_services</span></span>
           </div>
-          <div className="kpi-card-body">
-            <div className="kpi-metric-main">
+          <div className="dash-kpi-center">
+            <div className="dash-kpi-number-wrap">
               <strong>{turnoverCount}</strong>
               <span>{pendingCount} por asear · {cleaningCount} en curso</span>
             </div>
-            <div className="kpi-mini-ring" aria-hidden="true">
+            <div className="dash-kpi-ring" aria-hidden="true">
               <svg viewBox="0 0 36 36" className="kpi-ring-svg">
                 <circle cx="18" cy="18" r="14" fill="none" stroke="#ede7fa" strokeWidth="3.5" />
                 <circle
@@ -391,24 +446,25 @@ export function DashboardPage() {
               </svg>
             </div>
           </div>
-          <div className="kpi-card-footer">
-            <span className={`kpi-trend-pill ${pendingCount > 0 ? "amber" : "neutral"}`}>
+          <div className="dash-kpi-footer">
+            <span className={`dash-kpi-trend ${pendingCount > 0 ? "amber" : ""}`}>
               {pendingCount > 0 ? `${pendingCount} pendientes` : "Sin retrasos"}
             </span>
           </div>
         </article>
 
-        <article className="dashboard-kpi-card kpi-staff">
-          <div className="kpi-card-header">
-            <span className="kpi-label">Personal en Turno</span>
-            <span className="kpi-icon-pill sage"><span className="material-symbol" aria-hidden="true">badge</span></span>
+        {/* KPI 4: Personal en Turno */}
+        <article className="dash-small-card dash-kpi-card">
+          <div className="dash-kpi-top">
+            <span className="dash-kpi-label">Personal Activo</span>
+            <span className="dash-kpi-icon-pill sage"><span className="material-symbol" aria-hidden="true">badge</span></span>
           </div>
-          <div className="kpi-card-body">
-            <div className="kpi-metric-main">
-              <strong>{activeStaffCount} <small>/ {state.staff.length}</small></strong>
+          <div className="dash-kpi-center">
+            <div className="dash-kpi-number-wrap">
+              <strong>{activeStaffCount} <small style={{ fontSize: 13, color: "#64748b" }}>/ {state.staff.length}</small></strong>
               <span>Carga: {roomsPerActiveStaff} hab / camarista</span>
             </div>
-            <div className="kpi-mini-ring" aria-hidden="true">
+            <div className="dash-kpi-ring" aria-hidden="true">
               <svg viewBox="0 0 36 36" className="kpi-ring-svg">
                 <circle cx="18" cy="18" r="14" fill="none" stroke="#e0e8ee" strokeWidth="3.5" />
                 <circle
@@ -425,38 +481,253 @@ export function DashboardPage() {
               </svg>
             </div>
           </div>
-          <div className="kpi-card-footer">
-            <span className="kpi-trend-pill">
-              {activeStaffCount > 0 ? "Turno activo" : "Sin ingresos hoy"}
+          <div className="dash-kpi-footer">
+            <span className="dash-kpi-trend">
+              {activeStaffCount > 0 ? "Turno activo hoy" : "Sin personal activo"}
             </span>
           </div>
         </article>
       </section>
 
-      {/* Main Graphical Grid (2 Columns: Donut Gauge + Spatial Floor Matrix) */}
-      <section className="dashboard-graphic-row">
-        {/* Widget 1: Donut SVG Chart */}
-        <article className="dashboard-card dashboard-donut-card">
-          <div className="dashboard-card-head">
-            <div>
-              <p className="dashboard-widget-eyebrow">Radar de Capacidad</p>
-              <h2 className="dashboard-widget-title">Distribución de Ocupación</h2>
+      {/* 3. CORE MODULAR GRID: ROOM MATRIX (LEFT) + CAPACITY DONUT RADAR (RIGHT) */}
+      <section className="dash-core-grid">
+        {/* Card A: Pure Graphical Room Matrix */}
+        <article className="dash-small-card dash-matrix-canvas-card">
+          <div className="matrix-header-compact">
+            <div className="matrix-title-badge">
+              <span className="matrix-icon-box" aria-hidden="true">
+                <span className="material-symbol" style={{ fontSize: 16 }}>grid_view</span>
+              </span>
+              <span>Habitaciones del Hotel</span>
+              <span className="matrix-live-pill">
+                <span className="dashboard-pulse-dot" style={{ width: 6, height: 6 }} aria-hidden="true" />
+                {occupancyRate}% Ocupado
+              </span>
             </div>
-            <span className="dashboard-badge-pill">Inventario Real</span>
+
+            <div className="matrix-stepper-wrap" role="tablist" aria-label="Filtrar por piso">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedFloor === "all"}
+                className={`matrix-stepper-btn ${selectedFloor === "all" ? "active" : ""}`}
+                onClick={() => setSelectedFloor("all")}
+                title="Todos los pisos"
+              >
+                Todos
+              </button>
+              {Object.keys(floors).map((fl) => (
+                <button
+                  key={fl}
+                  type="button"
+                  role="tab"
+                  aria-selected={selectedFloor === fl}
+                  className={`matrix-stepper-btn ${selectedFloor === fl ? "active" : ""}`}
+                  onClick={() => setSelectedFloor(fl)}
+                  title={fl}
+                >
+                  {fl}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="dashboard-donut-content">
-            <div className="dashboard-donut-visual">
-              <svg viewBox="0 0 140 140" className="donut-svg-main">
-                <circle
-                  cx="70"
-                  cy="70"
-                  r={donutRadius}
-                  fill="none"
-                  stroke="#edf2f5"
-                  strokeWidth="15"
-                />
-                {/* Ocupadas */}
+          <div className="matrix-spatial-body">
+            {(() => {
+              const currentFloorRooms = selectedFloor === "all"
+                ? roomIds
+                : (floors[selectedFloor] || []);
+
+              const renderPod = (roomId: string) => {
+                const st = state.rooms[roomId] || "free";
+                const isMatch = matrixFilterFn(roomId);
+                const isDimmed = !isMatch;
+                const isHovered = hoveredRoom === roomId;
+                const guest = state.guests[roomId];
+                const cleaner = state.assignedCleanings[roomId]?.staffName;
+                const plan = state.servicePlans[roomId];
+                const isVip = isVipRoom(plan);
+                const isCommonArea = state.spaceTypes[roomId] === "zona_comun";
+                const roomType = state.roomTypes[roomId] || detectRoomType(roomId);
+
+                let dynamicLabel = "Libre";
+                if (st === "occupied") {
+                  dynamicLabel = guest ? guest.split(" ")[0] : "Ocupada";
+                } else if (st === "cleaning") {
+                  dynamicLabel = cleaner ? cleaner.split(" ")[0] : "Limpieza";
+                } else if (st === "pending") {
+                  dynamicLabel = "Aseo";
+                } else if (st === "finished") {
+                  dynamicLabel = "Lista";
+                }
+
+                let subtext = isCommonArea ? "Zona Común" : (roomType === "doble" ? "Doble" : "Estándar");
+                if (st === "occupied" && isVip) subtext = "Suite VIP";
+                else if (st === "cleaning" && cleaner) subtext = cleaner.split(" ")[0];
+
+                return (
+                  <div
+                    key={roomId}
+                    className={`matrix-room-pod status-${st} ${isDimmed ? "is-dimmed" : ""} ${isCommonArea ? "is-common-area" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Habitación ${roomId}, ${statusLabels[st] || st}`}
+                    onClick={() => navigate(`/app/habitaciones?room=${encodeURIComponent(roomId)}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate(`/app/habitaciones?room=${encodeURIComponent(roomId)}`);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredRoom(roomId)}
+                    onMouseLeave={() => setHoveredRoom(null)}
+                  >
+                    <div className="matrix-pod-head">
+                      <span className="matrix-pod-num" title={roomId}>{roomId}</span>
+                      <div className="matrix-pod-indicators">
+                        {isVip && <span className="matrix-pod-vip-tag" title="Habitación VIP">★ VIP</span>}
+                        <span className={`matrix-pod-beacon status-${st}`} aria-hidden="true" />
+                      </div>
+                    </div>
+
+                    <div className="matrix-pod-foot">
+                      <span className={`matrix-pod-status-pill status-${st}`} title={dynamicLabel}>
+                        {dynamicLabel}
+                      </span>
+                      <span className="matrix-pod-subtext">{subtext}</span>
+                    </div>
+
+                    {/* Tooltip on hover */}
+                    {isHovered && (
+                      <div className="matrix-tile-tooltip" role="tooltip" style={{ zIndex: 50 }}>
+                        <div className="matrix-tooltip-head">
+                          <div className="matrix-tooltip-title">
+                            <MinimalVectorIcon status={st} isVip={isVip} />
+                            <strong style={{ fontFamily: "Space Grotesk, sans-serif" }}>Habitación {roomId}</strong>
+                          </div>
+                          <span className={`status-pill status-${st}`}>{statusLabels[st]}</span>
+                        </div>
+                        <div className="matrix-tooltip-body">
+                          <div><small>Huésped:</small> <span>{guest || "Sin registro"}</span></div>
+                          <div><small>Aseador:</small> <span>{cleaner || "Sin asignar"}</span></div>
+                          {plan && <div><small>Plan:</small> <span>{plan}</span></div>}
+                          <div className="matrix-tooltip-hint">
+                            <MinimalArrowLink style={{ opacity: 1, transform: "none" }} />
+                            <span>Clic para gestionar</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+
+              if (selectedFloor === "all") {
+                const floorEntries = Object.entries(floors);
+                if (floorEntries.length > 1) {
+                  return (
+                    <div className="matrix-wings-stage">
+                      {floorEntries.map(([flName, flRooms]) => (
+                        <div key={flName} className="matrix-floor-group">
+                          <div className="matrix-floor-group-header">
+                            <span className="matrix-floor-group-title">{flName}</span>
+                            <span className="matrix-floor-group-count">{flRooms.length} habs</span>
+                          </div>
+                          <div className="matrix-pod-row">
+                            {flRooms.map(renderPod)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+              }
+
+              if (currentFloorRooms.length === 0) {
+                return (
+                  <div className="matrix-empty-compact">
+                    <p>No hay espacios registrados en este piso.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="matrix-wings-stage">
+                  <div className="matrix-pod-row">
+                    {currentFloorRooms.map(renderPod)}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          <div className="matrix-footer-compact">
+            <button
+              type="button"
+              className={`matrix-capsule-btn ${matrixFilter === "all" ? "active" : ""}`}
+              onClick={() => setMatrixFilter("all")}
+            >
+              ● {totalRooms}
+            </button>
+            <button
+              type="button"
+              className={`matrix-capsule-btn ${matrixFilter === "free" ? "active" : ""}`}
+              onClick={() => setMatrixFilter(matrixFilter === "free" ? "all" : "free")}
+            >
+              <span className="matrix-room-dot" style={{ background: "#10b981" }} />
+              {freeOnlyCount} Libres
+            </button>
+            <button
+              type="button"
+              className={`matrix-capsule-btn ${matrixFilter === "occupied" ? "active" : ""}`}
+              onClick={() => setMatrixFilter(matrixFilter === "occupied" ? "all" : "occupied")}
+            >
+              <span className="matrix-room-dot" style={{ background: "#f43f5e" }} />
+              {occupiedCount} Ocupadas
+            </button>
+            <button
+              type="button"
+              className={`matrix-capsule-btn ${matrixFilter === "pending" ? "active" : ""}`}
+              onClick={() => setMatrixFilter(matrixFilter === "pending" ? "all" : "pending")}
+            >
+              <span className="matrix-room-dot" style={{ background: "#f59e0b" }} />
+              {pendingCount} Aseo
+            </button>
+            <button
+              type="button"
+              className={`matrix-capsule-btn ${matrixFilter === "cleaning" ? "active" : ""}`}
+              onClick={() => setMatrixFilter(matrixFilter === "cleaning" ? "all" : "cleaning")}
+            >
+              <span className="matrix-room-dot" style={{ background: "#8b5cf6" }} />
+              {cleaningCount} En Ruta
+            </button>
+            <button
+              type="button"
+              className={`matrix-capsule-btn ${matrixFilter === "finished" ? "active" : ""}`}
+              onClick={() => setMatrixFilter(matrixFilter === "finished" ? "all" : "finished")}
+            >
+              <span className="matrix-room-dot" style={{ background: "#06b6d4" }} />
+              {finishedCount} Listas
+            </button>
+          </div>
+        </article>
+
+        {/* Card B: Pure Graphical Capacity Radar (Interactive Telemetry) */}
+        <article className="dash-small-card dash-radar-card">
+          <div className="radar-header-compact">
+            <div className="radar-title">
+              <span className="material-symbol" style={{ fontSize: 16, color: "#17221f" }}>pie_chart</span>
+              <span>Capacidad</span>
+            </div>
+            <strong style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: 12.5, color: "#17221f" }}>
+              {occupiedCount} <span style={{ color: "#94a3b8" }}>/</span> {totalRooms}
+            </strong>
+          </div>
+
+          <div className="radar-body-compact">
+            <div className="radar-donut-stage">
+              <svg viewBox="0 0 140 140" className="radar-donut-svg">
+                <circle cx="70" cy="70" r={donutRadius} fill="none" stroke="#edf2ef" strokeWidth="14" />
                 {occStroke > 0 && (
                   <circle
                     cx="70"
@@ -464,14 +735,14 @@ export function DashboardPage() {
                     r={donutRadius}
                     fill="none"
                     stroke="#f05d72"
-                    strokeWidth="15"
+                    strokeWidth="14"
                     strokeDasharray={`${occStroke} ${donutCircumference - occStroke}`}
                     strokeDashoffset={-donutCircumference * 0.25}
                     strokeLinecap="round"
-                    className="donut-segment"
+                    style={{ cursor: "pointer", transition: "stroke-width 0.2s" }}
+                    onClick={() => setMatrixFilter(matrixFilter === "occupied" ? "all" : "occupied")}
                   />
                 )}
-                {/* Libres */}
                 {freeStroke > 0 && (
                   <circle
                     cx="70"
@@ -479,14 +750,14 @@ export function DashboardPage() {
                     r={donutRadius}
                     fill="none"
                     stroke="#26b7a6"
-                    strokeWidth="15"
+                    strokeWidth="14"
                     strokeDasharray={`${freeStroke} ${donutCircumference - freeStroke}`}
                     strokeDashoffset={-(donutCircumference * 0.25 + occStroke)}
                     strokeLinecap="round"
-                    className="donut-segment"
+                    style={{ cursor: "pointer", transition: "stroke-width 0.2s" }}
+                    onClick={() => setMatrixFilter(matrixFilter === "free" ? "all" : "free")}
                   />
                 )}
-                {/* Rotación */}
                 {turnStroke > 0 && (
                   <circle
                     cx="70"
@@ -494,617 +765,84 @@ export function DashboardPage() {
                     r={donutRadius}
                     fill="none"
                     stroke="#8d73ff"
-                    strokeWidth="15"
+                    strokeWidth="14"
                     strokeDasharray={`${turnStroke} ${donutCircumference - turnStroke}`}
                     strokeDashoffset={-(donutCircumference * 0.25 + occStroke + freeStroke)}
                     strokeLinecap="round"
-                    className="donut-segment"
+                    style={{ cursor: "pointer", transition: "stroke-width 0.2s" }}
+                    onClick={() => setMatrixFilter(matrixFilter === "cleaning" ? "all" : "cleaning")}
                   />
                 )}
               </svg>
-              <div className="donut-center-readout">
-                <strong>{occupancyRate}%</strong>
-                <span>Ocupadas</span>
+              <div className="radar-donut-center">
+                <span className="radar-donut-percent">{occupancyRate}%</span>
+                <span className="radar-donut-sub">Ocupación</span>
               </div>
             </div>
 
-            <div className="dashboard-donut-legend">
-              <div className="donut-legend-row">
-                <span className="legend-indicator coral" />
-                <span className="legend-title">Ocupadas</span>
-                <strong className="legend-count">{occupiedCount} habs</strong>
-                <span className="legend-pct">{occupancyRate}%</span>
-              </div>
-              <div className="donut-legend-progress">
-                <span className="donut-progress-bar coral" style={{ width: `${occupancyRate}%` }} />
-              </div>
-
-              <div className="donut-legend-row">
-                <span className="legend-indicator mint" />
-                <span className="legend-title">Listas / Libres</span>
-                <strong className="legend-count">{freeCount} habs</strong>
-                <span className="legend-pct">{freeRate}%</span>
-              </div>
-              <div className="donut-legend-progress">
-                <span className="donut-progress-bar mint" style={{ width: `${freeRate}%` }} />
-              </div>
-
-              <div className="donut-legend-row">
-                <span className="legend-indicator purple" />
-                <span className="legend-title">En Rotación</span>
-                <strong className="legend-count">{turnoverCount} habs</strong>
-                <span className="legend-pct">{turnoverRate}%</span>
-              </div>
-              <div className="donut-legend-progress">
-                <span className="donut-progress-bar purple" style={{ width: `${turnoverRate}%` }} />
-              </div>
-            </div>
-          </div>
-        </article>
-
-        {/* Widget 2: Spatial Floor Map Matrix */}
-        <article className="dashboard-card dashboard-matrix-card">
-          <div className="dashboard-card-head matrix-card-head">
-            <div className="matrix-head-info">
-              <div className="matrix-title-row">
-                <span className="matrix-head-icon" aria-hidden="true">
-                  <span className="material-symbol">apartment</span>
-                </span>
-                <div>
-                  <p className="dashboard-widget-eyebrow">Control Espacial en Tiempo Real</p>
-                  <h2 className="dashboard-widget-title">Distribución por Pisos</h2>
-                </div>
-              </div>
-              <div className="matrix-head-telemetry">
-                <span className="matrix-telemetry-chip">
-                  <span className="material-symbol" aria-hidden="true">domain</span>
-                  <strong>{Object.keys(floors).length}</strong> Pisos
-                </span>
-                <span className="matrix-telemetry-chip">
-                  <span className="material-symbol" aria-hidden="true">meeting_room</span>
-                  <strong>{totalRooms}</strong> Habitaciones
-                </span>
-                <span className="matrix-telemetry-chip highlight">
-                  <span className="matrix-pulse-dot-mini" aria-hidden="true" />
-                  <strong>{occupancyRate}%</strong> Ocupación Global
-                </span>
-              </div>
-            </div>
-
-            {/* Controls: Floor Selector + Status Filter Pills */}
-            <div className="matrix-controls-wrapper">
-              {Object.keys(floors).length > 1 && (
-                <div className="matrix-floor-tabs" role="tablist" aria-label="Filtro por piso">
-                  <button
-                    type="button"
-                    className={`matrix-tab-btn ${selectedFloor === "all" ? "active" : ""}`}
-                    onClick={() => setSelectedFloor("all")}
-                  >
-                    Todos ({Object.keys(floors).length})
-                  </button>
-                  {Object.keys(floors).map((fl) => (
-                    <button
-                      key={fl}
-                      type="button"
-                      className={`matrix-tab-btn ${selectedFloor === fl ? "active" : ""}`}
-                      onClick={() => setSelectedFloor(fl)}
-                    >
-                      {fl}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="dashboard-matrix-filters" role="tablist" aria-label="Filtro por estado">
-                <button
-                  type="button"
-                  className={`matrix-filter-pill ${matrixFilter === "all" ? "active" : ""}`}
-                  onClick={() => setMatrixFilter("all")}
-                >
-                  Todas ({totalRooms})
-                </button>
-                <button
-                  type="button"
-                  className={`matrix-filter-pill filter-free ${matrixFilter === "free" ? "active" : ""}`}
-                  onClick={() => setMatrixFilter("free")}
-                >
-                  <span className="matrix-filter-dot dot-free" aria-hidden="true" />
-                  Libres ({freeOnlyCount})
-                </button>
-                <button
-                  type="button"
-                  className={`matrix-filter-pill filter-occupied ${matrixFilter === "occupied" ? "active" : ""}`}
-                  onClick={() => setMatrixFilter("occupied")}
-                >
-                  <span className="matrix-filter-dot dot-occupied" aria-hidden="true" />
-                  Ocupadas ({occupiedCount})
-                </button>
-                <button
-                  type="button"
-                  className={`matrix-filter-pill filter-pending ${matrixFilter === "pending" ? "active" : ""}`}
-                  onClick={() => setMatrixFilter("pending")}
-                >
-                  <span className="matrix-filter-dot dot-pending" aria-hidden="true" />
-                  Pendiente ({pendingCount})
-                </button>
-                <button
-                  type="button"
-                  className={`matrix-filter-pill filter-cleaning ${matrixFilter === "cleaning" ? "active" : ""}`}
-                  onClick={() => setMatrixFilter("cleaning")}
-                >
-                  <span className="matrix-filter-dot dot-cleaning" aria-hidden="true" />
-                  En limpieza ({cleaningCount})
-                </button>
-                <button
-                  type="button"
-                  className={`matrix-filter-pill filter-finished ${matrixFilter === "finished" ? "active" : ""}`}
-                  onClick={() => setMatrixFilter("finished")}
-                >
-                  <span className="matrix-filter-dot dot-finished" aria-hidden="true" />
-                  Finalizada ({finishedCount})
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="dashboard-matrix-content">
-            {Object.entries(floors)
-              .filter(([floorLabel]) => (selectedFloor === "all" ? true : floorLabel === selectedFloor))
-              .map(([floorLabel, fRooms]) => {
-                const visibleRoomsInFloor = fRooms.filter(matrixFilterFn);
-                const floorTotal = fRooms.length;
-                const floorOcc = fRooms.filter((id) => state.rooms[id] === "occupied").length;
-                const floorFree = fRooms.filter(
-                  (id) => state.rooms[id] === "free" || state.rooms[id] === "finished",
-                ).length;
-                const floorTurnover = fRooms.filter(
-                  (id) => state.rooms[id] === "pending" || state.rooms[id] === "cleaning",
-                ).length;
-                const floorOccPct = floorTotal > 0 ? Math.round((floorOcc / floorTotal) * 100) : 0;
-                const floorFreePct = floorTotal > 0 ? Math.round((floorFree / floorTotal) * 100) : 0;
-                const floorTurnoverPct = floorTotal > 0 ? Math.max(0, 100 - floorOccPct - floorFreePct) : 0;
-
-                return (
-                  <div className="matrix-floor-block" key={floorLabel}>
-                    <div className="matrix-floor-heading">
-                      <div className="matrix-floor-left">
-                        <span className="matrix-floor-icon-wrap" aria-hidden="true">
-                          <span className="material-symbol">layers</span>
-                        </span>
-                        <div>
-                          <span className="matrix-floor-badge">{floorLabel}</span>
-                          <span className="matrix-floor-meta">
-                            {visibleRoomsInFloor.length} de {floorTotal} habitaciones
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Graphic Floor Telemetry Bar */}
-                      <div
-                        className="matrix-floor-telemetry"
-                        title={`Piso: ${floorOcc} ocupadas (${floorOccPct}%), ${floorFree} disponibles (${floorFreePct}%), ${floorTurnover} en rotación (${floorTurnoverPct}%)`}
-                      >
-                        <div className="matrix-floor-bar-track" aria-hidden="true">
-                          <div className="matrix-floor-bar-seg seg-occ" style={{ width: `${floorOccPct}%` }} />
-                          <div className="matrix-floor-bar-seg seg-turn" style={{ width: `${floorTurnoverPct}%` }} />
-                          <div className="matrix-floor-bar-seg seg-free" style={{ width: `${floorFreePct}%` }} />
-                        </div>
-                        <span className="matrix-floor-occ-rate">{floorOccPct}% Ocupado</span>
-                      </div>
-                    </div>
-
-                    <div className="matrix-room-tiles">
-                      {fRooms.map((roomId) => {
-                        const st = state.rooms[roomId] || "free";
-                        const isVisible = matrixFilterFn(roomId);
-                        const isHovered = hoveredRoom === roomId;
-                        const isSelected = selectedModalRoom === roomId;
-                        const guest = state.guests[roomId];
-                        const cleaner = state.assignedCleanings[roomId]?.staffName;
-                        const plan = state.servicePlans[roomId];
-                        const isVip = isVipRoom(plan);
-                        const icon = getRoomStatusIcon(st);
-
-                        return (
-                          <div
-                            className={`matrix-room-tile tile-${st} ${isVisible ? "" : "is-dimmed"} ${isHovered ? "is-hovered" : ""} ${isSelected ? "is-selected" : ""}`}
-                            key={roomId}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Habitación ${roomId}, estado ${statusLabels[st] || st}`}
-                            onClick={() => setSelectedModalRoom(roomId)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                setSelectedModalRoom(roomId);
-                              }
-                            }}
-                            onMouseEnter={() => setHoveredRoom(roomId)}
-                            onMouseLeave={() => setHoveredRoom(null)}
-                          >
-                            {/* Architectural Blueprint Vector Overlay */}
-                            <div className="matrix-tile-blueprint" aria-hidden="true">
-                              <svg viewBox="0 0 100 80" preserveAspectRatio="none" className="tile-blueprint-svg">
-                                <rect
-                                  x="2"
-                                  y="2"
-                                  width="96"
-                                  height="76"
-                                  rx="8"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="1.2"
-                                  strokeDasharray="3 3"
-                                />
-                                <path
-                                  d="M 6 74 A 18 18 0 0 1 24 56"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="1.2"
-                                />
-                                <line
-                                  x1="6"
-                                  y1="74"
-                                  x2="6"
-                                  y2="56"
-                                  stroke="currentColor"
-                                  strokeWidth="1.2"
-                                />
-                              </svg>
-                            </div>
-
-                            {/* Top: Icon Badge & Live Beacon Pulse / VIP */}
-                            <div className="matrix-tile-top">
-                              <div className="matrix-tile-icon-box">
-                                <span className="material-symbol" aria-hidden="true">{icon}</span>
-                              </div>
-                              <div className="matrix-tile-badges-row">
-                                {isVip && (
-                                  <span className="matrix-tile-vip-badge" title="Huésped / Plan VIP">
-                                    <span className="material-symbol" aria-hidden="true">star</span>
-                                    <span className="vip-text">VIP</span>
-                                  </span>
-                                )}
-                                <div className="matrix-tile-beacon" title={`Estado: ${statusLabels[st] || st}`}>
-                                  <span className={`matrix-beacon-ring beacon-${st}`} />
-                                  <span className={`matrix-beacon-dot beacon-${st}`} />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Middle: Door Plaque & Room Number */}
-                            <div className="matrix-tile-middle">
-                              <div className="matrix-tile-plaque">
-                                <span className="matrix-plaque-prefix">HAB</span>
-                                <strong className="matrix-tile-num">{roomId}</strong>
-                              </div>
-                              {plan && (
-                                <span className="matrix-tile-plan-pill" title={plan}>
-                                  {plan.length > 9 ? `${plan.slice(0, 8)}…` : plan}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Bottom: Contextual Graphic Chip (Guest Avatar / Cleaner / Status) */}
-                            <div className="matrix-tile-bottom">
-                              {st === "occupied" && guest ? (
-                                <div className="matrix-tile-guest-badge" title={`Huésped: ${guest}`}>
-                                  <span className="matrix-guest-avatar">{guest.charAt(0).toUpperCase()}</span>
-                                  <span className="matrix-guest-name">{guest.split(" ")[0]}</span>
-                                </div>
-                              ) : st === "cleaning" ? (
-                                <div className="matrix-tile-status-pill is-cleaning" title={`En limpieza por: ${cleaner || "Personal"}`}>
-                                  <span className="material-symbol spin-icon" aria-hidden="true">refresh</span>
-                                  <span>{cleaner ? cleaner.split(" ")[0] : "Limpiando"}</span>
-                                </div>
-                              ) : st === "pending" ? (
-                                <div className="matrix-tile-status-pill is-pending" title="Pendiente de aseo">
-                                  <span className="material-symbol" aria-hidden="true">schedule</span>
-                                  <span>Por limpiar</span>
-                                </div>
-                              ) : st === "finished" ? (
-                                <div className="matrix-tile-status-pill is-finished" title="Limpieza verificada y completada">
-                                  <span className="material-symbol" aria-hidden="true">verified</span>
-                                  <span>Lista</span>
-                                </div>
-                              ) : (
-                                <div className="matrix-tile-status-pill is-free" title="Habitación libre para entrega">
-                                  <span className="material-symbol" aria-hidden="true">check_circle</span>
-                                  <span>Disponible</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Interactive Hover Tooltip */}
-                            {isHovered && !selectedModalRoom && (
-                              <div className="matrix-tile-tooltip" role="tooltip">
-                                <div className="matrix-tooltip-head">
-                                  <div className="matrix-tooltip-title">
-                                    <span className="material-symbol" aria-hidden="true">{icon}</span>
-                                    <strong>Habitación {roomId}</strong>
-                                  </div>
-                                  <span className={`status-pill status-${st}`}>{statusLabels[st]}</span>
-                                </div>
-                                <div className="matrix-tooltip-body">
-                                  <div><small>Huésped:</small> <span>{guest || "Sin registro"}</span></div>
-                                  <div><small>Aseador:</small> <span>{cleaner || "Sin asignar"}</span></div>
-                                  {plan && <div><small>Plan:</small> <span>{plan}</span></div>}
-                                  {state.scheduledCleaningDates[roomId] && (
-                                    <div><small>Programada:</small> <span>{state.scheduledCleaningDates[roomId]}</span></div>
-                                  )}
-                                  <div className="matrix-tooltip-hint">
-                                    <span className="material-symbol" aria-hidden="true">touch_app</span>
-                                    <span>Clic para abrir opciones</span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-
-          {/* Interactive Room Action Modal */}
-          {selectedModalRoom && (
-            <div
-              className="matrix-modal-backdrop"
-              onClick={() => setSelectedModalRoom(null)}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="matrix-modal-title"
-            >
-              <div
-                className="matrix-modal-dialog"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="matrix-modal-header">
-                  <div className="matrix-modal-title-group">
-                    <div className={`matrix-modal-icon-badge status-${state.rooms[selectedModalRoom] || "free"}`}>
-                      <span className="material-symbol" aria-hidden="true">
-                        {getRoomStatusIcon(state.rooms[selectedModalRoom] || "free")}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 id="matrix-modal-title">Habitación {selectedModalRoom}</h3>
-                      <span className={`status-pill status-${state.rooms[selectedModalRoom] || "free"}`}>
-                        {statusLabels[state.rooms[selectedModalRoom] || "free"]}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="matrix-modal-close"
-                    onClick={() => setSelectedModalRoom(null)}
-                    aria-label="Cerrar detalles de habitación"
-                  >
-                    <span className="material-symbol" aria-hidden="true">close</span>
-                  </button>
-                </div>
-
-                {modalFeedback && (
-                  <div className="matrix-modal-feedback" role="status">
-                    <span className="material-symbol" aria-hidden="true">info</span>
-                    <span>{modalFeedback}</span>
-                  </div>
-                )}
-
-                <div className="matrix-modal-details-grid">
-                  <div className="matrix-detail-item">
-                    <span className="matrix-detail-label">Huésped Actual</span>
-                    <strong className="matrix-detail-value">
-                      {state.guests[selectedModalRoom] || "Sin huésped registrado"}
-                    </strong>
-                  </div>
-                  <div className="matrix-detail-item">
-                    <span className="matrix-detail-label">Aseador Asignado</span>
-                    <strong className="matrix-detail-value">
-                      {state.assignedCleanings[selectedModalRoom]?.staffName ? (
-                        <button
-                          type="button"
-                          className="staff-inline-link"
-                          onClick={() => {
-                            const staffId = state.assignedCleanings[selectedModalRoom]?.staffId;
-                            const staffName = state.assignedCleanings[selectedModalRoom]?.staffName;
-                            if (staffId) {
-                              navigate(`/app/personal?id=${encodeURIComponent(staffId)}`);
-                            } else if (staffName) {
-                              navigate(`/app/personal?name=${encodeURIComponent(staffName)}`);
-                            }
-                          }}
-                          title={`Ver ficha del personal: ${state.assignedCleanings[selectedModalRoom]?.staffName}`}
-                        >
-                          <ModernAvatar3D
-                            name={state.assignedCleanings[selectedModalRoom]?.staffName || ""}
-                            size={16}
-                            alt=""
-                          />
-                          <span>{state.assignedCleanings[selectedModalRoom]?.staffName}</span>
-                        </button>
-                      ) : (
-                        "Sin asignar"
-                      )}
-                    </strong>
-                  </div>
-                  <div className="matrix-detail-item">
-                    <span className="matrix-detail-label">Plan de Limpieza</span>
-                    <span className="matrix-detail-value">
-                      {state.servicePlans[selectedModalRoom] || "Estándar"}
-                    </span>
-                  </div>
-                  <div className="matrix-detail-item">
-                    <span className="matrix-detail-label">Próxima Fecha</span>
-                    <span className="matrix-detail-value">
-                      {state.scheduledCleaningDates[selectedModalRoom] || "No programada"}
-                    </span>
-                  </div>
-                </div>
-
-                {state.cleaningDetails[selectedModalRoom] && (
-                  <div className="matrix-modal-notes">
-                    <span className="matrix-detail-label">Indicaciones Especiales</span>
-                    <p>{state.cleaningDetails[selectedModalRoom]}</p>
-                  </div>
-                )}
-
-                <div className="matrix-modal-actions-section">
-                  <h4 className="matrix-actions-heading">
-                    <span className="material-symbol" aria-hidden="true">bolt</span>
-                    Cambio Rápido de Estado
-                  </h4>
-                  <div className="matrix-quick-buttons-row">
-                    <button
-                      type="button"
-                      className="matrix-quick-btn btn-free"
-                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "free"}
-                      onClick={() => handleQuickStatusChange(selectedModalRoom, "free")}
-                    >
-                      <span className="material-symbol" aria-hidden="true">bed</span>
-                      <span>Marcar Libre</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="matrix-quick-btn btn-occupied"
-                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "occupied"}
-                      onClick={() => handleQuickStatusChange(selectedModalRoom, "occupied")}
-                    >
-                      <span className="material-symbol" aria-hidden="true">hotel</span>
-                      <span>Marcar Ocupada</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="matrix-quick-btn btn-pending"
-                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "pending"}
-                      onClick={() => handleQuickStatusChange(selectedModalRoom, "pending")}
-                    >
-                      <span className="material-symbol" aria-hidden="true">schedule</span>
-                      <span>Por Limpiar</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="matrix-quick-btn btn-cleaning"
-                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "cleaning"}
-                      onClick={() => handleQuickStatusChange(selectedModalRoom, "cleaning")}
-                    >
-                      <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-                      <span>En Limpieza</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="matrix-quick-btn btn-finished"
-                      disabled={modalBusy || (state.rooms[selectedModalRoom] || "free") === "finished"}
-                      onClick={() => handleQuickStatusChange(selectedModalRoom, "finished")}
-                    >
-                      <span className="material-symbol" aria-hidden="true">task_alt</span>
-                      <span>Finalizada</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="matrix-modal-footer">
-                  <Link to="/app/habitaciones" className="button button-secondary matrix-modal-editor-btn">
-                    <span className="material-symbol" aria-hidden="true">open_in_new</span>
-                    Editor Completo
-                  </Link>
-                  <button
-                    type="button"
-                    className="button button-ghost"
-                    onClick={() => setSelectedModalRoom(null)}
-                  >
-                    Cerrar
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="dashboard-matrix-legend-strip">
-            <div className="matrix-legend-items" role="toolbar" aria-label="Filtro rápido por estados">
+            <div className="radar-interactive-pills" role="tablist" aria-label="Filtro rápido radar">
               <button
                 type="button"
-                className={`matrix-legend-chip chip-free ${matrixFilter === "free" ? "active" : ""}`}
-                onClick={() => setMatrixFilter(matrixFilter === "free" ? "all" : "free")}
-                title="Filtrar habitaciones libres"
-              >
-                <span className="matrix-dot dot-free" aria-hidden="true" />
-                <span>Libres:</span>
-                <strong>{freeOnlyCount}</strong>
-              </button>
-              <button
-                type="button"
-                className={`matrix-legend-chip chip-occupied ${matrixFilter === "occupied" ? "active" : ""}`}
+                className={`radar-stat-pill pill-occ ${matrixFilter === "occupied" ? "active" : ""}`}
                 onClick={() => setMatrixFilter(matrixFilter === "occupied" ? "all" : "occupied")}
-                title="Filtrar habitaciones ocupadas"
               >
-                <span className="matrix-dot dot-occupied" aria-hidden="true" />
-                <span>Ocupadas:</span>
-                <strong>{occupiedCount}</strong>
+                <div className="radar-stat-pill-left">
+                  <span className="dash-donut-dot coral" />
+                  <span>{occupiedCount} Ocupadas</span>
+                </div>
+                <span className="radar-stat-pill-rate">{occupancyRate}%</span>
               </button>
               <button
                 type="button"
-                className={`matrix-legend-chip chip-pending ${matrixFilter === "pending" ? "active" : ""}`}
-                onClick={() => setMatrixFilter(matrixFilter === "pending" ? "all" : "pending")}
-                title="Filtrar habitaciones pendientes de aseo"
+                className={`radar-stat-pill pill-free ${matrixFilter === "free" ? "active" : ""}`}
+                onClick={() => setMatrixFilter(matrixFilter === "free" ? "all" : "free")}
               >
-                <span className="matrix-dot dot-pending" aria-hidden="true" />
-                <span>Por Limpiar:</span>
-                <strong>{pendingCount}</strong>
+                <div className="radar-stat-pill-left">
+                  <span className="dash-donut-dot mint" />
+                  <span>{freeCount} Libres</span>
+                </div>
+                <span className="radar-stat-pill-rate">{freeRate}%</span>
               </button>
               <button
                 type="button"
-                className={`matrix-legend-chip chip-cleaning ${matrixFilter === "cleaning" ? "active" : ""}`}
+                className={`radar-stat-pill pill-turn ${matrixFilter === "cleaning" ? "active" : ""}`}
                 onClick={() => setMatrixFilter(matrixFilter === "cleaning" ? "all" : "cleaning")}
-                title="Filtrar habitaciones en limpieza"
               >
-                <span className="matrix-dot dot-cleaning" aria-hidden="true" />
-                <span>En Limpieza:</span>
-                <strong>{cleaningCount}</strong>
+                <div className="radar-stat-pill-left">
+                  <span className="dash-donut-dot purple" />
+                  <span>{turnoverCount} Limpieza</span>
+                </div>
+                <span className="radar-stat-pill-rate">{turnoverRate}%</span>
               </button>
-              <button
-                type="button"
-                className={`matrix-legend-chip chip-finished ${matrixFilter === "finished" ? "active" : ""}`}
-                onClick={() => setMatrixFilter(matrixFilter === "finished" ? "all" : "finished")}
-                title="Filtrar habitaciones finalizadas"
-              >
-                <span className="matrix-dot dot-finished" aria-hidden="true" />
-                <span>Finalizadas:</span>
-                <strong>{finishedCount}</strong>
-              </button>
-            </div>
-            <div className="matrix-legend-tip">
-              <span className="material-symbol" aria-hidden="true">touch_app</span>
-              <span>Clic en una habitación para gestionar</span>
             </div>
           </div>
         </article>
       </section>
 
-      {/* Secondary Graphical Grid (2 Columns: Hourly Activity Bar Chart + Service Spectrum) */}
-      <section className="dashboard-graphic-row">
-        {/* Widget 3: Shift Operational Load Chart */}
-        <article className="dashboard-card dashboard-activity-card">
-          <div className="dashboard-card-head">
-            <div>
-              <p className="dashboard-widget-eyebrow">Flujo de Operación</p>
-              <h2 className="dashboard-widget-title">Carga Horaria y Actividad</h2>
+      {/* 4. BOTTOM ROW: 3 COMPACT CARDS (ACTIVITY + PROTOCOLS + AGENDACRITICA) */}
+      <section className="dash-bottom-grid">
+        {/* Card 1: Hourly Operational Load */}
+        <article className="dash-small-card dash-card-bottom">
+          <div className="dash-card-header">
+            <div className="dash-card-header-left">
+              <div className="dash-card-header-icon">
+                <span className="material-symbol" aria-hidden="true">query_builder</span>
+              </div>
+              <div>
+                <p className="dash-card-eyebrow">Flujo de Operación</p>
+                <h2 className="dash-card-title">Carga Horaria</h2>
+              </div>
             </div>
-            <span className="dashboard-badge-pill">Turnos de Hoy</span>
+            <span className="dash-card-badge">Turnos de Hoy</span>
           </div>
 
-          <div className="dashboard-activity-chart-wrap">
-            <div className="activity-bars-container">
+          <div className="dash-card-bottom-body">
+            <div className="activity-bars-container" style={{ margin: 0 }}>
               {activityHours.blocks.map((block) => {
                 const heightPct = Math.max(16, Math.round((block.count / activityHours.maxCount) * 100));
                 return (
                   <div className="activity-bar-column" key={block.label}>
-                    <div className="activity-bar-track">
+                    <div className="activity-bar-track" style={{ height: 95 }}>
                       <div
                         className="activity-bar-fill"
                         style={{ height: `${heightPct}%` }}
@@ -1113,40 +851,40 @@ export function DashboardPage() {
                       </div>
                     </div>
                     <div className="activity-bar-info">
-                      <strong className="activity-bar-name">{block.name}</strong>
-                      <span className="activity-bar-label">{block.label}</span>
+                      <strong className="activity-bar-name" style={{ fontSize: 10 }}>{block.name}</strong>
+                      <span className="activity-bar-label" style={{ fontSize: 9 }}>{block.label}</span>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="activity-chart-meta">
-              <span className="material-symbol" aria-hidden="true">insights</span>
-              <span>Distribución en tiempo real basada en <strong>{state.events.length} eventos registrados</strong>.</span>
-            </div>
+          </div>
+
+          <div className="dash-card-bottom-footer">
+            <span className="material-symbol" aria-hidden="true" style={{ fontSize: 13 }}>insights</span>
+            <span>Basado en <strong>{state.events.length} eventos</strong> registrados.</span>
           </div>
         </article>
 
-        {/* Widget 4: Service Plans Spectrum & Critical Agenda */}
-        <article className="dashboard-card dashboard-services-card">
-          <div className="dashboard-card-head">
-            <div>
-              <p className="dashboard-widget-eyebrow">Protocolos y Agenda</p>
-              <h2 className="dashboard-widget-title">Planes y Fechas Críticas</h2>
+        {/* Card 2: Service Plans Spectrum */}
+        <article className="dash-small-card dash-card-bottom">
+          <div className="dash-card-header">
+            <div className="dash-card-header-left">
+              <div className="dash-card-header-icon">
+                <span className="material-symbol" aria-hidden="true">cleaning_services</span>
+              </div>
+              <div>
+                <p className="dash-card-eyebrow">Protocolos y Servicios</p>
+                <h2 className="dash-card-title">Planes de Limpieza</h2>
+              </div>
             </div>
-            <Link className="text-link" to="/app/habitaciones">
-              Administrar <span className="material-symbol" aria-hidden="true">arrow_forward</span>
+            <Link className="text-link" to="/app/habitaciones" style={{ fontSize: 11 }}>
+              Ver <span className="material-symbol" aria-hidden="true" style={{ fontSize: 13 }}>arrow_forward</span>
             </Link>
           </div>
 
-          {/* Stacked spectrum bar */}
-          <div className="dashboard-services-content">
-            <div className="service-spectrum-header">
-              <span className="spectrum-label">Cobertura de Protocolos</span>
-              <span className="spectrum-total">{totalRooms} habitaciones activas</span>
-            </div>
-
-            <div className="service-stacked-bar" aria-label="Distribución de protocolos">
+          <div className="dash-card-bottom-body">
+            <div className="service-stacked-bar" aria-label="Distribución de protocolos" style={{ height: 14, marginBottom: 12 }}>
               {serviceDistribution.semPct > 0 && (
                 <div
                   className="stacked-slice slice-semanal"
@@ -1177,49 +915,76 @@ export function DashboardPage() {
               )}
             </div>
 
-            <div className="service-pills-row">
-              <span className="service-pill-item">
+            <div className="service-pills-row" style={{ gap: 6, flexWrap: "wrap" }}>
+              <span className="service-pill-item" style={{ fontSize: 10.5, padding: "3px 7px" }}>
                 <span className="pill-dot sem" /> Semanal: <strong>{serviceDistribution.semanal}</strong> ({serviceDistribution.semPct}%)
               </span>
-              <span className="service-pill-item">
+              <span className="service-pill-item" style={{ fontSize: 10.5, padding: "3px 7px" }}>
                 <span className="pill-dot men" /> Mensual: <strong>{serviceDistribution.mensual}</strong> ({serviceDistribution.menPct}%)
               </span>
-              <span className="service-pill-item">
+              <span className="service-pill-item" style={{ fontSize: 10.5, padding: "3px 7px" }}>
                 <span className="pill-dot pre" /> Premium: <strong>{serviceDistribution.premium}</strong> ({serviceDistribution.prePct}%)
               </span>
             </div>
+          </div>
 
-            {/* Critical schedule list preview */}
-            <div className="dashboard-critical-agenda">
-              <div className="critical-agenda-title">
-                <span>Próximas Fechas de Aseo</span>
-                <span className="critical-badge">{overdueCount > 0 ? `${overdueCount} vencidas` : upcomingCount > 0 ? `${upcomingCount} en 7 días` : "Al día"}</span>
+          <div className="dash-card-bottom-footer">
+            <span>Total de habitaciones cubiertas</span>
+            <strong>{totalRooms} activas</strong>
+          </div>
+        </article>
+
+        {/* Card 3: Critical Agenda */}
+        <article className="dash-small-card dash-card-bottom">
+          <div className="dash-card-header">
+            <div className="dash-card-header-left">
+              <div className="dash-card-header-icon">
+                <span className="material-symbol" aria-hidden="true">event_available</span>
               </div>
-              {scheduledRooms.length === 0 ? (
-                <p className="empty-state-compact">Sin fechas programadas para los próximos días.</p>
-              ) : (
-                <ul className="critical-schedule-items">
-                  {scheduledRooms.slice(0, 3).map((room) => {
-                    const isOverdue = room.date < today && room.status !== "finished";
-                    const isToday = room.date === today;
-                    return (
-                      <li className={`critical-item ${isOverdue ? "is-overdue" : ""}`} key={room.roomId}>
-                        <div className="critical-room-col">
-                          <strong>Hab. {room.roomId}</strong>
-                          <span>{room.cleaner}</span>
-                        </div>
-                        <div className="critical-date-col">
-                          <span className={`critical-tag ${isOverdue ? "tag-overdue" : isToday ? "tag-today" : "tag-normal"}`}>
-                            {isOverdue ? "Vencida" : isToday ? "Hoy" : "Próxima"}
-                          </span>
-                          <time dateTime={room.date}>{room.date}</time>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              <div>
+                <p className="dash-card-eyebrow">Agenda Crítica</p>
+                <h2 className="dash-card-title">Próximos Aseos</h2>
+              </div>
             </div>
+            <span className="dash-card-badge" style={{ color: overdueCount > 0 ? "#b91c1c" : "#166534" }}>
+              {overdueCount > 0 ? `${overdueCount} vencidas` : upcomingCount > 0 ? `${upcomingCount} en 7d` : "Al día"}
+            </span>
+          </div>
+
+          <div className="dash-card-bottom-body">
+            {scheduledRooms.length === 0 ? (
+              <p className="empty-state-compact" style={{ fontSize: 11, textAlign: "center", margin: 0 }}>
+                Sin fechas de aseo programadas para los próximos días.
+              </p>
+            ) : (
+              <ul className="critical-schedule-items" style={{ margin: 0, padding: 0 }}>
+                {scheduledRooms.slice(0, 3).map((room) => {
+                  const isOverdue = room.date < today && room.status !== "finished";
+                  const isToday = room.date === today;
+                  return (
+                    <li className={`critical-item ${isOverdue ? "is-overdue" : ""}`} key={room.roomId} style={{ padding: "6px 0" }}>
+                      <div className="critical-room-col">
+                        <strong style={{ fontSize: 12 }}>Hab. {room.roomId}</strong>
+                        <span style={{ fontSize: 10 }}>{room.cleaner}</span>
+                      </div>
+                      <div className="critical-date-col">
+                        <span className={`critical-tag ${isOverdue ? "tag-overdue" : isToday ? "tag-today" : "tag-normal"}`} style={{ fontSize: 9 }}>
+                          {isOverdue ? "Vencida" : isToday ? "Hoy" : "Próxima"}
+                        </span>
+                        <time dateTime={room.date} style={{ fontSize: 10 }}>{room.date}</time>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="dash-card-bottom-footer">
+            <Link className="text-link" to="/app/habitaciones" style={{ fontSize: 11 }}>
+              Ver todas las fechas <span className="material-symbol" aria-hidden="true" style={{ fontSize: 12 }}>arrow_forward</span>
+            </Link>
+            <span>{scheduledRooms.length} en total</span>
           </div>
         </article>
       </section>
@@ -1241,6 +1006,7 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
   const roomSpaceType = state.spaceTypes[roomId] || detectSpaceType(roomId);
   const initialRoomType = (state.roomTypes[roomId] || detectRoomType(roomId)) as "normal" | "doble";
   const initialDoubleNumber = state.doubleNumbers?.[roomId] || (initialRoomType === "doble" ? roomId : "");
+  const roomCleaningTime = state.cleaningTimes?.[roomId] ?? 30;
 
   const [status, setStatus] = useState(roomStatus);
   const [guest, setGuest] = useState(roomGuest);
@@ -1253,6 +1019,7 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
   const [tipoEspacio, setTipoEspacio] = useState<"habitacion" | "zona_comun">(roomSpaceType);
   const [tipoHabitacion, setTipoHabitacion] = useState<"normal" | "doble">(initialRoomType);
   const [numeroDoble, setNumeroDoble] = useState(initialDoubleNumber);
+  const [tiempoLimpieza, setTiempoLimpieza] = useState<number>(roomCleaningTime);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -1274,6 +1041,7 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
     setTipoEspacio(roomSpaceType);
     setTipoHabitacion(initialRoomType);
     setNumeroDoble(initialDoubleNumber);
+    setTiempoLimpieza(roomCleaningTime);
     setError(null);
     setSuccess(null);
     setIsEditing(false);
@@ -1291,8 +1059,9 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
     setTipoEspacio(roomSpaceType);
     setTipoHabitacion(initialRoomType);
     setNumeroDoble(initialDoubleNumber);
+    setTiempoLimpieza(roomCleaningTime);
     setIsEditing(false);
-  }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, roomScheduledCleaningDate, assignment?.staffId, assignment?.cleaningType, roomFloor, roomSpaceType, initialRoomType, initialDoubleNumber]);
+  }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, roomScheduledCleaningDate, assignment?.staffId, assignment?.cleaningType, roomFloor, roomSpaceType, initialRoomType, initialDoubleNumber, roomCleaningTime]);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1313,6 +1082,7 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
         tipo_espacio: tipoEspacio,
         tipo_habitacion: tipoEspacio === "habitacion" ? tipoHabitacion : "normal",
         numero_doble: tipoEspacio === "habitacion" && tipoHabitacion === "doble" ? (numeroDoble.trim() || roomId) : null,
+        tiempo_limpieza: tiempoLimpieza > 0 ? tiempoLimpieza : 30,
       });
 
       if (previousStatus !== status) {
@@ -1346,18 +1116,24 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
     }
   }
 
-  async function handleDelete() {
-    const noun = isCommonArea ? "la zona común" : "la habitación";
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar ${noun} "${roomId}"? Se eliminarán también sus historiales y asignaciones.`)) {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteModalError, setDeleteModalError] = useState<string | null>(null);
+
+  async function handleConfirmDelete() {
+    if (deleteConfirmText.trim().toLowerCase() !== "eliminar") {
+      setDeleteModalError('Debes escribir exactamente la palabra "eliminar".');
       return;
     }
     setDeleting(true);
+    setDeleteModalError(null);
     try {
       await deleteRoom(roomId);
       await refresh();
+      setShowDeleteModal(false);
       onDelete?.();
     } catch (err) {
-      setError(messageOf(err));
+      setDeleteModalError(messageOf(err));
       setDeleting(false);
     }
   }
@@ -1497,6 +1273,20 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
             ))}
           </select>
         </label>
+        <label>
+          Tiempo de limpieza
+          <select
+            disabled={!isEditing || saving}
+            value={tiempoLimpieza}
+            onChange={(event) => setTiempoLimpieza(parseInt(event.target.value, 10) || 30)}
+          >
+            {CLEANING_DURATION_OPTIONS.map((mins) => (
+              <option key={mins} value={mins}>
+                {mins} min ({(mins / 60).toFixed(1)} h)
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="form-wide">
           Detalles de limpieza
           <textarea
@@ -1509,18 +1299,33 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
         <div className="form-wide form-actions">
           <ActionMessage error={error} success={success} />
           {!isEditing ? (
-            <button
-              type="button"
-              className="button button-primary room-editor-edit-btn"
-              onClick={() => {
-                setError(null);
-                setSuccess(null);
-                setIsEditing(true);
-              }}
-            >
-              <span className="material-symbol" aria-hidden="true">edit</span>
-              Editar {isCommonArea ? "zona común" : "habitación"}
-            </button>
+            <div className="room-editor-view-actions">
+              <button
+                type="button"
+                className="button button-primary room-editor-edit-btn"
+                onClick={() => {
+                  setError(null);
+                  setSuccess(null);
+                  setIsEditing(true);
+                }}
+              >
+                <span className="material-symbol" aria-hidden="true">edit</span>
+                Editar {isCommonArea ? "zona común" : "habitación"}
+              </button>
+              <button
+                type="button"
+                className="button button-danger room-editor-delete-btn"
+                disabled={saving || deleting}
+                onClick={() => {
+                  setDeleteConfirmText("");
+                  setDeleteModalError(null);
+                  setShowDeleteModal(true);
+                }}
+              >
+                <span className="material-symbol" aria-hidden="true">delete</span>
+                Eliminar {isCommonArea ? "zona común" : "habitación"}
+              </button>
+            </div>
           ) : (
             <div className="room-editor-actions-group">
               <button
@@ -1541,20 +1346,112 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
             </div>
           )}
         </div>
-        {isEditing && (
-          <div className="form-wide room-editor-delete-wrap">
-            <button
-              type="button"
-              className="button button-danger room-editor-delete-btn"
-              disabled={saving || deleting}
-              onClick={handleDelete}
-            >
-              <span className="material-symbol" aria-hidden="true">delete</span>
-              {deleting ? "Eliminando..." : `Eliminar ${isCommonArea ? "zona común" : "habitación"}`}
-            </button>
-          </div>
-        )}
       </form>
+
+      {/* Modal de Doble Confirmación para Eliminar */}
+      {showDeleteModal && (
+        <div
+          className="matrix-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-room-title"
+          onClick={() => {
+            if (!deleting) setShowDeleteModal(false);
+          }}
+        >
+          <div
+            className="matrix-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 450 }}
+          >
+            <div className="matrix-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span className="material-symbol" style={{ color: "#dc2626", fontSize: "24px" }} aria-hidden="true">
+                  warning
+                </span>
+                <h3 id="delete-room-title" style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                  ¿Eliminar {isCommonArea ? "zona común" : "habitación"} "{roomId}"?
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="matrix-modal-close"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                aria-label="Cerrar modal"
+              >
+                <span className="material-symbol" aria-hidden="true">close</span>
+              </button>
+            </div>
+
+            <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              <p style={{ margin: 0, fontSize: "13px", color: "#4b5563", lineHeight: 1.5 }}>
+                Esta acción es <strong>irreversible</strong>. Se eliminarán permanentemente las limpiezas, registros e historiales vinculados a{" "}
+                <strong>{isCommonArea ? `la zona común "${roomId}"` : `la habitación "${roomId}"`}</strong>.
+              </p>
+
+              <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>
+                Para confirmar la eliminación permanente, escribe exactamente la palabra:{" "}
+                <strong style={{ userSelect: "all", color: "#dc2626", backgroundColor: "#fee2e2", padding: "2px 7px", borderRadius: "4px" }}>
+                  eliminar
+                </strong>
+              </p>
+
+              <label style={{ display: "grid", gap: "6px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "#4b5563" }}>
+                  Escribe "eliminar" para confirmar
+                </span>
+                <input
+                  type="text"
+                  autoFocus
+                  disabled={deleting}
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="eliminar"
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid",
+                    borderColor: deleteConfirmText.trim().toLowerCase() === "eliminar" ? "#dc2626" : "#cbd5e1",
+                    outline: "none",
+                    fontSize: "14px",
+                    boxShadow: deleteConfirmText.trim().toLowerCase() === "eliminar" ? "0 0 0 3px rgba(220,38,38,0.2)" : undefined,
+                  }}
+                />
+              </label>
+
+              {deleteModalError && (
+                <div className="banner banner-error" style={{ margin: 0 }}>
+                  <span className="material-symbol" aria-hidden="true">error</span>
+                  <span>{deleteModalError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="matrix-modal-footer">
+              <button
+                type="button"
+                className="button button-ghost"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="button button-danger"
+                disabled={deleteConfirmText.trim().toLowerCase() !== "eliminar" || deleting}
+                onClick={() => void handleConfirmDelete()}
+              >
+                <span className="material-symbol" aria-hidden="true">
+                  {deleting ? "hourglass_empty" : "delete_forever"}
+                </span>
+                <span>{deleting ? "Eliminando…" : "Confirmar eliminación"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
@@ -1715,6 +1612,9 @@ function CreateRoomModal({
   const [commonName, setCommonName] = useState("");
   const [commonStatus, setCommonStatus] = useState<RoomStatus>("free");
 
+  // Tiempo estimado de limpieza (en minutos)
+  const [cleaningDuration, setCleaningDuration] = useState<number>(30);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1776,6 +1676,7 @@ function CreateRoomModal({
         estado: spaceType === "habitacion" ? roomStatus : commonStatus,
         guest: spaceType === "habitacion" ? guest.trim() || null : null,
         plan: spaceType === "habitacion" ? servicePlan.trim() || null : null,
+        tiempo_limpieza: cleaningDuration > 0 ? cleaningDuration : 30,
       });
 
       onCreated(targetId);
@@ -1961,6 +1862,20 @@ function CreateRoomModal({
                     ))}
                   </select>
                 </div>
+
+                <div className="compact-field">
+                  <label>Tiempo estimado de limpieza</label>
+                  <select
+                    value={cleaningDuration}
+                    onChange={(e) => setCleaningDuration(parseInt(e.target.value, 10) || 30)}
+                  >
+                    {CLEANING_DURATION_OPTIONS.map((mins) => (
+                      <option key={mins} value={mins}>
+                        {mins} min ({(mins / 60).toFixed(1)} h)
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           ) : (
@@ -2028,6 +1943,20 @@ function CreateRoomModal({
                     <option value="pending">Pendiente de Aseo</option>
                   </select>
                 </div>
+
+                <div className="compact-field">
+                  <label>Tiempo estimado de limpieza</label>
+                  <select
+                    value={cleaningDuration}
+                    onChange={(e) => setCleaningDuration(parseInt(e.target.value, 10) || 30)}
+                  >
+                    {CLEANING_DURATION_OPTIONS.map((mins) => (
+                      <option key={mins} value={mins}>
+                        {mins} min ({(mins / 60).toFixed(1)} h)
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -2064,11 +1993,31 @@ function CreateRoomModal({
 
 export function RoomsPage() {
   const { state, loading, error, refresh } = useHotelData();
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const roomParam = searchParams.get("room") || searchParams.get("id");
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(roomParam);
   const [search, setSearch] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [roomTypeFilter, setRoomTypeFilter] = useState<"all" | "normal" | "doble">("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (roomParam) {
+      setSelectedRoom(roomParam);
+    }
+  }, [roomParam]);
+
+  const handleSelectRoom = (roomId: string | null) => {
+    setSelectedRoom(roomId);
+    if (roomId) {
+      setSearchParams({ room: roomId });
+    } else {
+      const next = new URLSearchParams(searchParams);
+      next.delete("room");
+      next.delete("id");
+      setSearchParams(next);
+    }
+  };
 
   const roomIds = useMemo(
     () => Object.keys(state.rooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
@@ -2172,7 +2121,7 @@ export function RoomsPage() {
 
   function handleRoomCreated(newRoomId: string) {
     refresh().then(() => {
-      setSelectedRoom(newRoomId);
+      handleSelectRoom(newRoomId);
     });
   }
 
@@ -2216,13 +2165,13 @@ export function RoomsPage() {
         <section className="room-editor-view">
           <button
             className="button room-back-button"
-            onClick={() => setSelectedRoom(null)}
+            onClick={() => handleSelectRoom(null)}
             type="button"
           >
             <span className="material-symbol" aria-hidden="true">arrow_back</span>
             Todos los espacios
           </button>
-          <RoomCard key={selectedRoom} roomId={selectedRoom} onDelete={() => setSelectedRoom(null)} />
+          <RoomCard key={selectedRoom} roomId={selectedRoom} onDelete={() => handleSelectRoom(null)} />
         </section>
       ) : (
         <section className="room-selection">
@@ -2351,7 +2300,7 @@ export function RoomsPage() {
                   cleanerId={state.assignedCleanings[roomId]?.staffId ?? null}
                   floor={state.floors[roomId] || detectFloor(roomId, undefined, state.spaceTypes[roomId] === "zona_comun")}
                   isCommonArea={state.spaceTypes[roomId] === "zona_comun"}
-                  onSelect={() => setSelectedRoom(roomId)}
+                  onSelect={() => handleSelectRoom(roomId)}
                 />
               ))}
             </div>
@@ -2655,7 +2604,25 @@ export function CleaningPage() {
                 return (
                   <article className="room-card cleaning-room-card" key={roomId}>
                     <div className="room-card-heading">
-                      <div><p className="eyebrow">Habitación</p><h2>{roomId}</h2></div>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="room-card-heading-title"
+                        onClick={() => navigate(`/app/habitaciones?room=${encodeURIComponent(roomId)}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            navigate(`/app/habitaciones?room=${encodeURIComponent(roomId)}`);
+                          }
+                        }}
+                        title={`Ir a habitación ${roomId}`}
+                      >
+                        <p className="eyebrow">Habitación</p>
+                        <h2>
+                          {roomId}
+                          <span className="material-symbol room-title-hover-icon" aria-hidden="true">open_in_new</span>
+                        </h2>
+                      </div>
                       <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
                     </div>
                     <dl className="details-list cleaning-details">
@@ -2814,8 +2781,12 @@ export function HistoryPage() {
               {events.map((event, index) => (
                 <tr key={`${event.room}-${event.time}-${index}`}>
                   <td>{formatDate(event.time)}</td>
-                  <td>{event.room}</td>
-                  <td>{statusLabels[event.status]}</td>
+                  <td><strong>Hab. {event.room}</strong></td>
+                  <td>
+                    <span className={`status-pill status-${event.status}`}>
+                      {statusLabels[event.status]}
+                    </span>
+                  </td>
                   <td>{event.action}</td>
                   <td>{event.actor || "No registrado"}</td>
                 </tr>
@@ -2848,6 +2819,7 @@ export function StaffPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [staffFilter, setStaffFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "on_shift" | "off_shift" | "has_account">("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const selectedStaffId = useMemo(() => {
     if (staffParamId) {
@@ -2932,14 +2904,16 @@ export function StaffPage() {
         || timestamp.getTime() < reportPeriod.start
         || timestamp.getTime() >= reportPeriod.end
       ) continue;
+      const durationMinutes = state.cleaningTimes?.[work.room] ?? 30;
+      const durationHours = durationMinutes / 60;
       rows.push({
         timestamp: work.time,
         category: "Habitación terminada",
         status: "completed",
         statusLabel: "Terminada",
         room: work.room,
-        detail: work.cleaningType || "Limpieza",
-        hours: null,
+        detail: `${work.cleaningType || "Limpieza"} (${durationMinutes} min)`,
+        hours: durationHours,
       });
     }
 
@@ -2972,6 +2946,7 @@ export function StaffPage() {
     state.attendance,
     state.cleaningWork,
     state.roomAssignments,
+    state.cleaningTimes,
   ]);
 
   const finishedCount = useMemo(() => reportRows.filter((r) => r.category === "Habitación terminada").length, [reportRows]);
@@ -2989,14 +2964,30 @@ export function StaffPage() {
   }, [reportRows, reportFilter]);
 
   const reportHours = reportRows.reduce((total, row) => total + (row.hours ?? 0), 0);
+  const cleaningHours = useMemo(
+    () => reportRows.filter((r) => r.category === "Habitación terminada").reduce((total, row) => total + (row.hours ?? 0), 0),
+    [reportRows]
+  );
+  const shiftHours = useMemo(
+    () => reportRows.filter((r) => r.category === "Jornada").reduce((total, row) => total + (row.hours ?? 0), 0),
+    [reportRows]
+  );
+  const staffOnShiftCount = state.staff.filter((person) =>
+    state.attendance.some((record) => record.staffId === person.id && !record.checkOut),
+  ).length;
+  const staffOffShiftCount = state.staff.length - staffOnShiftCount;
+  const staffWithAccountCount = state.staff.filter((person) => person.hasAccount).length;
+
   const visibleStaff = state.staff.filter((person) => {
+    const isOnShift = state.attendance.some((record) => record.staffId === person.id && !record.checkOut);
+    if (statusFilter === "on_shift" && !isOnShift) return false;
+    if (statusFilter === "off_shift" && isOnShift) return false;
+    if (statusFilter === "has_account" && !person.hasAccount) return false;
+
     const query = staffFilter.trim().toLocaleLowerCase("es");
     return !query || [person.name, person.contact, person.email ?? ""]
       .some((value) => value.toLocaleLowerCase("es").includes(query));
   });
-  const staffOnShift = state.staff.filter((person) =>
-    state.attendance.some((record) => record.staffId === person.id && !record.checkOut),
-  ).length;
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3190,7 +3181,19 @@ export function StaffPage() {
               : "Administra turnos, accesos y novedades desde un solo lugar."}
           </p>
         </div>
-        <HotelDataStatus showStatus={false} />
+        <div className="staff-header-actions">
+          {!selectedStaff && (
+            <button
+              className="button button-primary"
+              onClick={() => setShowCreateForm(true)}
+              type="button"
+            >
+              <span className="material-symbol" aria-hidden="true">add</span>
+              Agregar personal
+            </button>
+          )}
+          <HotelDataStatus showStatus={false} />
+        </div>
       </div>
       <ActionMessage error={error} success={success} />
       {newPassword && (
@@ -3220,510 +3223,639 @@ export function StaffPage() {
       )}
       <section className={`staff-layout${selectedStaff ? " staff-layout-detail" : ""}`}>
         {selectedStaff ? (
-          <section className="page-card staff-directory staff-detail-page">
-            <button
-              className="button staff-back-button"
-              onClick={() => {
-                setSearchParams({}, { replace: true });
-                setEditingStaffId(null);
-                setError(null);
-                setSuccess(null);
-              }}
-              type="button"
-            >
-              <span className="material-symbol" aria-hidden="true">arrow_back</span>
-              Volver al personal
-            </button>
-            <div className="staff-profile-panel compact-modern">
-              <header className="staff-profile-header-bar">
-                <div className="staff-profile-main-info">
-                  <div className="staff-avatar-container">
-                    <ModernAvatar3D
-                      name={selectedStaff.name}
-                      size={58}
-                      className="staff-profile-avatar"
-                      alt={`Avatar 3D de ${selectedStaff.name}`}
-                    />
-                    <span
-                      className={`staff-avatar-status-dot ${selectedAttendance ? "is-on-shift" : ""}`}
-                      title={selectedAttendance ? "En turno activo" : "Fuera de turno"}
-                      aria-hidden="true"
-                    />
-                  </div>
+          <div className="staff-detail-hub">
+            {/* 1. Barra de Navegación y Breadcrumb */}
+            <div className="detail-nav-bar">
+              <button
+                className="back-btn"
+                onClick={() => {
+                  setSearchParams({}, { replace: true });
+                  setEditingStaffId(null);
+                  setError(null);
+                  setSuccess(null);
+                }}
+                type="button"
+                title="Volver al listado general de personal"
+              >
+                <span className="material-symbol" aria-hidden="true">arrow_back</span>
+                <span>Volver al personal</span>
+              </button>
+              <div className="breadcrumb-trail">
+                <span>OPERACIÓN EN VIVO</span>
+                <span>/</span>
+                <span>Personal</span>
+                <span>/</span>
+                <strong>Ficha de {selectedStaff.name}</strong>
+              </div>
+            </div>
 
-                  <div className="staff-profile-identity-texts">
-                    <div className="staff-name-status-row">
-                      <h3>{selectedStaff.name}</h3>
-                      <span className={`staff-attendance-badge ${selectedAttendance ? "on-shift" : "off-shift"}`}>
-                        <span className="badge-pulse-dot" aria-hidden="true" />
-                        {selectedAttendance ? "En turno" : "Fuera de turno"}
-                      </span>
-                    </div>
-
-                    <div className="staff-contact-quick-strip">
-                      <span className="staff-quick-item" title="Teléfono">
-                        <span className="material-symbol" aria-hidden="true">call</span>
-                        <a href={`tel:${selectedStaff.contact}`}>{selectedStaff.contact}</a>
-                      </span>
-                      <span className="staff-bullet-dot" aria-hidden="true">•</span>
-                      <span className="staff-quick-item" title="Correo electrónico">
-                        <span className="material-symbol" aria-hidden="true">mail</span>
-                        <span>{selectedStaff.email || "Sin correo"}</span>
-                      </span>
-                      {selectedAttendance && (
-                        <>
-                          <span className="staff-bullet-dot" aria-hidden="true">•</span>
-                          <span className="staff-quick-item staff-shift-item" title="Hora de inicio de turno">
-                            <span className="material-symbol" aria-hidden="true">schedule</span>
-                            <span>Desde {formatDate(selectedAttendance.checkIn)}</span>
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+            {/* 2. Bento Hero Profile Card */}
+            <section className="staff-hero-bento">
+              <div className="hero-identity-group">
+                <div className="hero-avatar-box">
+                  <ModernAvatar3D
+                    name={selectedStaff.name}
+                    size={56}
+                    className="hero-avatar-img"
+                    alt={`Avatar 3D de ${selectedStaff.name}`}
+                  />
+                  <span
+                    className={`hero-shift-beacon ${selectedAttendance ? "is-on-shift" : "is-off-shift"}`}
+                    title={selectedAttendance ? "En turno activo ahora" : "Fuera de turno"}
+                    aria-hidden="true"
+                  />
                 </div>
 
-                <div className="staff-header-actions">
-                  <button
-                    className={`button button-small staff-action-pill ${editingStaffId === selectedStaff.id ? "is-active" : ""}`}
-                    onClick={() => editingStaffId === selectedStaff.id
-                      ? setEditingStaffId(null)
-                      : startEditingStaff(selectedStaff)}
-                    type="button"
-                  >
-                    <span className="material-symbol" aria-hidden="true">
-                      {editingStaffId === selectedStaff.id ? "close" : "edit"}
+                <div className="hero-info-texts">
+                  <div className="hero-title-row">
+                    <h2 className="hero-staff-name">{selectedStaff.name}</h2>
+                    <span className="role-badge">
+                      {selectedStaff.name.toLowerCase().includes("supervis") ? "Supervisora" : selectedStaff.name.toLowerCase().includes("admin") ? "Administrador" : "Equipo"}
                     </span>
-                    {editingStaffId === selectedStaff.id ? "Cancelar" : "Editar"}
-                  </button>
-                  {selectedStaff.hasAccount && (
-                    <button
-                      className="button button-small button-ghost staff-action-pill"
-                      onClick={() => {
-                        setPasswordModalStaff(selectedStaff);
-                        setAdminNewPassword("");
-                        setAdminConfirmPassword("");
-                        setAdminPasswordError(null);
-                      }}
-                      type="button"
-                      title="Cambiar contraseña del empleado"
-                    >
-                      <span className="material-symbol" aria-hidden="true">lock_reset</span>
-                      Cambiar contraseña
-                    </button>
-                  )}
-                  <button
-                    className="staff-delete-icon-btn"
-                    onClick={() => {
-                      setStaffToDelete(selectedStaff);
-                      setDeleteConfirmName("");
-                      setDeleteError(null);
-                    }}
-                    type="button"
-                    title={`Eliminar a ${selectedStaff.name}`}
-                    aria-label={`Eliminar a ${selectedStaff.name}`}
-                  >
-                    <span className="material-symbol" aria-hidden="true">delete</span>
-                  </button>
-                </div>
-              </header>
+                    <span className={`shift-badge-active ${selectedAttendance ? "is-on" : "is-off"}`}>
+                      <span className={`pulse-dot ${selectedAttendance ? "active" : ""}`} aria-hidden="true" />
+                      <span>{selectedAttendance ? `En Turno (Desde ${formatDate(selectedAttendance.checkIn)})` : "Fuera de Turno"}</span>
+                    </span>
+                  </div>
 
-              {/* Inline compact edit form */}
-              {editingStaffId === selectedStaff.id && (
-                <form className="staff-edit-form-compact" onSubmit={(event) => void handleUpdateStaff(event, selectedStaff)}>
-                  <div className="staff-edit-grid">
-                    <label>
-                      <span>Nombre completo</span>
-                      <input required maxLength={80} value={editName} onChange={(event) => setEditName(event.target.value)} />
-                    </label>
-                    <label>
-                      <span>Teléfono</span>
-                      <input required maxLength={30} type="tel" value={editContact} onChange={(event) => setEditContact(event.target.value)} />
-                    </label>
-                    <label>
-                      <span>Correo / usuario</span>
-                      <input required={selectedStaff.hasAccount} autoComplete="email" maxLength={254} type="email" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} />
-                    </label>
-                  </div>
-                  <div className="staff-edit-actions">
-                    <button className="button button-small button-primary" disabled={saving}>
-                      <span className="material-symbol" aria-hidden="true">save</span>
-                      {saving ? "Guardando…" : "Guardar cambios"}
-                    </button>
-                    <button
-                      type="button"
-                      className="button button-small button-ghost"
-                      onClick={() => setEditingStaffId(null)}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* Compact telemetry metrics bar */}
-              <div className="staff-telemetry-row">
-                <div className="staff-metric-chip">
-                  <div className="staff-chip-icon blue">
-                    <span className="material-symbol" aria-hidden="true">call</span>
-                  </div>
-                  <div className="staff-chip-data">
-                    <span className="staff-chip-label">Teléfono directo</span>
-                    <strong>{selectedStaff.contact}</strong>
-                  </div>
-                </div>
-
-                <div className="staff-metric-chip">
-                  <div className="staff-chip-icon purple">
-                    <span className="material-symbol" aria-hidden="true">mail</span>
-                  </div>
-                  <div className="staff-chip-data">
-                    <span className="staff-chip-label">Cuenta de correo</span>
-                    <strong title={selectedStaff.email || ""}>{selectedStaff.email || "No registrado"}</strong>
-                  </div>
-                </div>
-
-                <div className="staff-metric-chip">
-                  <div className="staff-chip-icon emerald">
-                    <span className="material-symbol" aria-hidden="true">timelapse</span>
-                  </div>
-                  <div className="staff-chip-data">
-                    <span className="staff-chip-label">Horas trabajadas</span>
-                    <strong>{reportHours.toFixed(2)} h <small>en periodo</small></strong>
+                  <div className="hero-quick-strip">
+                    <a href={`tel:${selectedStaff.contact}`} className="hero-quick-item" title="Llamar directamente">
+                      <span className="material-symbol" aria-hidden="true">call</span>
+                      <span>{selectedStaff.contact}</span>
+                    </a>
+                    <span className="strip-dot" aria-hidden="true">•</span>
+                    <a href={`mailto:${selectedStaff.email || ""}`} className="hero-quick-item" title="Enviar correo">
+                      <span className="material-symbol" aria-hidden="true">mail</span>
+                      <span>{selectedStaff.email || "Sin correo"}</span>
+                    </a>
+                    <span className="strip-dot" aria-hidden="true">•</span>
+                    <span className="hero-quick-item hero-access-item">
+                      <span className="material-symbol" aria-hidden="true">
+                        {selectedStaff.hasAccount ? "verified_user" : "no_accounts"}
+                      </span>
+                      <span>{selectedStaff.hasAccount ? "Acceso Activo" : "Sin Acceso"}</span>
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Compact Activity and Hours Section */}
-              <section className="staff-report-compact" aria-label={`Historial de trabajo de ${selectedStaff.name}`}>
-                <div className="staff-report-compact-header">
-                  <div className="staff-report-title-wrap">
-                    <div className="staff-report-icon-box">
-                      <span className="material-symbol" aria-hidden="true">monitoring</span>
-                    </div>
-                    <div>
-                      <h4>Actividad y horas registradas</h4>
-                      <p>Horas calculadas por registro de turnos y habitaciones atendidas</p>
-                    </div>
-                  </div>
-
-                  <div className="staff-report-toolbar">
-                    <div className="staff-compact-date-range" title="Rango de fechas">
-                      <span className="material-symbol staff-date-icon" aria-hidden="true">date_range</span>
-                      <input
-                        type="date"
-                        aria-label="Fecha inicial"
-                        value={reportStart}
-                        onChange={(event) => setReportStart(event.target.value)}
-                      />
-                      <span className="date-arrow" aria-hidden="true">→</span>
-                      <input
-                        type="date"
-                        aria-label="Fecha final"
-                        value={reportEnd}
-                        onChange={(event) => setReportEnd(event.target.value)}
-                      />
-                    </div>
-
-                    <button
-                      className="button button-small button-secondary staff-csv-btn"
-                      disabled={!reportPeriod}
-                      onClick={() => handleExportStaffReport(selectedStaff)}
-                      type="button"
-                      title="Exportar registros a archivo CSV"
-                    >
-                      <span className="material-symbol" aria-hidden="true">download</span>
-                      CSV
-                    </button>
-                  </div>
-                </div>
-
-                {/* Filter bar by status */}
-                <div className="staff-report-filter-bar">
-                  <span className="staff-report-filter-label">
-                    <span className="material-symbol" aria-hidden="true">filter_list</span>
-                    Filtrar por estado:
+              <div className="hero-actions-group">
+                <button
+                  className={`btn-action-primary ${editingStaffId === selectedStaff.id ? "is-active" : ""}`}
+                  onClick={() => editingStaffId === selectedStaff.id
+                    ? setEditingStaffId(null)
+                    : startEditingStaff(selectedStaff)}
+                  type="button"
+                >
+                  <span className="material-symbol" aria-hidden="true">
+                    {editingStaffId === selectedStaff.id ? "close" : "edit"}
                   </span>
-                  <div className="staff-report-pills" role="tablist" aria-label="Filtrar actividad por estado">
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={reportFilter === "all"}
-                      className={`staff-filter-pill ${reportFilter === "all" ? "active" : ""}`}
-                      onClick={() => setReportFilter("all")}
-                    >
-                      <span>Todos</span>
-                      <span className="filter-pill-badge">{reportRows.length}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={reportFilter === "finished"}
-                      className={`staff-filter-pill ${reportFilter === "finished" ? "active" : ""}`}
-                      onClick={() => setReportFilter("finished")}
-                    >
-                      <span className="filter-dot dot-emerald" aria-hidden="true" />
-                      <span>Terminadas</span>
-                      <span className="filter-pill-badge">{finishedCount}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={reportFilter === "in_progress"}
-                      className={`staff-filter-pill ${reportFilter === "in_progress" ? "active" : ""}`}
-                      onClick={() => setReportFilter("in_progress")}
-                    >
-                      <span className="filter-dot dot-amber" aria-hidden="true" />
-                      <span>En curso</span>
-                      <span className="filter-pill-badge">{inProgressCount}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={reportFilter === "shifts"}
-                      className={`staff-filter-pill ${reportFilter === "shifts" ? "active" : ""}`}
-                      onClick={() => setReportFilter("shifts")}
-                    >
-                      <span className="filter-dot dot-blue" aria-hidden="true" />
-                      <span>Jornadas</span>
-                      <span className="filter-pill-badge">{shiftsCount}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={reportFilter === "assignments"}
-                      className={`staff-filter-pill ${reportFilter === "assignments" ? "active" : ""}`}
-                      onClick={() => setReportFilter("assignments")}
-                    >
-                      <span className="filter-dot dot-purple" aria-hidden="true" />
-                      <span>Asignaciones</span>
-                      <span className="filter-pill-badge">{assignmentsCount}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {!reportPeriod ? (
-                  <p className="form-error" role="alert">Selecciona un periodo válido: la fecha inicial debe ser anterior a la final.</p>
-                ) : filteredReportRows.length === 0 ? (
-                  <div className="staff-report-empty-compact">
-                    <span className="material-symbol" aria-hidden="true">filter_list_off</span>
-                    <p>
-                      {reportRows.length === 0
-                        ? `No hay actividad registrada en este periodo para ${selectedStaff.name}.`
-                        : "No hay registros con el estado seleccionado en este periodo."}
-                    </p>
-                    {reportRows.length > 0 && reportFilter !== "all" && (
-                      <button
-                        type="button"
-                        className="button button-small button-ghost"
-                        onClick={() => setReportFilter("all")}
-                      >
-                        Ver todos ({reportRows.length})
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="staff-report-table-wrap">
-                    <table className="staff-compact-table">
-                      <thead>
-                        <tr>
-                          <th>Fecha y Hora</th>
-                          <th>Actividad</th>
-                          <th>Estado</th>
-                          <th>Habitación</th>
-                          <th>Detalle</th>
-                          <th className="align-right">Horas</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredReportRows.map((row, index) => (
-                          <tr key={`${row.category}-${row.timestamp}-${row.room}-${index}`}>
-                            <td className="cell-date">{formatDate(row.timestamp)}</td>
-                            <td>
-                              <span className={`staff-activity-tag cat-${row.category.toLowerCase().replace(/\s+/g, '-')}`}>
-                                {row.category}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={`staff-status-badge status-${row.status}`}>
-                                <span className={`status-dot-mini ${row.status === "in_progress" ? "dot-amber pulse" : "dot-emerald"}`} aria-hidden="true" />
-                                {row.statusLabel}
-                              </span>
-                            </td>
-                            <td className="cell-room">{row.room !== "—" ? `Hab. ${row.room}` : "—"}</td>
-                            <td className="cell-detail">{row.detail}</td>
-                            <td className="align-right cell-hours">
-                              {row.hours === null ? "—" : <strong>{row.hours.toFixed(2)} h</strong>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-            </div>
-          </section>
-        ) : (
-          <div className="staff-hub">
-            <div className="staff-hub-main">
-            {showCreateForm && (
-              <form className="page-card staff-create-form" onSubmit={handleCreate}>
-                <div className="staff-create-heading">
-                  <div>
-                    <p className="eyebrow">Nuevo registro</p>
-                    <h2>Agregar personal</h2>
-                  </div>
+                  <span>{editingStaffId === selectedStaff.id ? "Cancelar edición" : "Editar Ficha"}</span>
+                </button>
+                {selectedStaff.hasAccount && (
                   <button
-                    className="button staff-close-create"
-                    onClick={() => setShowCreateForm(false)}
+                    className="btn-action-secondary"
+                    onClick={() => {
+                      setPasswordModalStaff(selectedStaff);
+                      setAdminNewPassword("");
+                      setAdminConfirmPassword("");
+                      setAdminPasswordError(null);
+                    }}
                     type="button"
-                    aria-label="Cerrar formulario"
+                    title="Cambiar contraseña del empleado"
                   >
-                    <span className="material-symbol" aria-hidden="true">close</span>
+                    <span className="material-symbol" aria-hidden="true">lock_reset</span>
+                    <span>Cambiar Contraseña</span>
                   </button>
-                </div>
-                <div className="staff-create-fields">
-                  <label>Nombre completo<input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label>
-                  <label>Teléfono<input required maxLength={30} type="tel" value={contact} onChange={(event) => setContact(event.target.value)} /></label>
-                  <label>Correo de acceso<input required autoComplete="email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-                  <label className="staff-create-password-field">
-                    <span>Contraseña (opcional, mín. 6 caracteres. Si se deja vacía se genera automáticamente)</span>
-                    <input
-                      type="password"
-                      autoComplete="new-password"
-                      minLength={6}
-                      maxLength={128}
-                      value={customPassword}
-                      onChange={(event) => setCustomPassword(event.target.value)}
-                      placeholder="Dejar vacía para generar automáticamente"
-                    />
+                )}
+                <button
+                  className="btn-action-danger"
+                  onClick={() => {
+                    setStaffToDelete(selectedStaff);
+                    setDeleteConfirmName("");
+                    setDeleteError(null);
+                  }}
+                  type="button"
+                  title={`Eliminar a ${selectedStaff.name}`}
+                  aria-label={`Eliminar a ${selectedStaff.name}`}
+                >
+                  <span className="material-symbol" aria-hidden="true">delete</span>
+                </button>
+              </div>
+            </section>
+
+            {/* Inline compact edit form */}
+            {editingStaffId === selectedStaff.id && (
+              <form className="staff-edit-form-compact" onSubmit={(event) => void handleUpdateStaff(event, selectedStaff)}>
+                <div className="staff-edit-grid">
+                  <label>
+                    <span>Nombre completo</span>
+                    <input required maxLength={80} value={editName} onChange={(event) => setEditName(event.target.value)} />
                   </label>
-                  <button className="button button-primary" disabled={saving}>
-                    {saving ? "Guardando…" : "Crear ficha y cuenta"}
+                  <label>
+                    <span>Teléfono</span>
+                    <input required maxLength={30} type="tel" value={editContact} onChange={(event) => setEditContact(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Correo / usuario</span>
+                    <input required={selectedStaff.hasAccount} autoComplete="email" maxLength={254} type="email" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} />
+                  </label>
+                </div>
+                <div className="staff-edit-actions">
+                  <button className="button button-small button-primary" disabled={saving}>
+                    <span className="material-symbol" aria-hidden="true">save</span>
+                    {saving ? "Guardando…" : "Guardar cambios"}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-small button-ghost"
+                    onClick={() => setEditingStaffId(null)}
+                  >
+                    Cancelar
                   </button>
                 </div>
               </form>
             )}
 
-            <section className="page-card staff-directory staff-directory-main">
-              <div className="staff-directory-toolbar">
-                <div>
-                  <p className="eyebrow">Directorio</p>
-                  <h2>Tu equipo</h2>
-                  <p className="staff-directory-subtitle">
-                    {state.staff.length === 1 ? "1 persona registrada" : `${state.staff.length} personas registradas`}
-                  </p>
+            {/* 3. Bento Telemetry Metric Cards (3 Columnas) */}
+            <div className="staff-bento-grid">
+              <article className="bento-metric-card">
+                <div className="bento-top-row">
+                  <div className="bento-title-group">
+                    <div className="bento-icon-box icon-blue">
+                      <span className="material-symbol" aria-hidden="true">timelapse</span>
+                    </div>
+                    <span>Horas en Periodo</span>
+                  </div>
+                  <span className="bento-pill-tag tag-indigo">
+                    {cleaningHours > 0 ? `${finishedCount} limpiezas` : "Registrado"}
+                  </span>
                 </div>
-                <div className="staff-directory-tools">
-                  <label className="staff-search">
-                    <span className="material-symbol" aria-hidden="true">search</span>
-                    <span className="sr-only">Buscar personal</span>
+                <div className="bento-main-value">{reportHours.toFixed(2)} h</div>
+                <div className="bento-sub-text">
+                  {cleaningHours > 0 ? `🧹 ${cleaningHours.toFixed(2)} h en limpiezas (${finishedCount} habs)` : "Sin limpiezas registradas"}
+                  {shiftHours > 0 ? ` · ⏱️ ${shiftHours.toFixed(2)} h en jornadas` : ""}
+                </div>
+              </article>
+
+              <article className="bento-metric-card">
+                <div className="bento-top-row">
+                  <div className="bento-title-group">
+                    <div className="bento-icon-box icon-emerald">
+                      <span className="material-symbol" aria-hidden="true">hotel</span>
+                    </div>
+                    <span>Habitaciones Atendidas</span>
+                  </div>
+                  <span className="bento-pill-tag tag-emerald">
+                    {finishedCount > 0 ? "98% Calidad" : "Al día"}
+                  </span>
+                </div>
+                <div className="bento-main-value">{finishedCount} Habs</div>
+                <div className="bento-sub-text">
+                  {finishedCount > 0
+                    ? `Promedio aprox. ${cleaningHours > 0 ? Math.round((cleaningHours * 60) / finishedCount) : 28} min por habitación`
+                    : "0 habitaciones registradas en este rango de fechas"}
+                </div>
+              </article>
+
+              <article className="bento-metric-card">
+                <div className="bento-top-row">
+                  <div className="bento-title-group">
+                    <div className="bento-icon-box icon-amber">
+                      <span className="material-symbol" aria-hidden="true">event_available</span>
+                    </div>
+                    <span>Jornadas & Turnos</span>
+                  </div>
+                  <span className={`bento-pill-tag ${selectedAttendance ? "tag-emerald" : "tag-indigo"}`}>
+                    {selectedAttendance ? "En turno activo" : "Al día"}
+                  </span>
+                </div>
+                <div className="bento-main-value">
+                  {selectedAttendance ? "Activo" : `${shiftsCount} Jornadas`}
+                </div>
+                <div className="bento-sub-text">
+                  {selectedAttendance
+                    ? `Turno iniciado a las ${formatDate(selectedAttendance.checkIn)}`
+                    : `${shiftsCount} jornadas completadas en el periodo seleccionado`}
+                </div>
+              </article>
+            </div>
+
+            {/* 4. Historial Operativo y Registro de Actividad */}
+            <section className="staff-activity-card" aria-label={`Historial de trabajo de ${selectedStaff.name}`}>
+              <div className="activity-card-header">
+                <div className="activity-header-title">
+                  <h3>Historial Operativo y Registro de Actividad</h3>
+                  <p>Consolidado detallado de turnos de asistencia, habitaciones atendidas y horas calculadas.</p>
+                </div>
+
+                <div className="activity-header-toolbar">
+                  <div className="date-range-box" title="Filtrar por rango de fechas">
+                    <span className="material-symbol" aria-hidden="true">calendar_today</span>
                     <input
-                      type="search"
-                      value={staffFilter}
-                      onChange={(event) => setStaffFilter(event.target.value)}
-                      placeholder="Buscar por nombre, teléfono o correo"
+                      type="date"
+                      aria-label="Fecha inicial"
+                      value={reportStart}
+                      onChange={(event) => setReportStart(event.target.value)}
                     />
-                  </label>
+                    <span>→</span>
+                    <input
+                      type="date"
+                      aria-label="Fecha final"
+                      value={reportEnd}
+                      onChange={(event) => setReportEnd(event.target.value)}
+                    />
+                  </div>
+
                   <button
-                    className="button button-primary staff-add-button"
-                    onClick={() => setShowCreateForm((open) => !open)}
+                    className="btn-export-csv"
+                    disabled={!reportPeriod}
+                    onClick={() => handleExportStaffReport(selectedStaff)}
                     type="button"
-                    aria-expanded={showCreateForm}
+                    title="Exportar registros a archivo CSV"
                   >
-                    <span className="material-symbol" aria-hidden="true">{showCreateForm ? "close" : "add"}</span>
-                    {showCreateForm ? "Cerrar" : "Agregar personal"}
+                    <span className="material-symbol" aria-hidden="true">download</span>
+                    CSV
                   </button>
                 </div>
               </div>
-              {state.staff.length === 0 ? (
-                <div className="staff-directory-empty">
-                  <span className="material-symbol" aria-hidden="true">person_add</span>
-                  <strong>Aún no hay personal registrado</strong>
-                  <span>Agrega a tu equipo para empezar a gestionar sus turnos y actividad.</span>
-                  <button className="button button-primary" onClick={() => setShowCreateForm(true)} type="button">
-                    Agregar primera persona
-                  </button>
+
+              {/* Filtros por Estado */}
+              <div className="activity-filter-bar" role="tablist" aria-label="Filtrar actividad por estado">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={reportFilter === "all"}
+                  className={`filter-chip-btn ${reportFilter === "all" ? "is-active" : ""}`}
+                  onClick={() => setReportFilter("all")}
+                >
+                  <span>Todos</span>
+                  <span className="filter-chip-badge">{reportRows.length}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={reportFilter === "finished"}
+                  className={`filter-chip-btn ${reportFilter === "finished" ? "is-active" : ""}`}
+                  onClick={() => setReportFilter("finished")}
+                >
+                  <span className="filter-dot dot-emerald" aria-hidden="true">●</span>
+                  <span>Terminadas</span>
+                  <span className="filter-chip-badge">{finishedCount}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={reportFilter === "in_progress"}
+                  className={`filter-chip-btn ${reportFilter === "in_progress" ? "is-active" : ""}`}
+                  onClick={() => setReportFilter("in_progress")}
+                >
+                  <span className="filter-dot dot-amber" aria-hidden="true">●</span>
+                  <span>En curso</span>
+                  <span className="filter-chip-badge">{inProgressCount}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={reportFilter === "shifts"}
+                  className={`filter-chip-btn ${reportFilter === "shifts" ? "is-active" : ""}`}
+                  onClick={() => setReportFilter("shifts")}
+                >
+                  <span className="filter-dot dot-blue" aria-hidden="true">●</span>
+                  <span>Jornadas</span>
+                  <span className="filter-chip-badge">{shiftsCount}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={reportFilter === "assignments"}
+                  className={`filter-chip-btn ${reportFilter === "assignments" ? "is-active" : ""}`}
+                  onClick={() => setReportFilter("assignments")}
+                >
+                  <span className="filter-dot dot-purple" aria-hidden="true">●</span>
+                  <span>Asignaciones</span>
+                  <span className="filter-chip-badge">{assignmentsCount}</span>
+                </button>
+              </div>
+
+              {!reportPeriod ? (
+                <p className="form-error" role="alert">Selecciona un periodo válido: la fecha inicial debe ser anterior a la final.</p>
+              ) : filteredReportRows.length === 0 ? (
+                <div className="staff-report-empty-compact">
+                  <span className="material-symbol" aria-hidden="true">filter_list_off</span>
+                  <p>
+                    {reportRows.length === 0
+                      ? `No hay actividad registrada en este periodo para ${selectedStaff.name}.`
+                      : "No hay registros con el estado seleccionado en este periodo."}
+                  </p>
+                  {reportRows.length > 0 && reportFilter !== "all" && (
+                    <button
+                      type="button"
+                      className="button button-small button-ghost"
+                      onClick={() => setReportFilter("all")}
+                    >
+                      Ver todos ({reportRows.length})
+                    </button>
+                  )}
                 </div>
-              ) : visibleStaff.length === 0 ? (
-                <p className="staff-search-empty">No encontramos personas con “{staffFilter}”. Prueba con otro dato.</p>
               ) : (
-                <nav className="staff-directory-list" aria-label="Seleccionar personal">
-                  {visibleStaff.map((person) => {
-                    const onShift = state.attendance.some(
-                      (record) => record.staffId === person.id && !record.checkOut,
-                    );
-                    return (
-                      <button
-                        className="staff-directory-card"
-                        key={person.id}
-                        onClick={() => {
-                          setSearchParams({ id: person.id });
-                          setEditingStaffId(null);
-                          setError(null);
-                          setSuccess(null);
-                        }}
-                        type="button"
-                      >
-                        <ModernAvatar3D
-                          name={person.name}
-                          size={44}
-                          className="staff-card-avatar"
-                          alt={`Avatar 3D de ${person.name}`}
-                        />
-                        <span className="staff-card-details">
-                          <strong>{person.name}</strong>
-                          <span><span className="material-symbol" aria-hidden="true">call</span>{person.contact}</span>
-                          <span><span className="material-symbol" aria-hidden="true">mail</span>{person.email || "Sin correo asignado"}</span>
-                        </span>
-                        <span className={`staff-card-status${onShift ? " on-shift" : ""}`}>
-                          <span aria-hidden="true" />
-                          {onShift ? "En turno" : "Fuera de turno"}
-                        </span>
-                        <span className="material-symbol staff-card-arrow" aria-hidden="true">arrow_forward</span>
-                      </button>
-                    );
-                  })}
-                </nav>
+                <div className="activity-table-wrapper">
+                  <table className="activity-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha y Hora</th>
+                        <th>Actividad</th>
+                        <th>Habitación / Espacio</th>
+                        <th>Detalle Operativo</th>
+                        <th>Estado</th>
+                        <th style={{ textAlign: "right" }}>Horas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredReportRows.map((row, index) => (
+                        <tr key={`${row.category}-${row.timestamp}-${row.room}-${index}`}>
+                          <td className="cell-date">{formatDate(row.timestamp)}</td>
+                          <td>
+                            <span className={`cat-tag cat-${row.category.toLowerCase().replace(/\s+/g, '-')}`}>
+                              {row.category}
+                            </span>
+                          </td>
+                          <td>
+                            {row.room !== "—" ? (
+                              <>
+                                <span className="room-badge">{row.room}</span>
+                                <span className="room-sub">Habitación</span>
+                              </>
+                            ) : (
+                              <span style={{ color: "var(--th-text-muted)" }}>General</span>
+                            )}
+                          </td>
+                          <td className="cell-detail">{row.detail}</td>
+                          <td>
+                            <span className={`status-badge ${row.status === "in_progress" ? "in-progress" : "finished"}`}>
+                              <span className={`status-dot ${row.status === "in_progress" ? "pulse" : ""}`} aria-hidden="true" />
+                              <span>{row.statusLabel}</span>
+                            </span>
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 700, color: "var(--th-text-main)" }}>
+                            {row.hours === null ? "—" : `${row.hours.toFixed(2)} h`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </section>
+          </div>
+        ) : (
+          <div className="staff-compact-hub">
+            {/* Barra de Controles y Filtros */}
+            <div className="staff-controls-bar">
+              <div className="staff-filter-tabs" role="tablist" aria-label="Filtrar personal">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={statusFilter === "all"}
+                  className={`staff-filter-tab ${statusFilter === "all" ? "is-active" : ""}`}
+                  onClick={() => setStatusFilter("all")}
+                >
+                  <span>Todos</span>
+                  <span className="staff-tab-count">{state.staff.length}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={statusFilter === "on_shift"}
+                  className={`staff-filter-tab on-shift-tab ${statusFilter === "on_shift" ? "is-active" : ""}`}
+                  onClick={() => setStatusFilter("on_shift")}
+                >
+                  <span className="staff-tab-dot-shift" aria-hidden="true" />
+                  <span>En turno</span>
+                  <span className="staff-tab-count">{staffOnShiftCount}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={statusFilter === "off_shift"}
+                  className={`staff-filter-tab ${statusFilter === "off_shift" ? "is-active" : ""}`}
+                  onClick={() => setStatusFilter("off_shift")}
+                >
+                  <span>Fuera de turno</span>
+                  <span className="staff-tab-count">{staffOffShiftCount}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={statusFilter === "has_account"}
+                  className={`staff-filter-tab ${statusFilter === "has_account" ? "is-active" : ""}`}
+                  onClick={() => setStatusFilter("has_account")}
+                >
+                  <span>Con acceso activo</span>
+                  <span className="staff-tab-count">{staffWithAccountCount}</span>
+                </button>
+              </div>
+
+              <div className="staff-right-tools">
+                <Avatar3DStylePicker variant="dropdown" />
+                <label className="staff-search-box">
+                  <span className="material-symbol search-icon" aria-hidden="true">search</span>
+                  <span className="sr-only">Buscar personal</span>
+                  <input
+                    type="search"
+                    value={staffFilter}
+                    onChange={(event) => setStaffFilter(event.target.value)}
+                    placeholder="Buscar por nombre, teléfono o correo..."
+                  />
+                  {staffFilter && (
+                    <button
+                      type="button"
+                      className="search-clear-button"
+                      onClick={() => setStaffFilter("")}
+                      aria-label="Limpiar búsqueda"
+                    >
+                      <span className="material-symbol" aria-hidden="true">close</span>
+                    </button>
+                  )}
+                </label>
+              </div>
             </div>
 
-            <aside className="staff-hub-aside">
-              <section className="staff-overview" aria-label="Resumen del equipo">
-                <div className="staff-overview-heading">
-                  <p className="eyebrow">Resumen del equipo</p>
-                  <span className="material-symbol" aria-hidden="true">insights</span>
-                </div>
-                <div className="staff-overview-item">
-                  <span className="staff-overview-icon" aria-hidden="true">
-                    <span className="material-symbol">groups</span>
-                  </span>
-                  <span><strong>{state.staff.length}</strong><small>Personas activas</small></span>
-                </div>
-                <div className="staff-overview-item">
-                  <span className="staff-overview-icon staff-overview-icon-shift" aria-hidden="true">
-                    <span className="material-symbol">schedule</span>
-                  </span>
-                  <span><strong>{staffOnShift}</strong><small>En turno ahora</small></span>
-                </div>
-                <div className="staff-overview-item">
-                  <span className="staff-overview-icon staff-overview-icon-access" aria-hidden="true">
-                    <span className="material-symbol">verified_user</span>
-                  </span>
-                  <span>
-                    <strong>{state.staff.filter((person) => person.hasAccount).length}</strong>
-                    <small>Con acceso activo</small>
-                  </span>
-                </div>
-              </section>
-
-              <Avatar3DStylePicker variant="aside" />
-            </aside>
+            {state.staff.length === 0 ? (
+              <div className="staff-directory-empty">
+                <span className="material-symbol" aria-hidden="true">person_add</span>
+                <strong>Aún no hay personal registrado</strong>
+                <span>Agrega a tu equipo para empezar a gestionar sus turnos y actividad.</span>
+                <button className="button button-primary" onClick={() => setShowCreateForm(true)} type="button">
+                  Agregar primera persona
+                </button>
+              </div>
+            ) : visibleStaff.length === 0 ? (
+              <p className="staff-search-empty">No encontramos personal con “{staffFilter}”. Prueba con otro dato.</p>
+            ) : (
+              <div className="staff-table-wrap">
+                <table className="staff-table-compact">
+                  <thead>
+                    <tr>
+                      <th>Personal</th>
+                      <th>Teléfono</th>
+                      <th>Correo de Acceso</th>
+                      <th>Estado de Turno</th>
+                      <th>Cuenta</th>
+                      <th style={{ textAlign: "right" }}>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleStaff.map((person) => {
+                      const onShift = state.attendance.some(
+                        (record) => record.staffId === person.id && !record.checkOut,
+                      );
+                      return (
+                        <tr
+                          key={person.id}
+                          onClick={() => {
+                            setSearchParams({ id: person.id });
+                            setEditingStaffId(null);
+                            setError(null);
+                            setSuccess(null);
+                          }}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <td>
+                            <div className="table-avatar-cell">
+                              <ModernAvatar3D
+                                name={person.name}
+                                size={28}
+                                className="table-avatar-img"
+                                alt=""
+                              />
+                              <strong className="table-name">{person.name}</strong>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="compact-meta-item">
+                              <span className="material-symbol" aria-hidden="true">call</span>
+                              {person.contact}
+                            </span>
+                          </td>
+                          <td>{person.email || "Sin correo"}</td>
+                          <td>
+                            <span className={`compact-badge ${onShift ? "active" : "inactive"}`}>
+                              <span className="compact-badge-dot" aria-hidden="true" />
+                              {onShift ? "En turno" : "Fuera de turno"}
+                            </span>
+                          </td>
+                          <td>
+                            {person.hasAccount ? (
+                              <span className="compact-access-tag">
+                                <span className="material-symbol" aria-hidden="true">check_circle</span>
+                                Activo
+                              </span>
+                            ) : (
+                              <span className="compact-no-access-tag">Sin cuenta</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <span className="compact-arrow-btn" aria-hidden="true">
+                              <span className="material-symbol">arrow_forward</span>
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </section>
+
+      {showCreateForm && (
+        <div
+          className="matrix-modal-backdrop"
+          onClick={() => setShowCreateForm(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-staff-modal-title"
+        >
+          <div
+            className="matrix-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="matrix-modal-header">
+              <div className="matrix-modal-title-group">
+                <div className="matrix-modal-icon-badge status-cleaning">
+                  <span className="material-symbol" aria-hidden="true">person_add</span>
+                </div>
+                <div>
+                  <h3 id="create-staff-modal-title">Agregar nuevo personal</h3>
+                  <span className="page-description" style={{ fontSize: "12px", color: "#64748b" }}>
+                    Registra al empleado y crea sus credenciales de acceso al sistema.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="matrix-modal-close"
+                onClick={() => setShowCreateForm(false)}
+                aria-label="Cerrar modal"
+              >
+                <span className="material-symbol" aria-hidden="true">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate}>
+              <div style={{ display: "grid", gap: "12px", margin: "16px 0" }}>
+                <label style={{ display: "grid", gap: "5px" }}>
+                  <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--th-text-secondary)" }}>Nombre completo</span>
+                  <input required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Carlos Mendoza" />
+                </label>
+                <label style={{ display: "grid", gap: "5px" }}>
+                  <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--th-text-secondary)" }}>Teléfono de contacto</span>
+                  <input required maxLength={30} type="tel" value={contact} onChange={(event) => setContact(event.target.value)} placeholder="Ej. 311 000 0000" />
+                </label>
+                <label style={{ display: "grid", gap: "5px" }}>
+                  <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--th-text-secondary)" }}>Correo de acceso</span>
+                  <input required autoComplete="email" maxLength={254} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="empleado@hotel.com" />
+                </label>
+                <label style={{ display: "grid", gap: "5px" }}>
+                  <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--th-text-secondary)" }}>
+                    Contraseña (opcional, mín. 6 caracteres. Si se deja vacía se genera automáticamente)
+                  </span>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={6}
+                    maxLength={128}
+                    value={customPassword}
+                    onChange={(event) => setCustomPassword(event.target.value)}
+                    placeholder="Dejar vacía para generar automáticamente"
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "18px" }}>
+                <button
+                  type="button"
+                  className="button button-subtle"
+                  onClick={() => setShowCreateForm(false)}
+                  disabled={saving}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="button button-primary"
+                  disabled={saving}
+                >
+                  {saving ? "Guardando…" : "Crear ficha y cuenta"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {passwordModalStaff && (
         <div
@@ -3931,6 +4063,7 @@ export function StaffPage() {
 }
 
 export function CleanerPortal() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<CleanerProfile | null>(null);
@@ -4139,7 +4272,25 @@ export function CleanerPortal() {
                 return (
                   <article className="room-card cleaner-room-card" key={room.id_habitacion}>
                     <div className="room-card-heading">
-                      <div><p className="eyebrow">Habitación</p><h2>{room.id_habitacion}</h2></div>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="room-card-heading-title"
+                        onClick={() => navigate(`/app/habitaciones?room=${encodeURIComponent(room.id_habitacion)}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            navigate(`/app/habitaciones?room=${encodeURIComponent(room.id_habitacion)}`);
+                          }
+                        }}
+                        title={`Ir a habitación ${room.id_habitacion}`}
+                      >
+                        <p className="eyebrow">Habitación</p>
+                        <h2>
+                          {room.id_habitacion}
+                          <span className="material-symbol room-title-hover-icon" aria-hidden="true">open_in_new</span>
+                        </h2>
+                      </div>
                       <span className={`status-pill status-${displayStatus}`}>
                         {statusLabels[displayStatus] || (isCleaning ? "En limpieza" : "Por atender")}
                       </span>

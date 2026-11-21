@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.habitaciones (
   tipo_espacio TEXT DEFAULT 'habitacion',
   tipo_habitacion TEXT DEFAULT 'normal',
   numero_doble TEXT,
+  tiempo_limpieza INTEGER DEFAULT 30,
   actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

@@ -18,6 +18,7 @@ import { isSupabaseConfigured } from "./lib/supabase";
 import HotelAssistant from "./components/HotelAssistant";
 import { FreshlyMark } from "./components/FreshlyBrand";
 import { ModernAvatar3D } from "./components/ModernAvatar3D";
+import { ThemeSwitcher } from "./components/ThemeSwitcher";
 
 const sections = [
   { path: "/app/inicio", label: "Inicio", icon: "space_dashboard" },
@@ -199,6 +200,9 @@ function AdminApplication() {
               </NavLink>
             ))}
           </nav>
+          <div className="sidebar-theme-wrap">
+            <ThemeSwitcher variant="sidebar" />
+          </div>
           <div className="sidebar-account">
             <ModernAvatar3D
               name={session.user.email ?? "Admin"}
@@ -226,14 +230,16 @@ function AdminApplication() {
               <span className="workspace-divider" aria-hidden="true">/</span>
               <span>{activeSection?.label ?? "Inicio"}</span>
             </div>
-            <span className="workspace-date">
-              <span className="material-symbol" aria-hidden="true">calendar_today</span>
-              {new Intl.DateTimeFormat("es", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              }).format(new Date())}
-            </span>
+            <div className="workspace-header-actions">
+              <span className="workspace-date">
+                <span className="material-symbol" aria-hidden="true">calendar_today</span>
+                {new Intl.DateTimeFormat("es", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                }).format(new Date())}
+              </span>
+            </div>
           </header>
           <main className="main-content" ref={mainRef}>
             <Routes>

@@ -108,6 +108,7 @@ export interface RemoteHotelState {
   spaceTypes: Record<string, "habitacion" | "zona_comun">;
   roomTypes: Record<string, "normal" | "doble">;
   doubleNumbers: Record<string, string>;
+  cleaningTimes: Record<string, number>;
 }
 
 export interface RoomUpdate {
@@ -122,4 +123,5 @@ export interface RoomUpdate {
   tipo_espacio?: "habitacion" | "zona_comun";
   tipo_habitacion?: "normal" | "doble";
   numero_doble?: string | null;
+  tiempo_limpieza?: number | null;
 }

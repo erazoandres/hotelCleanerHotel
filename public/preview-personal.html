@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vista Previa: Rediseño Compacto de Personal — Stitch Hotel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Fraunces:opsz,wght@9..144,400..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <style>
+    /* VARIABLES DE TEMA IDÉNTICAS AL SISTEMA STITCH */
+    :root, html[data-theme="dark"] {
+      --th-bg: #0c0e14;
+      --th-workspace-bg: #10131d;
+      --th-surface: #151824;
+      --th-surface-raised: #1c2132;
+      --th-surface-subtle: #121522;
+      --th-border: #23293d;
+      --th-border-subtle: #1b1f30;
+      --th-border-focus: #818cf8;
+      --th-text-main: #f8fafc;
+      --th-text-secondary: #cbd5e1;
+      --th-text-muted: #94a3b8;
+      --th-accent: #6366f1;
+      --th-accent-hover: #4f46e5;
+      --th-accent-subtle: rgba(99, 102, 241, 0.15);
+      --th-emerald: #10b981;
+      --th-emerald-subtle: rgba(16, 185, 129, 0.12);
+      --th-amber: #f59e0b;
+      --th-card-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+      --th-input-bg: #111420;
+    }
+
+    html[data-theme="light"] {
+      --th-bg: #f8f7f4;
+      --th-workspace-bg: #fbfaf7;
+      --th-surface: #ffffff;
+      --th-surface-raised: #fbfaf7;
+      --th-surface-subtle: #f5f2ea;
+      --th-border: #e6e0d2;
+      --th-border-subtle: #eeeae1;
+      --th-border-focus: #255843;
+      --th-text-main: #1c2420;
+      --th-text-secondary: #56645c;
+      --th-text-muted: #7e8d85;
+      --th-accent: #255843;
+      --th-accent-hover: #1b4533;
+      --th-accent-subtle: #edf5f0;
+      --th-emerald: #059669;
+      --th-emerald-subtle: rgba(5, 150, 105, 0.12);
+      --th-amber: #d97706;
+      --th-card-shadow: 0 4px 14px rgba(35, 45, 38, 0.05);
+      --th-input-bg: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: var(--th-bg);
+      color: var(--th-text-main);
+      padding: 24px 32px 48px 32px;
+      min-height: 100vh;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-size: 18px;
+      line-height: 1;
+      vertical-align: middle;
+      display: inline-block;
+    }
+
+    /* CONTENEDOR PRINCIPAL FLUIDO Y SIN ESPACIOS MUERTOS */
+    .app-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* 1. ENCABEZADO: TÍTULO + CONTROLES EN UNA SOLA LÍNEA LIMPIA */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .header-left .eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--th-accent);
+      margin-bottom: 2px;
+    }
+
+    .header-left h1 {
+      font-family: 'Fraunces', serif;
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--th-text-main);
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+
+    .header-left .page-desc {
+      font-size: 12.5px;
+      color: var(--th-text-muted);
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .avatar-picker-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--th-text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .avatar-picker-pill:hover {
+      border-color: var(--th-border-focus);
+      color: var(--th-text-main);
+    }
+    .avatar-picker-pill .pill-preview {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background: var(--th-surface-subtle);
+    }
+    .avatar-picker-pill .pill-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .theme-toggle-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      color: var(--th-text-secondary);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .theme-toggle-btn:hover {
+      color: var(--th-text-main);
+      border-color: var(--th-border-focus);
+    }
+
+    /* ÚNICO BOTÓN DE AGREGAR PERSONAL */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 15px;
+      background: var(--th-accent);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+      transition: all 0.15s ease;
+    }
+    .btn-primary:hover {
+      background: var(--th-accent-hover);
+      transform: translateY(-1px);
+    }
+
+    /* 2. BARRA DE CONTROL INTEGRADA (MÉTRICAS NO REPETIDAS + FILTROS ACCIONABLES) */
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 12px;
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 11px;
+      box-shadow: var(--th-card-shadow);
+    }
+
+    /* Pestañas de estado con los números vivos (elimina la duplicidad de KPIs) */
+    .filter-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .filter-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--th-text-secondary);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .filter-tab:hover {
+      color: var(--th-text-main);
+      background: var(--th-surface-subtle);
+    }
+    .filter-tab.is-active {
+      background: var(--th-surface-raised);
+      color: var(--th-text-main);
+      border-color: var(--th-border);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .tab-count {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 12px;
+      background: var(--th-surface-subtle);
+      color: var(--th-text-muted);
+    }
+    .filter-tab.is-active .tab-count {
+      background: var(--th-accent-subtle);
+      color: var(--th-accent);
+    }
+    .filter-tab.on-shift-tab .tab-count {
+      background: var(--th-emerald-subtle);
+      color: var(--th-emerald);
+    }
+
+    /* Lado derecho: Buscador + Selector de Vista */
+    .right-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--th-input-bg);
+      border: 1px solid var(--th-border);
+      border-radius: 8px;
+      padding: 5px 11px;
+      width: 260px;
+      transition: border-color 0.15s ease;
+    }
+    .search-box:focus-within {
+      border-color: var(--th-border-focus);
+    }
+    .search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 12px;
+      color: var(--th-text-main);
+      width: 100%;
+      font-family: inherit;
+    }
+    .search-box input::placeholder {
+      color: var(--th-text-muted);
+    }
+    .search-box .search-icon {
+      color: var(--th-text-muted);
+      font-size: 16px;
+    }
+
+    .view-switcher {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--th-surface-subtle);
+      border: 1px solid var(--th-border);
+      border-radius: 8px;
+      padding: 2px;
+    }
+    .view-btn {
+      width: 30px;
+      height: 28px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--th-text-muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .view-btn.is-active {
+      background: var(--th-surface-raised);
+      color: var(--th-text-main);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+
+    /* ==========================================================================
+       3. LISTADO DE PERSONAL: FICHAS HORIZONTALES LIMPIAS (SIN REPETICIONES)
+       ========================================================================== */
+    .staff-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
+      gap: 10px;
+    }
+
+    .staff-compact-card {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 14px;
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 11px;
+      box-shadow: var(--th-card-shadow);
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+      min-height: 58px;
+    }
+    .staff-compact-card:hover {
+      transform: translateY(-1px);
+      border-color: var(--th-border-focus);
+      background: var(--th-surface-raised);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    }
+    .staff-compact-card.on-shift {
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    /* 1. Avatar */
+    .compact-avatar-wrap {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+    }
+    .compact-avatar-wrap img {
+      width: 100%;
+      height: 100%;
+      border-radius: 9px;
+      object-fit: cover;
+      display: block;
+    }
+    .compact-shift-dot {
+      position: absolute;
+      bottom: -1px;
+      right: -1px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 2px solid var(--th-surface);
+      background: #64748b;
+    }
+    .compact-shift-dot.active {
+      background: var(--th-emerald);
+      box-shadow: 0 0 6px var(--th-emerald);
+    }
+
+    /* 2. Información del empleado */
+    .compact-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      gap: 2px;
+    }
+    .compact-name-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .compact-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--th-text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+    .compact-role-tag {
+      font-size: 11px;
+      color: var(--th-text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .compact-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--th-text-secondary);
+    }
+    .compact-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .compact-meta-item .material-symbols-outlined {
+      font-size: 13px;
+      color: var(--th-text-muted);
+    }
+
+    /* 3. Badge de Estado de Turno */
+    .compact-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 14px;
+      font-size: 10.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .compact-badge.active {
+      background: var(--th-emerald-subtle);
+      color: var(--th-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+    .compact-badge.inactive {
+      background: var(--th-surface-subtle);
+      color: var(--th-text-muted);
+      border: 1px solid var(--th-border-subtle);
+    }
+    .compact-badge-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* 4. Flecha de acción */
+    .compact-arrow-btn {
+      color: var(--th-text-muted);
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+    .staff-compact-card:hover .compact-arrow-btn {
+      color: var(--th-accent);
+      transform: translateX(2px);
+    }
+
+    /* 4. VISTA TABLA EJECUTIVA COMPACTA (VISTA ÚNICA PERMANENTE) */
+    .staff-table-wrap {
+      display: block;
+      background: var(--th-surface);
+      border: 1px solid var(--th-border);
+      border-radius: 11px;
+      overflow: hidden;
+      box-shadow: var(--th-card-shadow);
+    }
+    .staff-table-wrap.is-visible {
+      display: block;
+    }
+    .staff-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 12px;
+    }
+    .staff-table th {
+      background: var(--th-surface-subtle);
+      padding: 9px 14px;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--th-text-muted);
+      border-bottom: 1px solid var(--th-border);
+    }
+    .staff-table td {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--th-border-subtle);
+      color: var(--th-text-secondary);
+      vertical-align: middle;
+    }
+    .staff-table tr:hover td {
+      background: var(--th-surface-raised);
+    }
+    .staff-table tr:last-child td {
+      border-bottom: none;
+    }
+    .table-avatar-cell {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .table-avatar-img {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      object-fit: cover;
+    }
+    .table-name {
+      font-weight: 700;
+      color: var(--th-text-main);
+    }
+
+    /* Banner informativo */
+    .fix-banner {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      color: var(--th-text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .fix-banner strong {
+      color: var(--th-emerald);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- BANNER DE CONFIRMACIÓN DE CORRECCIONES -->
+    <div class="fix-banner">
+      <div>
+        <strong>Corrección aplicada:</strong> Se eliminó la franja redundante de KPIs (las cifras ahora son accionables en las pestañas) y se dejó un único botón de "+ Agregar personal".
+      </div>
+      <div style="font-size: 11px; color: var(--th-text-muted);">
+        Diseño limpio, directo y 100% no redundante.
+      </div>
+    </div>
+
+    <!-- 1. ENCABEZADO: TÍTULO + CONTROLES + ÚNICO BOTÓN "+ AGREGAR PERSONAL" -->
+    <header class="page-header">
+      <div class="header-left">
+        <p class="eyebrow">Operación en vivo / Equipo</p>
+        <h1>Personal</h1>
+        <p class="page-desc">Supervisa turnos activos, gestiona accesos y novedades desde un solo lugar.</p>
+      </div>
+
+      <div class="header-actions">
+        <!-- Selector compacto de avatares 3D -->
+        <div class="avatar-picker-pill" title="Cambiar paquete visual de avatares 3D">
+          <div class="pill-preview">
+            <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=Nikol" alt="Estilo actual">
+          </div>
+          <span>Personajes 3D</span>
+          <span class="material-symbols-outlined" style="font-size: 15px;">expand_more</span>
+        </div>
+
+        <!-- Toggle Modo Oscuro / Claro -->
+        <button class="theme-toggle-btn" id="themeToggleBtn" title="Alternar Modo Oscuro / Modo Claro">
+          <span class="material-symbols-outlined" id="themeIcon">wb_sunny</span>
+        </button>
+
+        <!-- ÚNICO BOTÓN PRINCIPAL: + Agregar personal -->
+        <button class="btn-primary" type="button">
+          <span class="material-symbols-outlined">add</span>
+          <span>Agregar personal</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. BARRA DE CONTROL INTEGRADA (PESTAÑAS CON CONTEO VIVO + BUSCADOR + VISTA) -->
+    <div class="controls-bar">
+      <!-- Pestañas de Estado: Única fuente de datos de conteo, sin duplicidad -->
+      <div class="filter-tabs" role="tablist">
+        <button class="filter-tab is-active" data-filter="all" type="button">
+          <span>Todos</span>
+          <span class="tab-count">5</span>
+        </button>
+        <button class="filter-tab on-shift-tab" data-filter="on-shift" type="button">
+          <span style="color: var(--th-emerald);">●</span>
+          <span>En turno</span>
+          <span class="tab-count">2</span>
+        </button>
+        <button class="filter-tab" data-filter="off-shift" type="button">
+          <span>Fuera de turno</span>
+          <span class="tab-count">3</span>
+        </button>
+        <button class="filter-tab" data-filter="has-account" type="button">
+          <span>Con acceso activo</span>
+          <span class="tab-count">5</span>
+        </button>
+      </div>
+
+      <!-- Buscador -->
+      <div class="right-tools">
+        <div class="search-box">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input type="text" id="staffSearchInput" placeholder="Buscar por nombre, teléfono o correo...">
+        </div>
+      </div>
+    </div>
+
+    <!-- VISTA TABLA EJECUTIVA COMPACTA (PERMANENTE) -->
+    <div class="staff-table-wrap" id="staffTableWrap">
+      <table class="staff-table">
+        <thead>
+          <tr>
+            <th>Personal</th>
+            <th>Cargo</th>
+            <th>Teléfono</th>
+            <th>Correo Electrónico</th>
+            <th>Estado de Turno</th>
+            <th>Acceso</th>
+            <th style="text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="staffTableBody">
+          <tr data-status="on-shift" data-account="true" data-name="nikol la mas tierna 311 808 3288 nikol@gmail.com">
+            <td>
+              <div class="table-avatar-cell">
+                <img class="table-avatar-img" src="https://api.dicebear.com/9.x/adventurer/svg?seed=Nikol" alt="Nikol">
+                <span class="table-name">Nikol la mas tierna</span>
+              </div>
+            </td>
+            <td>Supervisora</td>
+            <td>311 808 3288</td>
+            <td>nikol@gmail.com</td>
+            <td>
+              <span class="compact-badge active"><span class="compact-badge-dot"></span> En turno</span>
+            </td>
+            <td><span style="color: var(--th-emerald); font-size: 11px;">● Activo</span></td>
+            <td style="text-align: right;"><button class="compact-arrow-btn" type="button" style="display: inline-flex;"><span class="material-symbols-outlined">arrow_forward</span></button></td>
+          </tr>
+          <tr data-status="on-shift" data-account="true" data-name="diana lucia 3022805648 diana@gmail.com">
+            <td>
+              <div class="table-avatar-cell">
+                <img class="table-avatar-img" src="https://api.dicebear.com/9.x/adventurer/svg?seed=Diana" alt="Diana">
+                <span class="table-name">Diana Lucia</span>
+              </div>
+            </td>
+            <td>Limpieza</td>
+            <td>3022805648</td>
+            <td>diana@gmail.com</td>
+            <td>
+              <span class="compact-badge active"><span class="compact-badge-dot"></span> En turno</span>
+            </td>
+            <td><span style="color: var(--th-emerald); font-size: 11px;">● Activo</span></td>
+            <td style="text-align: right;"><button class="compact-arrow-btn" type="button" style="display: inline-flex;"><span class="material-symbols-outlined">arrow_forward</span></button></td>
+          </tr>
+          <tr data-status="off-shift" data-account="true" data-name="andres14 3118083288 erazoandres14@gmail.com">
+            <td>
+              <div class="table-avatar-cell">
+                <img class="table-avatar-img" src="https://api.dicebear.com/9.x/adventurer/svg?seed=Andres" alt="Andres">
+                <span class="table-name">andres14</span>
+              </div>
+            </td>
+            <td>Administrador</td>
+            <td>3118083288</td>
+            <td>erazoandres14@gmail.com</td>
+            <td>
+              <span class="compact-badge inactive"><span class="compact-badge-dot"></span> Fuera de turno</span>
+            </td>
+            <td><span style="color: var(--th-emerald); font-size: 11px;">● Activo</span></td>
+            <td style="text-align: right;"><button class="compact-arrow-btn" type="button" style="display: inline-flex;"><span class="material-symbols-outlined">arrow_forward</span></button></td>
+          </tr>
+          <tr data-status="off-shift" data-account="true" data-name="angel 311831231233 angel@gmail.com">
+            <td>
+              <div class="table-avatar-cell">
+                <img class="table-avatar-img" src="https://api.dicebear.com/9.x/adventurer/svg?seed=Angel" alt="Angel">
+                <span class="table-name">Angel</span>
+              </div>
+            </td>
+            <td>Mantenimiento</td>
+            <td>311831231233</td>
+            <td>angel@gmail.com</td>
+            <td>
+              <span class="compact-badge inactive"><span class="compact-badge-dot"></span> Fuera de turno</span>
+            </td>
+            <td><span style="color: var(--th-emerald); font-size: 11px;">● Activo</span></td>
+            <td style="text-align: right;"><button class="compact-arrow-btn" type="button" style="display: inline-flex;"><span class="material-symbols-outlined">arrow_forward</span></button></td>
+          </tr>
+          <tr data-status="off-shift" data-account="true" data-name="asdads 3118083233 sdasd@gmail.com">
+            <td>
+              <div class="table-avatar-cell">
+                <img class="table-avatar-img" src="https://api.dicebear.com/9.x/adventurer/svg?seed=asdads" alt="asdads">
+                <span class="table-name">asdads</span>
+              </div>
+            </td>
+            <td>Recepción</td>
+            <td>3118083233</td>
+            <td>sdasd@gmail.com</td>
+            <td>
+              <span class="compact-badge inactive"><span class="compact-badge-dot"></span> Fuera de turno</span>
+            </td>
+            <td><span style="color: var(--th-emerald); font-size: 11px;">● Activo</span></td>
+            <td style="text-align: right;"><button class="compact-arrow-btn" type="button" style="display: inline-flex;"><span class="material-symbols-outlined">arrow_forward</span></button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    const themeBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    let currentTheme = 'dark';
+
+    themeBtn.addEventListener('click', () => {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      themeIcon.textContent = currentTheme === 'dark' ? 'wb_sunny' : 'dark_mode';
+    });
+
+    const tabs = document.querySelectorAll('.filter-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('is-active'));
+        tab.classList.add('is-active');
+        applyFilters();
+      });
+    });
+
+    const searchInput = document.getElementById('staffSearchInput');
+    searchInput.addEventListener('input', applyFilters);
+
+    function applyFilters() {
+      const activeFilter = document.querySelector('.filter-tab.is-active').getAttribute('data-filter');
+      const query = searchInput.value.trim().toLowerCase();
+
+      const rows = document.querySelectorAll('#staffTableBody tr');
+      let visibleCount = 0;
+      rows.forEach(row => {
+        const rowStatus = row.getAttribute('data-status');
+        const rowAccount = row.getAttribute('data-account');
+        const rowText = row.getAttribute('data-name').toLowerCase();
+        
+        let matchesFilter = false;
+        if (activeFilter === 'all') matchesFilter = true;
+        else if (activeFilter === 'has-account') matchesFilter = rowAccount === 'true';
+        else matchesFilter = rowStatus === activeFilter;
+
+        const matchesSearch = !query || rowText.includes(query);
+        const isVisible = matchesFilter && matchesSearch;
+        row.style.display = isVisible ? 'table-row' : 'none';
+        if (isVisible) visibleCount++;
+      });
+    }
+  </script>
+</body>
+</html>
