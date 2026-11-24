@@ -9082,17 +9082,32 @@ textarea {
 
   /* Cleaner Portal on mobile */
   .cleaner-auth-page:has(.cleaner-portal-shell),
-  .cleaner-auth-page:has(.cleaner-page) {
-    padding: 8px 8px calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  .cleaner-auth-page:has(.cleaner-page),
+  .cleaner-auth-page {
+    padding: 12px 12px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    background: var(--th-bg, #f8f7f4) !important;
+  }
+
+  .cleaner-page.cleaner-portal-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    overflow-x: hidden !important;
   }
 
   .cleaner-bottom-nav {
-    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px)) !important;
-    height: 54px !important;
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    height: auto !important;
   }
 
   .cleaner-user-strip {
-    gap: 6px !important;
+    gap: 8px !important;
   }
 
   .cleaner-user-name {

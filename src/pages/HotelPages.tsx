@@ -4094,7 +4094,7 @@ export function CleanerPortal() {
               <div>
                 <div className="cleaner-tagline">
                   <span className="cleaner-shift-dot" />
-                  Turno Activo · {formatTimer(now - shiftStart)}
+                  <span>Turno {formatTimer(now - shiftStart)}</span>
                 </div>
                 <h1 className="cleaner-user-name">{profile.nombre}</h1>
               </div>
@@ -4150,8 +4150,8 @@ export function CleanerPortal() {
               <div className="cleaner-controls-row">
                 <div className="cleaner-progress-card">
                   <div className="cleaner-progress-header">
-                    <span>Progreso de hoy</span>
-                    <strong>{finishedRooms.length} de {rooms.length} completadas ({progressPercent}%)</strong>
+                    <span>Progreso del turno</span>
+                    <strong>{finishedRooms.length} de {rooms.length} ({progressPercent}%)</strong>
                   </div>
                   <div className="cleaner-progress-track">
                     <div className="cleaner-progress-fill" style={{ width: `${progressPercent}%` }} />
@@ -4269,21 +4269,21 @@ export function CleanerPortal() {
                             {statusLabels[displayStatus] || (isCleaning ? "En limpieza" : "Por atender")}
                           </span>
                         </div>
-                        <dl className="details-list">
+                        <dl className="details-list cleaner-room-details-list">
                           <div>
                             <dt>Huésped</dt>
-                            <dd>{room.nombre_huesped || "No registrado"}</dd>
+                            <dd className="cleaner-guest-value">{room.nombre_huesped || "No registrado"}</dd>
                           </div>
                           <div>
                             <dt>Plan</dt>
                             <dd>
-                              <strong style={{ color: "#065f46" }}>{formatPlanName(room.plan_limpieza)}</strong>
+                              <span className="cleaner-plan-badge">{formatPlanName(room.plan_limpieza)}</span>
                             </dd>
                           </div>
                           {room.detalles_limpieza && (
-                            <div>
+                            <div className="cleaner-details-fullrow">
                               <dt>Detalles</dt>
-                              <dd>{room.detalles_limpieza}</dd>
+                              <dd className="cleaner-room-notes">{room.detalles_limpieza}</dd>
                             </div>
                           )}
                         </dl>
