@@ -8325,71 +8325,178 @@ textarea {
    Mobile Overrides for History Page (<= 640px)
    ========================================================================== */
 @media (max-width: 640px) {
+  .history-page,
+  .history-timeline-container,
+  .history-day-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  /* 1. Ultra-compact Hero Header */
   .history-hero-header {
-    padding: 12px 14px;
-    gap: 10px;
+    padding: 9px 11px !important;
+    gap: 7px !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .history-hero-info {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .history-hero-title-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+    min-width: 0 !important;
+  }
+
+  .history-hero-icon {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .history-hero-icon .material-symbol {
+    font-size: 16px !important;
+  }
+
+  .history-hero-eyebrow {
+    font-size: 9px !important;
+    margin: 0 !important;
+    line-height: 1 !important;
   }
 
   .history-hero-title {
-    font-size: 17px;
+    font-size: 14.5px !important;
+    margin: 1px 0 0 !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .history-hero-desc {
-    display: none;
+    display: none !important;
   }
 
+  /* Horizontal touch strip for quick KPI filters */
   .history-hero-kpis {
-    width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    gap: 6px;
-    padding-bottom: 2px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    gap: 5px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 1px 0 !important;
   }
 
   .history-hero-kpis::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
 
   .history-kpi-chip {
-    flex-shrink: 0;
-    min-width: 58px;
-    padding: 4px 8px;
-    border-radius: 9px;
+    flex: 1 0 auto !important;
+    min-width: 48px !important;
+    padding: 3px 6px !important;
+    border-radius: 7px !important;
   }
 
   .history-kpi-count {
-    font-size: 14px;
+    font-size: 12.5px !important;
   }
 
   .history-kpi-label {
-    font-size: 9px;
+    font-size: 8.5px !important;
   }
 
+  /* 2. Compact Unified Search Bar */
   .history-unified-toolbar {
-    padding: 8px 10px;
-    gap: 8px;
+    padding: 5px 8px !important;
+    gap: 6px !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
   }
 
   .history-search-box {
-    width: 100%;
-    max-width: 100%;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .history-search-box input {
+    height: 32px !important;
+    font-size: 11.5px !important;
+    padding: 0 24px 0 28px !important;
+    border-radius: 7px !important;
+  }
+
+  .history-search-icon {
+    left: 7px !important;
+    font-size: 15px !important;
   }
 
   .history-toolbar-right {
-    width: 100%;
-    justify-content: space-between;
+    width: auto !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .history-results-pill {
+    font-size: 9.5px !important;
+    padding: 2px 6px !important;
+    white-space: nowrap !important;
   }
 
   .history-view-switcher {
     display: none !important;
   }
 
-  /* Mobile compact history feed row with minimum information */
+  /* 3. Compact Day Divider */
+  .history-day-divider {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .history-day-badge {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+    gap: 5px !important;
+  }
+
+  .history-day-badge strong {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* 4. Mobile compact history feed row with guaranteed width containment */
   .history-feed-card {
-    padding: 8px 11px !important;
-    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    padding: 8px 10px !important;
+    gap: 7px !important;
     cursor: pointer !important;
     -webkit-tap-highlight-color: transparent !important;
     user-select: none !important;
@@ -8402,6 +8509,13 @@ textarea {
     background: var(--th-surface-subtle, #f8fafc) !important;
   }
 
+  .history-feed-body {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
   /* When collapsed on mobile: hide the icon box and expanded details */
   .history-feed-card:not(.is-expanded) .history-feed-icon-box {
     display: none !important;
@@ -8412,47 +8526,67 @@ textarea {
     display: none !important;
   }
 
+  /* In collapsed mobile view, hide the extra floor chip to prevent row overflow */
+  .history-feed-card:not(.is-expanded) .history-floor-chip {
+    display: none !important;
+  }
+
   /* Top row occupies full width and aligns room, status, time, and chevron */
   .history-feed-top-row {
     width: 100% !important;
+    max-width: 100% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 8px !important;
+    gap: 5px !important;
     flex-wrap: nowrap !important;
+    min-width: 0 !important;
   }
 
   .history-feed-badges {
     display: flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 5px !important;
     min-width: 0 !important;
     flex: 1 1 auto !important;
     overflow: hidden !important;
   }
 
   .history-entity-tag {
-    font-size: 11.5px !important;
-    padding: 2px 6px !important;
-    flex-shrink: 0 !important;
+    font-size: 11px !important;
+    padding: 2px 5px !important;
+    max-width: 105px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    flex-shrink: 1 !important;
+  }
+
+  .history-entity-tag strong {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .history-feed-card .status-pill {
-    font-size: 10.5px !important;
-    padding: 2px 7px !important;
+    font-size: 9.5px !important;
+    padding: 2px 5px !important;
+    max-width: 115px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
     white-space: nowrap !important;
-    flex-shrink: 0 !important;
+    flex-shrink: 1 !important;
   }
 
   .history-feed-top-actions {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 4px !important;
     flex-shrink: 0 !important;
   }
 
   .history-feed-time {
-    font-size: 10.5px !important;
+    font-size: 10px !important;
     font-weight: 600 !important;
     white-space: nowrap !important;
     margin-left: 0 !important;
@@ -8462,31 +8596,45 @@ textarea {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 18px !important;
+    font-size: 17px !important;
     color: var(--th-text-muted, #94a3b8) !important;
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     flex-shrink: 0 !important;
   }
 
-  /* When expanded on mobile: reveal rich details */
+  /* When expanded on mobile: reveal rich details cleanly */
   .history-feed-card.is-expanded {
     align-items: flex-start !important;
-    padding: 10px 12px 12px !important;
+    padding: 10px 11px 12px !important;
     border-color: var(--th-accent, #255843) !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
     background: var(--th-surface-raised, #ffffff) !important;
   }
 
+  .history-feed-card.is-expanded .history-entity-tag {
+    max-width: none !important;
+    flex-shrink: 0 !important;
+  }
+
+  .history-feed-card.is-expanded .status-pill {
+    max-width: none !important;
+    flex-shrink: 0 !important;
+  }
+
+  .history-feed-card.is-expanded .history-floor-chip {
+    display: inline !important;
+  }
+
   .history-feed-card.is-expanded .history-feed-icon-box {
     display: inline-flex !important;
-    width: 28px !important;
-    height: 28px !important;
-    border-radius: 7px !important;
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 6px !important;
     margin-top: 2px !important;
   }
 
   .history-feed-card.is-expanded .history-feed-icon-box .material-symbol {
-    font-size: 15px !important;
+    font-size: 14px !important;
   }
 
   .history-feed-card.is-expanded .history-feed-chevron {
@@ -8497,11 +8645,13 @@ textarea {
   .history-feed-card.is-expanded .history-feed-action-text {
     display: block !important;
     margin-top: 4px !important;
-    padding-top: 8px !important;
+    padding-top: 7px !important;
     border-top: 1px solid var(--th-border-subtle, #f1f5f9) !important;
-    font-size: 12.5px !important;
+    font-size: 12px !important;
     line-height: 1.45 !important;
     color: var(--th-text-main, #1e293b) !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
     animation: historyMobileExpand 0.18s cubic-bezier(0.16, 1, 0.3, 1) both !important;
   }
 
@@ -8510,22 +8660,34 @@ textarea {
     align-items: center !important;
     justify-content: space-between !important;
     flex-wrap: wrap !important;
-    gap: 8px !important;
-    padding-top: 7px !important;
+    gap: 6px !important;
+    padding-top: 6px !important;
     border-top: 1px dashed var(--th-border, #e2e8f0) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     animation: historyMobileExpand 0.18s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+
+  .history-actor-chip,
+  .history-guest-chip,
+  .history-full-date-chip {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 10px !important;
   }
 
   .history-full-date-chip {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 4px !important;
-    font-size: 10.5px !important;
+    gap: 3px !important;
     color: var(--th-text-muted, #64748b) !important;
   }
 
   .history-full-date-chip .material-symbol {
-    font-size: 13px !important;
+    font-size: 12px !important;
   }
 
   @keyframes historyMobileExpand {

@@ -2398,11 +2398,17 @@ export function HistoryPage() {
 
       let group = groupMap.get(key);
       if (!group) {
-        let label = new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(d);
+        const isCurrentYear = dYear === now.getFullYear();
+        let label = new Intl.DateTimeFormat("es", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          ...(isCurrentYear ? {} : { year: "numeric" }),
+        }).format(d);
         if (isToday) {
-          label = `Hoy · ${new Intl.DateTimeFormat("es", { day: "numeric", month: "long" }).format(d)}`;
+          label = `Hoy · ${new Intl.DateTimeFormat("es", { day: "numeric", month: "short" }).format(d)}`;
         } else if (isYesterday) {
-          label = `Ayer · ${new Intl.DateTimeFormat("es", { day: "numeric", month: "long" }).format(d)}`;
+          label = `Ayer · ${new Intl.DateTimeFormat("es", { day: "numeric", month: "short" }).format(d)}`;
         }
         // Capitalizar primera letra
         label = label.charAt(0).toUpperCase() + label.slice(1);
