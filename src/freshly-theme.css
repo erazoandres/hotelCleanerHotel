@@ -1957,6 +1957,30 @@ textarea {
 }
 
 @media (max-width: 640px) {
+  .rooms-page .room-selection {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .rooms-unified-toolbar {
+    height: auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .rooms-toolbar-main-row {
+    height: auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+  }
+
   .rooms-page .room-picker-grid {
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 9px !important;
