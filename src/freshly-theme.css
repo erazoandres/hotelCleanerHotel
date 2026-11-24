@@ -1977,8 +1977,9 @@ textarea {
     height: auto !important;
     min-height: 0 !important;
     display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
   }
 
   .rooms-page .room-picker-grid {
