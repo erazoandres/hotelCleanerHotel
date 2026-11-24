@@ -4269,6 +4269,7 @@ textarea {
   flex: 1 1 240px;
   max-width: 360px;
   min-width: 170px;
+  min-height: 0;
 }
 
 .rooms-compact-search .material-symbol {
@@ -4281,7 +4282,9 @@ textarea {
 
 .rooms-compact-search input {
   width: 100%;
-  height: 33px;
+  height: 32px;
+  min-height: 0;
+  max-height: 32px;
   padding: 0 28px 0 33px;
   font-size: 12.5px;
   border: 1px solid var(--th-border, #cbd5e1);
@@ -8367,21 +8370,53 @@ textarea {
     gap: 4px !important;
   }
 
+  .rooms-unified-toolbar {
+    padding: 6px 8px !important;
+    gap: 5px !important;
+    border-radius: 10px !important;
+  }
+
   .rooms-toolbar-main-row {
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 6px !important;
+    gap: 5px !important;
   }
 
   .rooms-compact-search {
     max-width: 100% !important;
     width: 100% !important;
+    min-height: 0 !important;
+    height: 28px !important;
+  }
+
+  .rooms-compact-search .material-symbol {
+    left: 8px !important;
+    font-size: 14px !important;
   }
 
   .rooms-compact-search input {
-    height: 31px !important;
-    font-size: 11.5px !important;
-    border-radius: 8px !important;
+    height: 28px !important;
+    min-height: 0 !important;
+    max-height: 28px !important;
+    padding: 0 24px 0 26px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+    background: var(--th-surface-subtle, #f8fafc) !important;
+  }
+
+  .rooms-compact-search input::placeholder {
+    font-size: 11px !important;
+    opacity: 0.8 !important;
+  }
+
+  .rooms-compact-search .rooms-search-clear {
+    right: 3px !important;
+    padding: 2px !important;
+  }
+
+  .rooms-compact-search .rooms-search-clear .material-symbol {
+    font-size: 13px !important;
+    left: auto !important;
   }
 
   .rooms-category-segmented {

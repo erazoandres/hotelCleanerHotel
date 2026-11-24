@@ -1711,7 +1711,7 @@ export function RoomsPage() {
                 <input
                   aria-label="Buscar habitación o espacio"
                   autoComplete="off"
-                  placeholder="Buscar habitación, zona, huésped..."
+                  placeholder="Buscar habitación o espacio..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
