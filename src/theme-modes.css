@@ -4012,6 +4012,8 @@ html[data-theme="amber"] .matrix-tooltip-hint {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    min-height: auto !important;
+    height: auto !important;
     padding: 16px 20px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
     min-width: 0 !important;
   }
@@ -4168,6 +4170,8 @@ html[data-theme="amber"] .matrix-tooltip-hint {
 /* Mobile specific (<= 640px) */
 @media (max-width: 640px) {
   .main-content {
+    min-height: auto !important;
+    height: auto !important;
     padding: 12px 10px calc(84px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
