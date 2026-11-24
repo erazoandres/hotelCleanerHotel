@@ -2239,6 +2239,7 @@ export function HistoryPage() {
   const { state, loading, error } = useHotelData();
   const [filter, setFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | "lifecycle" | "novelty" | "status" | "cleaning">("all");
+  const [viewMode, setViewMode] = useState<"timeline" | "table">("timeline");
 
   const allRecords = useMemo(() => {
     type HistoryCategory = "all" | "lifecycle" | "novelty" | "status" | "cleaning";
@@ -2357,170 +2358,423 @@ export function HistoryPage() {
     });
   }, [allRecords, categoryFilter, filter]);
 
+  // Agrupamiento cronológico por días
+  const groupedRecords = useMemo(() => {
+    const groups: {
+      key: string;
+      label: string;
+      isToday: boolean;
+      isYesterday: boolean;
+      records: typeof filteredRecords;
+    }[] = [];
+
+    const now = new Date();
+    const groupMap = new Map<string, (typeof groups)[0]>();
+
+    for (const rec of filteredRecords) {
+      const d = new Date(rec.time);
+      if (Number.isNaN(d.getTime())) {
+        let group = groupMap.get("unknown");
+        if (!group) {
+          group = { key: "unknown", label: "Fecha no especificada", isToday: false, isYesterday: false, records: [] };
+          groupMap.set("unknown", group);
+          groups.push(group);
+        }
+        group.records.push(rec);
+        continue;
+      }
+
+      const dYear = d.getFullYear();
+      const dMonth = d.getMonth();
+      const dDate = d.getDate();
+      const isToday = dYear === now.getFullYear() && dMonth === now.getMonth() && dDate === now.getDate();
+
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday = dYear === yesterday.getFullYear() && dMonth === yesterday.getMonth() && dDate === yesterday.getDate();
+
+      const key = `${dYear}-${String(dMonth + 1).padStart(2, "0")}-${String(dDate).padStart(2, "0")}`;
+
+      let group = groupMap.get(key);
+      if (!group) {
+        let label = new Intl.DateTimeFormat("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(d);
+        if (isToday) {
+          label = `Hoy · ${new Intl.DateTimeFormat("es", { day: "numeric", month: "long" }).format(d)}`;
+        } else if (isYesterday) {
+          label = `Ayer · ${new Intl.DateTimeFormat("es", { day: "numeric", month: "long" }).format(d)}`;
+        }
+        // Capitalizar primera letra
+        label = label.charAt(0).toUpperCase() + label.slice(1);
+        group = { key, label, isToday, isYesterday, records: [] };
+        groupMap.set(key, group);
+        groups.push(group);
+      }
+      group.records.push(rec);
+    }
+
+    return groups;
+  }, [filteredRecords]);
+
+  // Ayudante para iconos y estilos visuales por tipo de evento
+  const getEventVisuals = (rec: { kind: string; action: string; category: string }) => {
+    const act = (rec.action || "").toLowerCase();
+    if (rec.kind === "created") {
+      return { icon: "add_circle", kindClass: "kind-created", label: "Alta" };
+    }
+    if (rec.kind === "deleted") {
+      return { icon: "delete_forever", kindClass: "kind-deleted", label: "Baja" };
+    }
+    if (rec.kind === "novelty") {
+      return { icon: "campaign", kindClass: "kind-novelty", label: "Novedad" };
+    }
+    if (rec.kind === "cleaning" || act.includes("limpie") || act.includes("aseo")) {
+      return { icon: "cleaning_services", kindClass: "kind-cleaning", label: "Limpieza" };
+    }
+    if (act.includes("inspecc") || act.includes("finaliz")) {
+      return { icon: "verified", kindClass: "kind-inspection", label: "Inspección" };
+    }
+    if (act.includes("manten") || act.includes("bloque")) {
+      return { icon: "build", kindClass: "kind-maintenance", label: "Mantenimiento" };
+    }
+    if (act.includes("ocup") || act.includes("check-in") || act.includes("huésped")) {
+      return { icon: "vpn_key", kindClass: "kind-busy", label: "Ocupada" };
+    }
+    if (act.includes("libre") || act.includes("check-out")) {
+      return { icon: "meeting_room", kindClass: "kind-free", label: "Liberada" };
+    }
+    return { icon: "sync_alt", kindClass: "kind-status", label: "Estado" };
+  };
+
+  const formatItemTime = (isoString: string) => {
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return isoString;
+    return new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit" }).format(d);
+  };
+
   return (
     <div className="page-stack history-page">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">
-            <span className="material-symbol" style={{ fontSize: "14px", verticalAlign: "middle", marginRight: "4px" }}>
-              videocam
+      {/* Modern Compact Header & KPI Banner */}
+      <div className="history-hero-header">
+        <div className="history-hero-info">
+          <div className="history-hero-title-row">
+            <span className="history-hero-icon" aria-hidden="true">
+              <span className="material-symbol">history</span>
             </span>
-            Caja Negra &amp; Auditoría del Hotel
+            <div>
+              <p className="history-hero-eyebrow">Auditoría &amp; Registro Operativo</p>
+              <h1 className="history-hero-title">Historial de Movimientos</h1>
+            </div>
+          </div>
+          <p className="history-hero-desc">
+            Seguimiento en tiempo real de limpiezas, rotación de huéspedes, cambios de estado y novedades.
           </p>
-          <h1>Historial Operativo</h1>
-          <p className="page-description">
-            Cámara de seguridad de la app: registro inmutable de creaciones, bajas de habitaciones, novedades de personal y cambios de estado.
-          </p>
+        </div>
+
+        {/* Quick KPI Interactive Counters */}
+        <div className="history-hero-kpis" role="group" aria-label="Filtros rápidos por contador">
+          <button
+            type="button"
+            className={`history-kpi-chip ${categoryFilter === "all" ? "active" : ""}`}
+            onClick={() => setCategoryFilter("all")}
+            title="Ver todos los movimientos"
+          >
+            <span className="history-kpi-count">{counts.all}</span>
+            <span className="history-kpi-label">Todos</span>
+          </button>
+          <button
+            type="button"
+            className={`history-kpi-chip is-cleaning ${categoryFilter === "cleaning" ? "active" : ""}`}
+            onClick={() => setCategoryFilter("cleaning")}
+            title="Filtrar por limpiezas"
+          >
+            <span className="history-kpi-count">{counts.cleaning}</span>
+            <span className="history-kpi-label">Limpiezas</span>
+          </button>
+          <button
+            type="button"
+            className={`history-kpi-chip is-status ${categoryFilter === "status" ? "active" : ""}`}
+            onClick={() => setCategoryFilter("status")}
+            title="Filtrar por cambios de estado"
+          >
+            <span className="history-kpi-count">{counts.status}</span>
+            <span className="history-kpi-label">Estados</span>
+          </button>
+          <button
+            type="button"
+            className={`history-kpi-chip is-novelty ${categoryFilter === "novelty" ? "active" : ""}`}
+            onClick={() => setCategoryFilter("novelty")}
+            title="Filtrar por novedades"
+          >
+            <span className="history-kpi-count">{counts.novelty}</span>
+            <span className="history-kpi-label">Novedades</span>
+          </button>
+          <button
+            type="button"
+            className={`history-kpi-chip is-lifecycle ${categoryFilter === "lifecycle" ? "active" : ""}`}
+            onClick={() => setCategoryFilter("lifecycle")}
+            title="Filtrar por altas y bajas"
+          >
+            <span className="history-kpi-count">{counts.lifecycle}</span>
+            <span className="history-kpi-label">Altas/Bajas</span>
+          </button>
         </div>
       </div>
 
-      <div className="history-category-tabs">
-        <button
-          type="button"
-          className={`history-cat-btn ${categoryFilter === "all" ? "active" : ""}`}
-          onClick={() => setCategoryFilter("all")}
-        >
-          <span className="material-symbol" aria-hidden="true">visibility</span>
-          Todos
-          <span className="history-badge-count">{counts.all}</span>
-        </button>
-        <button
-          type="button"
-          className={`history-cat-btn ${categoryFilter === "lifecycle" ? "active" : ""}`}
-          onClick={() => setCategoryFilter("lifecycle")}
-        >
-          <span className="material-symbol" aria-hidden="true">domain</span>
-          Altas y Bajas
-          <span className="history-badge-count">{counts.lifecycle}</span>
-        </button>
-        <button
-          type="button"
-          className={`history-cat-btn ${categoryFilter === "novelty" ? "active" : ""}`}
-          onClick={() => setCategoryFilter("novelty")}
-        >
-          <span className="material-symbol" aria-hidden="true">warning</span>
-          Novedades
-          <span className="history-badge-count">{counts.novelty}</span>
-        </button>
-        <button
-          type="button"
-          className={`history-cat-btn ${categoryFilter === "status" ? "active" : ""}`}
-          onClick={() => setCategoryFilter("status")}
-        >
-          <span className="material-symbol" aria-hidden="true">swap_horiz</span>
-          Estados &amp; Huéspedes
-          <span className="history-badge-count">{counts.status}</span>
-        </button>
-        <button
-          type="button"
-          className={`history-cat-btn ${categoryFilter === "cleaning" ? "active" : ""}`}
-          onClick={() => setCategoryFilter("cleaning")}
-        >
-          <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-          Limpiezas
-          <span className="history-badge-count">{counts.cleaning}</span>
-        </button>
-      </div>
-
-      <div className="room-selection-toolbar">
-        <div className="room-selection-controls">
-          <label className="search-field">
-            <span className="search-input-wrap">
-              <span className="material-symbol" aria-hidden="true">search</span>
-              <input
-                aria-label="Buscar en historial"
-                autoComplete="off"
-                placeholder="Introduce habitación, personal, acción, huésped o fecha"
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-              />
-              {filter && (
-                <button
-                  type="button"
-                  className="search-clear-button"
-                  aria-label="Limpiar búsqueda"
-                  onClick={() => setFilter("")}
-                >
-                  <span className="material-symbol" aria-hidden="true">close</span>
-                </button>
-              )}
-            </span>
-          </label>
+      {/* Unified Search & View Controls Bar */}
+      <div className="history-unified-toolbar">
+        <div className="history-search-box">
+          <span className="material-symbol history-search-icon" aria-hidden="true">search</span>
+          <input
+            type="search"
+            aria-label="Buscar en historial"
+            autoComplete="off"
+            placeholder="Buscar por hab., personal, acción o huésped..."
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          />
+          {filter && (
+            <button
+              type="button"
+              className="history-search-clear"
+              aria-label="Limpiar búsqueda"
+              onClick={() => setFilter("")}
+            >
+              <span className="material-symbol" aria-hidden="true">close</span>
+            </button>
+          )}
         </div>
-        <p className="room-results-count">
-          {filteredRecords.length} {filteredRecords.length === 1 ? "registro" : "registros"}
-        </p>
+
+        <div className="history-toolbar-right">
+          <span className="history-results-pill">
+            {filteredRecords.length} {filteredRecords.length === 1 ? "registro" : "registros"}
+          </span>
+
+          {/* Desktop/Tablet View Switcher */}
+          <div className="history-view-switcher" role="radiogroup" aria-label="Modo de vista">
+            <button
+              type="button"
+              className={`history-view-btn ${viewMode === "timeline" ? "active" : ""}`}
+              onClick={() => setViewMode("timeline")}
+              title="Vista Línea de Tiempo"
+              aria-checked={viewMode === "timeline"}
+              role="radio"
+            >
+              <span className="material-symbol" aria-hidden="true">view_agenda</span>
+              <span className="history-view-btn-label">Línea de tiempo</span>
+            </button>
+            <button
+              type="button"
+              className={`history-view-btn ${viewMode === "table" ? "active" : ""}`}
+              onClick={() => setViewMode("table")}
+              title="Vista Tabla compacta"
+              aria-checked={viewMode === "table"}
+              role="radio"
+            >
+              <span className="material-symbol" aria-hidden="true">table_rows</span>
+              <span className="history-view-btn-label">Tabla</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && <p className="form-error" role="alert">{error}</p>}
+
       {loading && state.events.length === 0 ? (
-        <p className="empty-state">Cargando historial…</p>
+        <div className="history-loading-card">
+          <span className="material-symbol history-spin-icon" aria-hidden="true">progress_activity</span>
+          <p>Cargando registros históricos…</p>
+        </div>
       ) : filteredRecords.length === 0 ? (
-        <p className="empty-state">No hay movimientos que coincidan con los filtros aplicados.</p>
+        <div className="history-empty-card">
+          <span className="material-symbol history-empty-icon" aria-hidden="true">manage_search</span>
+          <h3>Sin coincidencias en el historial</h3>
+          <p>No se encontraron eventos con los filtros actuales o término de búsqueda.</p>
+          {(filter || categoryFilter !== "all") && (
+            <button
+              type="button"
+              className="history-reset-btn"
+              onClick={() => {
+                setFilter("");
+                setCategoryFilter("all");
+              }}
+            >
+              <span className="material-symbol" aria-hidden="true">restart_alt</span>
+              Restablecer filtros
+            </button>
+          )}
+        </div>
+      ) : viewMode === "timeline" ? (
+        /* ================= VISTA LÍNEA DE TIEMPO / FEED DE TARJETAS ================= */
+        <div className="history-timeline-container">
+          {groupedRecords.map((group) => (
+            <section key={group.key} className="history-day-section">
+              <div className="history-day-divider">
+                <span className="history-day-badge">
+                  <span className="material-symbol" aria-hidden="true">calendar_today</span>
+                  <strong>{group.label}</strong>
+                  <span className="history-day-count">{group.records.length}</span>
+                </span>
+              </div>
+
+              <div className="history-day-items">
+                {group.records.map((item) => {
+                  const visuals = getEventVisuals(item);
+                  const isSpecialRoom = item.room.toLowerCase().includes("personal") || item.room.toLowerCase().includes("novedad");
+                  const floorNum = !isSpecialRoom && state.floors[item.room] ? state.floors[item.room] : null;
+
+                  return (
+                    <article key={item.id} className="history-feed-card">
+                      {/* Left: Themed Event Icon */}
+                      <div className={`history-feed-icon-box ${visuals.kindClass}`}>
+                        <span className="material-symbol" aria-hidden="true">{visuals.icon}</span>
+                      </div>
+
+                      {/* Main Card Content */}
+                      <div className="history-feed-body">
+                        {/* Top Meta Line: Room badge, status pill, and time */}
+                        <div className="history-feed-top-row">
+                          <div className="history-feed-badges">
+                            {item.kind === "deleted" ? (
+                              <span className="history-entity-tag is-deleted">
+                                <span className="material-symbol" aria-hidden="true">delete_forever</span>
+                                Hab. {item.room}
+                              </span>
+                            ) : item.kind === "created" ? (
+                              <span className="history-entity-tag is-created">
+                                <span className="material-symbol" aria-hidden="true">add_circle</span>
+                                Hab. {item.room}
+                              </span>
+                            ) : isSpecialRoom ? (
+                              <span className="history-entity-tag is-special">
+                                <span className="material-symbol" aria-hidden="true">badge</span>
+                                Personal
+                              </span>
+                            ) : (
+                              <span className="history-entity-tag is-room">
+                                <span className="material-symbol" aria-hidden="true">bed</span>
+                                <strong>Hab. {item.room}</strong>
+                                {floorNum && <small className="history-floor-chip">Piso {floorNum}</small>}
+                              </span>
+                            )}
+
+                            <span className={`status-pill ${item.statusPillClass}`}>
+                              {item.statusLabel}
+                            </span>
+                          </div>
+
+                          <time className="history-feed-time" dateTime={item.time} title={formatDate(item.time)}>
+                            <span className="material-symbol" aria-hidden="true">schedule</span>
+                            {formatItemTime(item.time)}
+                          </time>
+                        </div>
+
+                        {/* Middle: Action detail */}
+                        <div className="history-feed-action-text">
+                          <p>{item.action}</p>
+                        </div>
+
+                        {/* Bottom: Actor & Guest Footnote */}
+                        <div className="history-feed-footer">
+                          <div className="history-actor-chip" title={`Responsable: ${item.actor}`}>
+                            <ModernAvatar3D name={item.actor} size={20} className="history-actor-avatar" />
+                            <span className="history-actor-label">{item.actor}</span>
+                          </div>
+
+                          {item.guest && (
+                            <div className="history-guest-chip" title={`Huésped: ${item.guest}`}>
+                              <span className="material-symbol" aria-hidden="true">person</span>
+                              <span className="history-guest-name">{item.guest}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : (
-        <section className="page-card table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: "160px" }}>Fecha y Hora</th>
-                <th style={{ width: "170px" }}>Espacio / Origen</th>
-                <th style={{ width: "140px" }}>Evento / Tipo</th>
-                <th>Detalle de Acción / Novedad</th>
-                <th style={{ width: "180px" }}>Responsable</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <span className="history-time-stamp">{formatDate(item.time)}</span>
-                  </td>
-                  <td>
-                    {item.kind === "deleted" ? (
-                      <span className="history-room-tag is-deleted">
-                        <span className="material-symbol" aria-hidden="true">delete_forever</span>
-                        {item.room}
-                      </span>
-                    ) : item.kind === "created" ? (
-                      <span className="history-room-tag is-created">
-                        <span className="material-symbol" aria-hidden="true">add_circle</span>
-                        {item.room}
-                      </span>
-                    ) : item.kind === "novelty" ? (
-                      <span className="history-room-tag is-novelty">
-                        <span className="material-symbol" aria-hidden="true">badge</span>
-                        {item.room}
-                      </span>
-                    ) : (
-                      <strong>Hab. {item.room}</strong>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`status-pill ${item.statusPillClass}`}>
-                      {item.statusLabel}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="history-action-cell">
-                      <span>{item.action}</span>
-                      {item.guest && (
-                        <small className="history-guest-note">
-                          <span className="material-symbol" aria-hidden="true">person</span>
-                          {item.guest}
-                        </small>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <span className="history-actor-name">
-                      <span className="material-symbol" aria-hidden="true">account_circle</span>
-                      {item.actor}
-                    </span>
-                  </td>
+        /* ================= VISTA TABLA DETALLADA (DESKTOP) ================= */
+        <section className="page-card history-table-card">
+          <div className="table-scroll">
+            <table className="history-modern-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "160px" }}>Fecha y Hora</th>
+                  <th style={{ width: "180px" }}>Espacio / Origen</th>
+                  <th style={{ width: "150px" }}>Tipo de Evento</th>
+                  <th>Detalle de Acción / Novedad</th>
+                  <th style={{ width: "200px" }}>Responsable</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredRecords.map((item) => {
+                  const visuals = getEventVisuals(item);
+                  const isSpecialRoom = item.room.toLowerCase().includes("personal") || item.room.toLowerCase().includes("novedad");
+                  const floorNum = !isSpecialRoom && state.floors[item.room] ? state.floors[item.room] : null;
+
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        <div className="history-table-time-cell">
+                          <span className="history-time-stamp">{formatDate(item.time)}</span>
+                        </div>
+                      </td>
+                      <td>
+                        {item.kind === "deleted" ? (
+                          <span className="history-entity-tag is-deleted">
+                            <span className="material-symbol" aria-hidden="true">delete_forever</span>
+                            Hab. {item.room}
+                          </span>
+                        ) : item.kind === "created" ? (
+                          <span className="history-entity-tag is-created">
+                            <span className="material-symbol" aria-hidden="true">add_circle</span>
+                            Hab. {item.room}
+                          </span>
+                        ) : isSpecialRoom ? (
+                          <span className="history-entity-tag is-special">
+                            <span className="material-symbol" aria-hidden="true">badge</span>
+                            Personal
+                          </span>
+                        ) : (
+                          <span className="history-entity-tag is-room">
+                            <span className="material-symbol" aria-hidden="true">bed</span>
+                            <strong>Hab. {item.room}</strong>
+                            {floorNum && <small className="history-floor-chip">Piso {floorNum}</small>}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`status-pill ${item.statusPillClass}`}>
+                          <span className="material-symbol status-inline-icon" aria-hidden="true">{visuals.icon}</span>
+                          {item.statusLabel}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="history-action-cell">
+                          <span className="history-action-text">{item.action}</span>
+                          {item.guest && (
+                            <small className="history-guest-note">
+                              <span className="material-symbol" aria-hidden="true">person</span>
+                              {item.guest}
+                            </small>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="history-actor-chip">
+                          <ModernAvatar3D name={item.actor} size={22} className="history-actor-avatar" />
+                          <span className="history-actor-label">{item.actor}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </div>
