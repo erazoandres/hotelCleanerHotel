@@ -2240,6 +2240,7 @@ export function HistoryPage() {
   const [filter, setFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | "lifecycle" | "novelty" | "status" | "cleaning">("all");
   const [viewMode, setViewMode] = useState<"timeline" | "table">("timeline");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const allRecords = useMemo(() => {
     type HistoryCategory = "all" | "lifecycle" | "novelty" | "status" | "cleaning";
@@ -2621,9 +2622,24 @@ export function HistoryPage() {
                   const visuals = getEventVisuals(item);
                   const isSpecialRoom = item.room.toLowerCase().includes("personal") || item.room.toLowerCase().includes("novedad");
                   const floorNum = !isSpecialRoom && state.floors[item.room] ? state.floors[item.room] : null;
+                  const isExpanded = expandedId === item.id;
 
                   return (
-                    <article key={item.id} className="history-feed-card">
+                    <article
+                      key={item.id}
+                      className={`history-feed-card ${isExpanded ? "is-expanded" : ""}`}
+                      onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setExpandedId((prev) => (prev === item.id ? null : item.id));
+                        }
+                      }}
+                      aria-expanded={isExpanded}
+                      aria-label={`${item.room}, ${item.statusLabel}. ${isExpanded ? "Cerrar detalles" : "Ver detalles completos"}`}
+                    >
                       {/* Left: Themed Event Icon */}
                       <div className={`history-feed-icon-box ${visuals.kindClass}`}>
                         <span className="material-symbol" aria-hidden="true">{visuals.icon}</span>
@@ -2631,7 +2647,7 @@ export function HistoryPage() {
 
                       {/* Main Card Content */}
                       <div className="history-feed-body">
-                        {/* Top Meta Line: Room badge, status pill, and time */}
+                        {/* Top Meta Line: Room badge, status pill, time, and mobile expand chevron */}
                         <div className="history-feed-top-row">
                           <div className="history-feed-badges">
                             {item.kind === "deleted" ? (
@@ -2662,10 +2678,18 @@ export function HistoryPage() {
                             </span>
                           </div>
 
-                          <time className="history-feed-time" dateTime={item.time} title={formatDate(item.time)}>
-                            <span className="material-symbol" aria-hidden="true">schedule</span>
-                            {formatItemTime(item.time)}
-                          </time>
+                          <div className="history-feed-top-actions">
+                            <time className="history-feed-time" dateTime={item.time} title={formatDate(item.time)}>
+                              <span className="material-symbol" aria-hidden="true">schedule</span>
+                              {formatItemTime(item.time)}
+                            </time>
+                            <span
+                              className={`material-symbol history-feed-chevron ${isExpanded ? "chevron-rotated" : ""}`}
+                              aria-hidden="true"
+                            >
+                              expand_more
+                            </span>
+                          </div>
                         </div>
 
                         {/* Middle: Action detail */}
@@ -2673,7 +2697,7 @@ export function HistoryPage() {
                           <p>{item.action}</p>
                         </div>
 
-                        {/* Bottom: Actor & Guest Footnote */}
+                        {/* Bottom: Actor & Guest Footnote & Full Date */}
                         <div className="history-feed-footer">
                           <div className="history-actor-chip" title={`Responsable: ${item.actor}`}>
                             <ModernAvatar3D name={item.actor} size={20} className="history-actor-avatar" />
@@ -2686,6 +2710,11 @@ export function HistoryPage() {
                               <span className="history-guest-name">{item.guest}</span>
                             </div>
                           )}
+
+                          <div className="history-full-date-chip" title="Fecha completa">
+                            <span className="material-symbol" aria-hidden="true">calendar_today</span>
+                            <span>{formatDate(item.time)}</span>
+                          </div>
                         </div>
                       </div>
                     </article>

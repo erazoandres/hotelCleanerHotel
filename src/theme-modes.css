@@ -2508,6 +2508,43 @@ html[data-theme="dark"] .history-modern-table tr:hover td {
   background: rgba(255, 255, 255, 0.02) !important;
 }
 
+html[data-theme="dark"] .history-feed-card.is-expanded {
+  border-color: #3b82f6 !important;
+  background: #181d2c !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+}
+
+html[data-theme="dark"] .history-feed-card:active {
+  background: #191e2e !important;
+}
+
+html[data-theme="dark"] .history-feed-chevron.chevron-rotated {
+  color: #60a5fa !important;
+}
+
+html[data-theme="dark"] .history-full-date-chip {
+  color: #94a3b8 !important;
+}
+
+/* Amber theme for History Card Expand */
+html[data-theme="amber"] .history-feed-card.is-expanded {
+  border-color: #d97706 !important;
+  background: #2b221b !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-theme="amber"] .history-feed-card:active {
+  background: #2d241c !important;
+}
+
+html[data-theme="amber"] .history-feed-chevron.chevron-rotated {
+  color: #f59e0b !important;
+}
+
+html[data-theme="amber"] .history-full-date-chip {
+  color: #d97706 !important;
+}
+
 html[data-theme="dark"] .status-created {
   background: #064e3b;
   color: #6ee7b7;
