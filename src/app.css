@@ -9083,8 +9083,9 @@ textarea {
   /* Cleaner Portal on mobile */
   .cleaner-auth-page:has(.cleaner-portal-shell),
   .cleaner-auth-page:has(.cleaner-page),
-  .cleaner-auth-page {
-    padding: 12px 12px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  .cleaner-auth-page,
+  .cleaner-app-viewport {
+    padding: 8px 10px calc(66px + env(safe-area-inset-bottom, 0px)) !important;
     overflow-x: hidden !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -9092,9 +9093,10 @@ textarea {
     background: var(--th-bg, #f8f7f4) !important;
   }
 
+  .cleaner-portal-shell,
   .cleaner-page.cleaner-portal-shell {
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: 540px !important;
     box-sizing: border-box !important;
     padding: 0 !important;
     margin: 0 auto !important;
@@ -9102,15 +9104,16 @@ textarea {
   }
 
   .cleaner-bottom-nav {
-    padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
-    height: auto !important;
+    padding: 4px 6px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    height: 48px !important;
+    max-width: 540px !important;
   }
 
   .cleaner-user-strip {
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .cleaner-user-name {
-    font-size: 15px !important;
+    font-size: 13.5px !important;
   }
 }

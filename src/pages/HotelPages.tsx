@@ -4070,7 +4070,7 @@ export function CleanerPortal() {
   }, [history]);
 
   return (
-    <main className="auth-page cleaner-auth-page">
+    <main className={!profile ? "auth-page cleaner-auth-page" : "cleaner-app-viewport"}>
       {!profile ? (
         <form className="auth-card" onSubmit={handleLogin}>
           <div className="auth-brand">
@@ -4086,11 +4086,11 @@ export function CleanerPortal() {
           <button className="button button-primary" disabled={loading}>{loading ? "Validando…" : "Ingresar"}</button>
         </form>
       ) : (
-        <section className="cleaner-page cleaner-portal-shell page-stack">
+        <div className="cleaner-portal-shell">
           {/* Top Bar */}
           <div className="cleaner-portal-topbar">
             <div className="cleaner-user-strip">
-              <ModernAvatar3D name={profile.nombre} size={44} className="cleaner-head-avatar" />
+              <ModernAvatar3D name={profile.nombre} size={36} className="cleaner-head-avatar" />
               <div>
                 <div className="cleaner-tagline">
                   <span className="cleaner-shift-dot" />
@@ -4430,7 +4430,7 @@ export function CleanerPortal() {
               {/* Profile Sidebar */}
               <div className="cleaner-profile-sidebar">
                 <div className="cleaner-profile-hero">
-                  <ModernAvatar3D name={profile.nombre} size={84} className="cleaner-large-avatar" />
+                  <ModernAvatar3D name={profile.nombre} size={52} className="cleaner-large-avatar" />
                   <h2 className="cleaner-profile-name">{profile.nombre}</h2>
                   <p className="cleaner-profile-role">Personal de Aseo y Camarera</p>
                   <div className="cleaner-profile-beacon">
@@ -4517,7 +4517,7 @@ export function CleanerPortal() {
               <span>Mi Perfil</span>
             </button>
           </nav>
-        </section>
+        </div>
       )}
     </main>
   );

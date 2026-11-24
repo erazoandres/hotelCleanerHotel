@@ -3780,9 +3780,9 @@ textarea {
   justify-content: space-between;
   background: var(--th-surface, #ffffff) !important;
   border: 1px solid var(--th-border, #e2e8f0) !important;
-  border-radius: 16px !important;
-  padding: 16px !important;
-  box-shadow: var(--th-card-shadow, 0 4px 16px rgba(0, 0, 0, 0.05)) !important;
+  border-radius: 13px !important;
+  padding: 10px 12px !important;
+  box-shadow: var(--th-card-shadow, 0 3px 12px rgba(0, 0, 0, 0.04)) !important;
   color: var(--th-text-main, #1c2420) !important;
   box-sizing: border-box;
   min-width: 0;
@@ -3793,10 +3793,10 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 12px;
+  gap: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--th-border-subtle, rgba(0, 0, 0, 0.06));
-  margin-bottom: 12px;
+  margin-bottom: 6px;
   min-width: 0;
 }
 
@@ -3806,35 +3806,35 @@ textarea {
 }
 
 .cleaner-room-card .eyebrow {
-  margin: 0 0 2px 0;
-  font-size: 10px;
+  margin: 0 0 1px 0;
+  font-size: 8.5px;
   font-weight: 750;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--th-text-muted, #7e8d85) !important;
 }
 
 .cleaner-room-card h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--th-text-main, #1c2420) !important;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .cleaner-room-card .room-title-hover-icon {
-  font-size: 16px;
+  font-size: 13px;
   opacity: 0.6;
 }
 
 /* Status pills inside cleaner room card */
 .cleaner-room-card .status-pill {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 750;
-  padding: 4px 10px;
+  padding: 2px 7px;
   border-radius: 999px;
   white-space: nowrap;
   flex-shrink: 0;
@@ -3883,7 +3883,7 @@ body[data-theme="dark"] .cleaner-room-card .status-pill.status-pending {
 .cleaner-room-details-list {
   display: flex !important;
   flex-direction: column !important;
-  gap: 8px !important;
+  gap: 5px !important;
   margin: 0 !important;
   width: 100% !important;
 }
@@ -3892,7 +3892,7 @@ body[data-theme="dark"] .cleaner-room-card .status-pill.status-pending {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  gap: 12px !important;
+  gap: 8px !important;
   width: 100% !important;
 }
 
@@ -3900,18 +3900,18 @@ body[data-theme="dark"] .cleaner-room-card .status-pill.status-pending {
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;
-  gap: 4px !important;
+  gap: 3px !important;
 }
 
 .cleaner-room-card dt {
-  font-size: 11.5px !important;
+  font-size: 10.5px !important;
   font-weight: 600 !important;
   color: var(--th-text-muted, #7e8d85) !important;
   flex-shrink: 0 !important;
 }
 
 .cleaner-room-card dd {
-  font-size: 13px !important;
+  font-size: 11.5px !important;
   font-weight: 600 !important;
   color: var(--th-text-main, #1c2420) !important;
   margin: 0 !important;
@@ -3925,9 +3925,9 @@ body[data-theme="dark"] .cleaner-room-card .status-pill.status-pending {
 .cleaner-plan-badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 10px;
   font-weight: 750;
   background: rgba(16, 185, 129, 0.12);
   color: #059669;
@@ -9408,27 +9408,44 @@ body[data-theme="dark"] .cleaner-completed-badge {
 
 
 /* ==========================================================================
-   Cleaner Portal (/app/aseo) Redesign Styles
+   Cleaner Portal (/app/aseo) Root Viewport & Shell
    ========================================================================== */
+.cleaner-app-viewport {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: var(--th-bg, #f8f7f4);
+  color: var(--th-text-main, #1c2420);
+  padding: 10px 10px calc(72px + env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .cleaner-portal-shell {
   width: 100%;
-  max-width: 680px;
+  max-width: 540px;
   margin: 0 auto;
-  padding-bottom: 85px;
   box-sizing: border-box;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .cleaner-portal-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1e1b4b, #2d2a70);
   color: #ffffff;
-  box-shadow: 0 10px 25px -5px rgba(49, 46, 129, 0.3);
+  box-shadow: 0 4px 16px -2px rgba(30, 27, 75, 0.25);
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
@@ -9438,55 +9455,77 @@ body[data-theme="dark"] .cleaner-completed-badge {
 .cleaner-user-strip {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .cleaner-head-avatar {
+  width: 34px !important;
+  height: 34px !important;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.cleaner-user-strip > div {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
 }
 
 .cleaner-tagline {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 5px;
+  font-size: 10px;
   font-weight: 700;
   color: #a5b4fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cleaner-shift-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #34d399;
-  box-shadow: 0 0 8px #34d399;
+  box-shadow: 0 0 6px #34d399;
+  flex-shrink: 0;
 }
 
 .cleaner-user-name {
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 750;
   color: #ffffff;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cleaner-top-logout {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 5px 9px;
+  font-size: 11px;
   font-weight: 700;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  flex-shrink: 0;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .cleaner-top-logout:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.24);
 }
 
 .cleaner-tab-content {
@@ -9874,84 +9913,94 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
 }
 
 .cleaner-profile-hero {
-  padding: 22px 18px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1e1b4b, #2d2a70);
   color: #ffffff;
   text-align: center;
-  box-shadow: 0 10px 25px -5px rgba(49, 46, 129, 0.3);
+  box-shadow: 0 4px 16px -2px rgba(30, 27, 75, 0.25);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .cleaner-large-avatar {
+  width: 52px !important;
+  height: 52px !important;
   border-radius: 50%;
-  border: 4px solid #ffffff;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   margin: 0 auto;
 }
 
 .cleaner-profile-name {
-  margin: 10px 0 2px;
-  font-size: 20px;
+  margin: 6px 0 2px;
+  font-size: 15px;
   font-weight: 800;
   color: #ffffff;
+  letter-spacing: -0.01em;
 }
 
 .cleaner-profile-role {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   color: #a5b4fc;
 }
 
 .cleaner-profile-beacon {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  padding: 4px 12px;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.18);
   border: 1px solid rgba(16, 185, 129, 0.35);
   color: #a7f3d0;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 750;
 }
 
 .cleaner-avatar-picker-section {
-  padding: 16px;
-  border-radius: 16px;
+  padding: 10px 12px;
+  border-radius: 13px;
   background: var(--th-surface, #ffffff);
   border: 1px solid var(--th-border, #e2e8f0);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .cleaner-section-label {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--th-text-main, #1e293b);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .cleaner-section-label .material-symbol {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--th-accent, #4f46e5);
 }
 
 .cleaner-profile-details {
-  padding: 16px;
-  border-radius: 16px;
+  padding: 10px 12px;
+  border-radius: 13px;
   background: var(--th-surface, #ffffff);
   border: 1px solid var(--th-border, #e2e8f0);
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .cleaner-detail-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  gap: 8px;
+  padding: 6px 0;
   border-bottom: 1px solid var(--th-border-subtle, #f1f5f9);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .cleaner-detail-row:last-child {
@@ -9960,24 +10009,35 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
 
 .cleaner-detail-row span {
   color: var(--th-text-muted, #64748b);
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 .cleaner-detail-row strong {
   color: var(--th-text-main, #1e293b);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: right;
+  max-width: 62%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cleaner-logout-full-btn {
   width: 100%;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: 9px;
   background: rgba(239, 68, 68, 0.1) !important;
   border: 1px solid rgba(239, 68, 68, 0.25) !important;
   color: #ef4444 !important;
   font-weight: 750;
+  font-size: 11.5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
+  min-height: 36px;
   transition: all 180ms ease;
   cursor: pointer;
 }
@@ -10060,28 +10120,28 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 6px;
+  padding: 2px 0;
 }
 
 .avatar-3d-minimal-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .avatar-3d-circle-btn {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: #f8fafc;
-  border: 2px solid #e2e8f0;
+  background: var(--th-surface-subtle, #f8fafc);
+  border: 1.5px solid var(--th-border, #e2e8f0);
   padding: 0;
   margin: 0;
   cursor: pointer;
@@ -10105,7 +10165,7 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
 
 .avatar-3d-circle-btn:hover {
   border-color: #cbd5e1;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .avatar-3d-circle-btn:hover img {
@@ -10115,8 +10175,8 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
 .avatar-3d-circle-btn.is-selected {
   border-color: #4f46e5;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22), 0 4px 10px rgba(79, 70, 229, 0.16);
-  transform: scale(1.1);
+  box-shadow: 0 0 0 2.5px rgba(79, 70, 229, 0.25);
+  transform: scale(1.08);
 }
 
 .avatar-3d-circle-btn.is-selected img {
@@ -10125,27 +10185,28 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
 
 .avatar-3d-circle-dot {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 10px;
-  height: 10px;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #10b981;
-  border: 2px solid #ffffff;
+  border: 1.5px solid #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .avatar-3d-minimal-caption {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 10px;
+  color: var(--th-text-muted, #64748b);
   text-align: center;
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-top: 2px;
 }
 
 .avatar-3d-minimal-caption strong {
-  color: #4338ca;
+  color: var(--th-accent, #4338ca);
   font-weight: 750;
 }
 
@@ -10155,8 +10216,9 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
   /* Prevent horizontal scroll on document / root container */
   .cleaner-auth-page:has(.cleaner-portal-shell),
   .cleaner-auth-page:has(.cleaner-page),
-  .cleaner-auth-page {
-    padding: 12px 12px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  .cleaner-auth-page,
+  .cleaner-app-viewport {
+    padding: 8px 10px calc(66px + env(safe-area-inset-bottom, 0px)) !important;
     overflow-x: hidden !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -10165,7 +10227,7 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     color: var(--th-text-main, #1c2420) !important;
   }
 
-  .cleaner-page.cleaner-portal-shell {
+  .cleaner-portal-shell {
     padding: 0 !important;
     margin: 0 auto !important;
     border: none !important;
@@ -10177,11 +10239,12 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     box-sizing: border-box !important;
     min-width: 0 !important;
     overflow-x: hidden !important;
+    gap: 8px !important;
   }
 
   .cleaner-portal-topbar {
-    padding: 10px 12px !important;
-    gap: 8px !important;
+    padding: 7px 10px !important;
+    gap: 6px !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -10189,18 +10252,19 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    border-radius: 12px !important;
   }
 
   .cleaner-user-strip {
     min-width: 0 !important;
     flex: 1 1 auto !important;
-    gap: 8px !important;
+    gap: 6px !important;
     overflow: hidden !important;
   }
 
   .cleaner-head-avatar {
-    width: 36px !important;
-    height: 36px !important;
+    width: 30px !important;
+    height: 30px !important;
     flex-shrink: 0 !important;
   }
 
@@ -10211,7 +10275,7 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
   }
 
   .cleaner-user-name {
-    font-size: 15px !important;
+    font-size: 13.5px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -10219,18 +10283,28 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
   }
 
   .cleaner-tagline {
-    font-size: 10px !important;
+    font-size: 9.5px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     max-width: 100% !important;
   }
 
+  .cleaner-shift-dot {
+    width: 5px !important;
+    height: 5px !important;
+  }
+
   .cleaner-top-logout {
-    padding: 6px 10px !important;
-    font-size: 11px !important;
+    padding: 5px 8px !important;
+    font-size: 10.5px !important;
     flex-shrink: 0 !important;
     white-space: nowrap !important;
+    border-radius: 7px !important;
+  }
+
+  .cleaner-top-logout .material-symbol {
+    font-size: 14px !important;
   }
 
   .cleaner-controls-row {
@@ -10238,15 +10312,16 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     max-width: 100% !important;
     box-sizing: border-box !important;
     min-width: 0 !important;
-    gap: 10px !important;
+    gap: 8px !important;
   }
 
   .cleaner-progress-card {
-    padding: 10px 12px !important;
+    padding: 8px 10px !important;
     box-sizing: border-box !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
+    border-radius: 11px !important;
   }
 
   .cleaner-progress-header {
@@ -10257,21 +10332,26 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     flex-wrap: nowrap !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    margin-bottom: 5px !important;
   }
 
   .cleaner-progress-header span {
-    font-size: 11px !important;
+    font-size: 10.5px !important;
     font-weight: 600 !important;
     white-space: nowrap !important;
     flex-shrink: 0 !important;
   }
 
   .cleaner-progress-header strong {
-    font-size: 11px !important;
+    font-size: 10.5px !important;
     font-weight: 750 !important;
     white-space: nowrap !important;
     text-align: right !important;
     flex-shrink: 0 !important;
+  }
+
+  .cleaner-progress-track {
+    height: 5px !important;
   }
 
   .cleaner-filter-strip {
@@ -10281,15 +10361,16 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
-    padding: 2px 2px 6px !important;
+    padding: 1px 0 3px !important;
     min-width: 0 !important;
     display: flex !important;
+    gap: 5px !important;
   }
 
   .cleaner-filter-chip {
     flex-shrink: 0 !important;
-    padding: 6px 12px !important;
-    font-size: 11px !important;
+    padding: 4px 9px !important;
+    font-size: 10.5px !important;
   }
 
   .cleaner-active-hero-card {
@@ -10297,31 +10378,34 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    padding: 12px !important;
+    padding: 10px 12px !important;
     overflow: hidden !important;
+    border-radius: 12px !important;
+    gap: 8px !important;
   }
 
   .cleaner-active-hero-header {
     flex-wrap: wrap !important;
-    gap: 6px !important;
+    gap: 4px !important;
     align-items: center !important;
+    padding-bottom: 6px !important;
   }
 
   .cleaner-active-room-title {
     flex-wrap: wrap !important;
-    gap: 6px !important;
+    gap: 4px !important;
     align-items: center !important;
     min-width: 0 !important;
   }
 
   .cleaner-active-room-title h2 {
-    font-size: 19px !important;
+    font-size: 16px !important;
   }
 
   .cleaner-service-pill {
     white-space: nowrap !important;
-    font-size: 10px !important;
-    padding: 3px 7px !important;
+    font-size: 9.5px !important;
+    padding: 2px 6px !important;
   }
 
   .cleaner-active-hero-card .cleaner-action-btn,
@@ -10330,17 +10414,19 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     min-width: 0 !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    padding: 11px 14px !important;
-    font-size: 13px !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
     white-space: normal !important;
     text-align: center !important;
     line-height: 1.25 !important;
+    border-radius: 9px !important;
+    min-height: 36px !important;
   }
 
   .cleaner-room-grid {
     display: flex !important;
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: 8px !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -10352,19 +10438,21 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    padding: 14px !important;
+    padding: 10px 12px !important;
     overflow: hidden !important;
-    border-radius: 14px !important;
+    border-radius: 12px !important;
   }
 
   .cleaner-room-card .room-card-heading {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 8px !important;
+    gap: 6px !important;
     flex-wrap: nowrap !important;
     width: 100% !important;
     min-width: 0 !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 6px !important;
   }
 
   .cleaner-room-card .room-card-heading-title {
@@ -10373,8 +10461,12 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     overflow: hidden !important;
   }
 
+  .cleaner-room-card .eyebrow {
+    font-size: 8.5px !important;
+  }
+
   .cleaner-room-card h2 {
-    font-size: 20px !important;
+    font-size: 16px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -10382,8 +10474,8 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
 
   .cleaner-room-card .status-pill {
     flex-shrink: 0 !important;
-    padding: 3px 8px !important;
-    font-size: 10.5px !important;
+    padding: 2px 7px !important;
+    font-size: 9.5px !important;
     white-space: nowrap !important;
   }
 
@@ -10392,26 +10484,174 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
+    gap: 4px !important;
   }
 
+  .cleaner-room-card dt {
+    font-size: 10px !important;
+  }
+
+  .cleaner-room-card dd {
+    font-size: 11px !important;
+  }
+
+  .cleaner-plan-badge {
+    font-size: 9.5px !important;
+    padding: 1px 5px !important;
+  }
+
+  .cleaner-room-notes {
+    font-size: 10px !important;
+    padding: 4px 6px !important;
+  }
+
+  .cleaner-card-actions {
+    margin-top: 8px !important;
+  }
+
+  .cleaner-completed-badge {
+    padding: 7px 10px !important;
+    font-size: 11px !important;
+    border-radius: 9px !important;
+  }
+
+  /* Profile Tab on Mobile */
+  .cleaner-profile-layout {
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cleaner-profile-sidebar,
+  .cleaner-profile-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .cleaner-profile-hero {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    padding: 10px 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .cleaner-large-avatar {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .cleaner-profile-name {
+    font-size: 14px !important;
+    margin: 4px 0 1px !important;
+  }
+
+  .cleaner-profile-role {
+    font-size: 10px !important;
+  }
+
+  .cleaner-profile-beacon {
+    margin-top: 4px !important;
+    padding: 2px 7px !important;
+    font-size: 9px !important;
+  }
+
+  .cleaner-logout-full-btn {
+    padding: 7px 10px !important;
+    font-size: 11px !important;
+    min-height: 34px !important;
+    border-radius: 8px !important;
+  }
+
+  .cleaner-avatar-picker-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    padding: 8px 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .cleaner-section-label {
+    font-size: 10.5px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .avatar-3d-minimal-row {
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+  }
+
+  .avatar-3d-circle-btn {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .avatar-3d-minimal-caption {
+    font-size: 9.5px !important;
+  }
+
+  .cleaner-profile-details {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    padding: 8px 10px !important;
+    border-radius: 12px !important;
+  }
+
+  .cleaner-detail-row {
+    padding: 4px 0 !important;
+    gap: 6px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    font-size: 10.5px !important;
+  }
+
+  .cleaner-detail-row span {
+    font-size: 10.5px !important;
+  }
+
+  .cleaner-detail-row strong {
+    max-width: 58% !important;
+    text-align: right !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    min-width: 0 !important;
+    font-size: 11px !important;
+  }
+
+  /* Payroll Mobile */
   .cleaner-payroll-hero {
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    padding: 14px 12px;
+    padding: 12px 10px;
+    border-radius: 12px;
   }
 
   .cleaner-payroll-amount {
-    font-size: clamp(20px, 6vw, 26px);
-    margin: 4px 0 10px;
+    font-size: clamp(18px, 5.5vw, 22px);
+    margin: 2px 0 8px;
     word-break: break-all;
   }
 
   .cleaner-payroll-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
-    padding-top: 10px;
+    padding-top: 8px;
     width: 100%;
     box-sizing: border-box;
   }
@@ -10424,7 +10664,7 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
   }
 
   .cleaner-payroll-col strong {
-    font-size: 12px;
+    font-size: 11.5px;
   }
 
   .cleaner-payroll-switcher {
@@ -10435,8 +10675,8 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
   }
 
   .cleaner-payroll-switcher button {
-    padding: 7px 4px;
-    font-size: 11px;
+    padding: 6px 4px;
+    font-size: 10.5px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -10449,6 +10689,7 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     max-width: 100%;
     box-sizing: border-box;
     min-width: 0;
+    gap: 6px;
   }
 
   .cleaner-history-item {
@@ -10460,7 +10701,8 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     max-width: 100%;
     box-sizing: border-box;
     min-width: 0;
-    padding: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
   }
 
   .cleaner-history-room {
@@ -10469,8 +10711,17 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     overflow: hidden;
   }
 
-  .cleaner-history-room strong,
+  .cleaner-history-room strong {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+  }
+
   .cleaner-history-room span {
+    font-size: 10px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -10489,7 +10740,7 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
   }
 
   .cleaner-history-payout time {
-    font-size: 9.5px;
+    font-size: 9px;
     white-space: nowrap;
   }
 
@@ -10498,61 +10749,8 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     max-width: 100%;
     box-sizing: border-box;
     min-width: 0;
-    padding: 10px 12px;
-  }
-
-  .cleaner-profile-hero {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    min-width: 0;
-    padding: 16px 12px;
-  }
-
-  .cleaner-avatar-picker-section {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    min-width: 0;
-    padding: 12px 10px;
-  }
-
-  .avatar-3d-minimal-row {
-    gap: 8px;
-  }
-
-  .avatar-3d-circle-btn {
-    width: 34px;
-    height: 34px;
-  }
-
-  .avatar-3d-minimal-caption {
-    font-size: 10.5px;
-  }
-
-  .cleaner-profile-details {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    min-width: 0;
-    padding: 12px 10px;
-  }
-
-  .cleaner-detail-row {
-    gap: 6px;
-    width: 100%;
-    box-sizing: border-box;
-    min-width: 0;
-  }
-
-  .cleaner-detail-row strong {
-    max-width: 60%;
-    text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 10px;
   }
 
   .cleaner-bottom-nav {
@@ -10561,16 +10759,26 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     left: 0;
     right: 0;
     width: 100%;
-    max-width: 100%;
+    max-width: 540px;
+    margin: 0 auto;
     box-sizing: border-box;
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
-    margin: 0;
+    padding: 4px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    height: 48px;
   }
 
   .cleaner-nav-tab {
-    padding: 3px 6px;
-    max-width: 110px;
+    padding: 2px 4px;
+    max-width: 100px;
     flex: 1 1 0;
+    gap: 1px;
+  }
+
+  .cleaner-nav-tab .material-symbol {
+    font-size: 18px !important;
+  }
+
+  .cleaner-nav-tab span:last-child {
+    font-size: 9px !important;
   }
 
   .hide-on-mobile {
