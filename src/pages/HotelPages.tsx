@@ -4088,15 +4088,15 @@ export function CleanerPortal() {
       ) : (
         <div className="cleaner-portal-shell">
           {/* Top Bar */}
-          <header className="cleaner-portal-topbar">
+          <div className="cleaner-portal-topbar">
             <div className="cleaner-user-strip">
               <ModernAvatar3D name={profile.nombre} size={36} className="cleaner-head-avatar" />
-              <div className="cleaner-user-info">
+              <div>
                 <div className="cleaner-tagline">
                   <span className="cleaner-shift-dot" />
                   <span>Turno {formatTimer(now - shiftStart)}</span>
                 </div>
-                <div className="cleaner-user-name">{profile.nombre}</div>
+                <h1 className="cleaner-user-name">{profile.nombre}</h1>
               </div>
             </div>
 
@@ -4121,7 +4121,7 @@ export function CleanerPortal() {
                 onClick={() => setActiveTab("nomina")}
               >
                 <span className="material-symbol">payments</span>
-                <span>Nómina</span>
+                <span>Nómina e Historial</span>
               </button>
               <button
                 type="button"
@@ -4135,23 +4135,17 @@ export function CleanerPortal() {
               </button>
             </div>
 
-            <button
-              type="button"
-              className="cleaner-topbar-logout"
-              disabled={loading}
-              onClick={() => void signOut()}
-              title="Cerrar sesión"
-            >
+            <button className="button button-refresh cleaner-top-logout" disabled={loading} onClick={() => void signOut()} title="Cerrar sesión">
               <span className="material-symbol" aria-hidden="true">logout</span>
               <span>Salir</span>
             </button>
-          </header>
+          </div>
 
           {error && <p className="form-error" role="alert">{error}</p>}
 
           {/* TAB 1: JORNADA (HABITACIONES) */}
           {activeTab === "jornada" && (
-            <div className="cleaner-tab-content cleaner-jornada-tab">
+            <div className="cleaner-tab-content">
               {/* Responsive Controls Row (Progress & Filters) */}
               <div className="cleaner-controls-row">
                 <div className="cleaner-progress-card">
@@ -4164,38 +4158,34 @@ export function CleanerPortal() {
                   </div>
                 </div>
 
-                <div className="cleaner-filter-strip" role="tablist" aria-label="Filtro de habitaciones">
+                <div className="cleaner-filter-strip">
                   <button
                     type="button"
                     className={`cleaner-filter-chip ${roomFilter === "all" ? "is-active" : ""}`}
                     onClick={() => setRoomFilter("all")}
                   >
-                    <span className="material-symbol">checklist</span>
-                    <span>Todas ({rooms.length})</span>
+                    Todas ({rooms.length})
                   </button>
                   <button
                     type="button"
                     className={`cleaner-filter-chip ${roomFilter === "cleaning" ? "is-active" : ""}`}
                     onClick={() => setRoomFilter("cleaning")}
                   >
-                    <span className="material-symbol">play_circle</span>
-                    <span>En curso ({activeRooms.length})</span>
+                    En Curso ({activeRooms.length})
                   </button>
                   <button
                     type="button"
                     className={`cleaner-filter-chip ${roomFilter === "pending" ? "is-active" : ""}`}
                     onClick={() => setRoomFilter("pending")}
                   >
-                    <span className="material-symbol">schedule</span>
-                    <span>Pendientes ({pendingRooms.length})</span>
+                    Pendientes ({pendingRooms.length})
                   </button>
                   <button
                     type="button"
                     className={`cleaner-filter-chip ${roomFilter === "finished" ? "is-active" : ""}`}
                     onClick={() => setRoomFilter("finished")}
                   >
-                    <span className="material-symbol">task_alt</span>
-                    <span>Finalizadas ({finishedRooms.length})</span>
+                    Finalizadas ({finishedRooms.length})
                   </button>
                 </div>
               </div>
@@ -4206,22 +4196,22 @@ export function CleanerPortal() {
                   <div className="cleaner-active-hero-header">
                     <span className="cleaner-active-badge">
                       <span className="cleaner-pulse-beacon" />
-                      EN ATENCIÓN
+                      EN LIMPIEZA AHORA
                     </span>
                     <span className="cleaner-active-timer">
-                      <small>TIEMPO</small>
+                      <small>Tiempo</small>
                       <strong>{formatTimer(now - (roomStartTimes[activeRooms[0].id_habitacion] || now))}</strong>
                     </span>
                   </div>
 
                   <div className="cleaner-active-hero-body">
                     <div className="cleaner-active-room-title">
-                      <span className="cleaner-active-room-num">Habitación {activeRooms[0].id_habitacion}</span>
+                      <h2>Hab. {activeRooms[0].id_habitacion}</h2>
                       <span className="cleaner-service-pill">Servicio de Limpieza</span>
                     </div>
                     <div className="cleaner-active-meta">
                       <span className="material-symbol">person</span>
-                      <span>Huésped: <strong>{activeRooms[0].nombre_huesped || "Sin registrar"}</strong></span>
+                      <span>Huésped: <strong>{activeRooms[0].nombre_huesped || "Sin huésped registrado"}</strong></span>
                     </div>
                     {activeRooms[0].detalles_limpieza && (
                       <div className="cleaner-active-note">
@@ -4233,7 +4223,7 @@ export function CleanerPortal() {
 
                   <button
                     type="button"
-                    className="cleaner-action-btn cleaner-finish-btn"
+                    className="button button-primary cleaner-action-btn cleaner-finish-btn"
                     disabled={busyRoom === activeRooms[0].id_habitacion}
                     onClick={() => void handleFinish(activeRooms[0].id_habitacion)}
                   >
@@ -4245,24 +4235,21 @@ export function CleanerPortal() {
 
               {/* Room Grid / List */}
               {filteredRooms.length === 0 ? (
-                <div className="cleaner-empty-state">
-                  <span className="material-symbol">check_circle</span>
-                  <p>No hay habitaciones en esta categoría.</p>
-                </div>
+                <p className="empty-state">No hay habitaciones asignadas en esta categoría.</p>
               ) : (
-                <div className="cleaner-room-list">
+                <section className="room-grid cleaner-room-grid">
                   {filteredRooms.map((room) => {
                     const isFinished = room.estado === "finalizado" || statusFromDb(room.estado) === "finished";
                     const isCleaning = !isFinished && startedRooms.has(room.id_habitacion);
                     const displayStatus: RoomStatus = isFinished ? "finished" : isCleaning ? "cleaning" : "pending";
 
                     return (
-                      <article className="cleaner-room-card" key={room.id_habitacion}>
-                        <div className="cleaner-room-card-head">
+                      <article className="room-card cleaner-room-card" key={room.id_habitacion}>
+                        <div className="room-card-heading">
                           <div
                             role="button"
                             tabIndex={0}
-                            className="cleaner-room-id-box"
+                            className="room-card-heading-title"
                             onClick={() => navigate(`/app/habitaciones?room=${encodeURIComponent(room.id_habitacion)}`)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
@@ -4272,53 +4259,55 @@ export function CleanerPortal() {
                             }}
                             title={`Ir a habitación ${room.id_habitacion}`}
                           >
-                            <span className="cleaner-room-eyebrow">HABITACIÓN</span>
-                            <span className="cleaner-room-number">
+                            <p className="eyebrow">Habitación</p>
+                            <h2>
                               {room.id_habitacion}
-                              <span className="material-symbol" aria-hidden="true">open_in_new</span>
-                            </span>
+                              <span className="material-symbol room-title-hover-icon" aria-hidden="true">open_in_new</span>
+                            </h2>
                           </div>
-                          <span className={`cleaner-status-pill status-${displayStatus}`}>
+                          <span className={`status-pill status-${displayStatus}`}>
                             {statusLabels[displayStatus] || (isCleaning ? "En limpieza" : "Por atender")}
                           </span>
                         </div>
-                        <div className="cleaner-room-info-grid">
-                          <div className="cleaner-info-field">
-                            <span className="cleaner-info-label">Huésped</span>
-                            <span className="cleaner-info-value">{room.nombre_huesped || "No registrado"}</span>
+                        <dl className="details-list cleaner-room-details-list">
+                          <div>
+                            <dt>Huésped</dt>
+                            <dd className="cleaner-guest-value">{room.nombre_huesped || "No registrado"}</dd>
                           </div>
-                          <div className="cleaner-info-field">
-                            <span className="cleaner-info-label">Plan</span>
-                            <span className="cleaner-plan-badge">{formatPlanName(room.plan_limpieza)}</span>
+                          <div>
+                            <dt>Plan</dt>
+                            <dd>
+                              <span className="cleaner-plan-badge">{formatPlanName(room.plan_limpieza)}</span>
+                            </dd>
                           </div>
                           {room.detalles_limpieza && (
-                            <div className="cleaner-info-field cleaner-info-full">
-                              <span className="cleaner-info-label">Detalles / Notas</span>
-                              <span className="cleaner-info-note">{room.detalles_limpieza}</span>
+                            <div className="cleaner-details-fullrow">
+                              <dt>Detalles</dt>
+                              <dd className="cleaner-room-notes">{room.detalles_limpieza}</dd>
                             </div>
                           )}
-                        </div>
+                        </dl>
                         <div className="cleaner-card-actions">
                           {!isCleaning && !isFinished && (
                             <button
                               type="button"
-                              className="cleaner-action-btn cleaner-start-btn"
+                              className="button button-primary cleaner-action-btn"
                               disabled={busyRoom === room.id_habitacion}
                               onClick={() => void handleStart(room.id_habitacion)}
                             >
                               <span className="material-symbol" aria-hidden="true">play_arrow</span>
-                              <span>{busyRoom === room.id_habitacion ? "Iniciando…" : "Iniciar Limpieza"}</span>
+                              {busyRoom === room.id_habitacion ? "Iniciando…" : "Iniciar Limpieza"}
                             </button>
                           )}
                           {isCleaning && (
                             <button
                               type="button"
-                              className="cleaner-action-btn cleaner-finish-btn"
+                              className="button button-primary cleaner-action-btn cleaner-finish-btn"
                               disabled={busyRoom === room.id_habitacion}
                               onClick={() => void handleFinish(room.id_habitacion)}
                             >
                               <span className="material-symbol" aria-hidden="true">check_circle</span>
-                              <span>{busyRoom === room.id_habitacion ? "Finalizando…" : "Finalizar Servicio"}</span>
+                              <span>{busyRoom === room.id_habitacion ? "Finalizando…" : "Finalizar Servicio de Limpieza"}</span>
                             </button>
                           )}
                           {isFinished && (
@@ -4331,176 +4320,172 @@ export function CleanerPortal() {
                       </article>
                     );
                   })}
-                </div>
+                </section>
               )}
             </div>
           )}
 
-          {/* TAB 2: HISTORIAL Y NÓMINA */}
+          {/* TAB 2: HISTORIAL Y NÓMINA (RESPONSIVE TABLET & DESKTOP) */}
           {activeTab === "nomina" && (
             <div className="cleaner-tab-content cleaner-payroll-layout">
-              {/* Financial Hero */}
-              <div className="cleaner-payroll-hero">
-                <span className="cleaner-payroll-eyebrow">Compensación · Quincena Actual</span>
-                <div className="cleaner-payroll-amount">
-                  <span>${totalEarnings.toLocaleString("es-CO")}</span>
-                  <small>COP</small>
+              {/* Financial Hero Sidebar */}
+              <div className="cleaner-payroll-sidebar">
+                <div className="cleaner-payroll-hero">
+                  <div className="cleaner-payroll-eyebrow">Compensación y Turnos · Periodo Quincenal</div>
+                  <div className="cleaner-payroll-amount">
+                    ${totalEarnings.toLocaleString("es-CO")} <small>COP</small>
+                  </div>
+                  <div className="cleaner-payroll-grid">
+                    <div className="cleaner-payroll-col">
+                      <span>Habitaciones</span>
+                      <strong>{history.length}</strong>
+                    </div>
+                    <div className="cleaner-payroll-col">
+                      <span>Horas Est.</span>
+                      <strong>{totalHoursEstimated}h</strong>
+                    </div>
+                    <div className="cleaner-payroll-col">
+                      <span>Turnos</span>
+                      <strong>{Object.keys(historyByDate).length} días</strong>
+                    </div>
+                  </div>
                 </div>
-                <div className="cleaner-payroll-grid">
-                  <div className="cleaner-payroll-col">
-                    <span>Habitaciones</span>
-                    <strong>{history.length}</strong>
+
+                <div className="cleaner-payroll-info-card hide-on-mobile">
+                  <div className="cleaner-section-label">
+                    <span className="material-symbol">info</span>
+                    <span>Políticas de Liquidación</span>
                   </div>
-                  <div className="cleaner-payroll-col">
-                    <span>Horas Est.</span>
-                    <strong>{totalHoursEstimated}h</strong>
-                  </div>
-                  <div className="cleaner-payroll-col">
-                    <span>Días / Turnos</span>
-                    <strong>{Object.keys(historyByDate).length}</strong>
-                  </div>
+                  <p className="cleaner-payroll-info-text">
+                    La tarifa base por espacio estándar es de <strong>$18.000 COP</strong>. Los pagos se consolidan quincenalmente los días 15 y 30 de cada mes.
+                  </p>
                 </div>
               </div>
 
-              {/* Sub-switcher */}
-              <div className="cleaner-payroll-switcher" role="tablist">
-                <button
-                  type="button"
-                  className={payrollView === "rooms" ? "is-active" : ""}
-                  onClick={() => setPayrollView("rooms")}
-                >
-                  <span className="material-symbol">meeting_room</span>
-                  <span>Habitaciones ({history.length})</span>
-                </button>
-                <button
-                  type="button"
-                  className={payrollView === "shifts" ? "is-active" : ""}
-                  onClick={() => setPayrollView("shifts")}
-                >
-                  <span className="material-symbol">calendar_today</span>
-                  <span>Turnos Diarios ({Object.keys(historyByDate).length})</span>
-                </button>
-              </div>
-
-              {/* Detailed Lists */}
-              {historyLoading ? (
-                <div className="cleaner-empty-state"><p>Cargando registros de nómina…</p></div>
-              ) : history.length === 0 ? (
-                <div className="cleaner-empty-state"><p>Aún no hay habitaciones registradas en este periodo.</p></div>
-              ) : payrollView === "rooms" ? (
-                <div className="cleaner-history-list">
-                  {history.map((item) => (
-                    <article className="cleaner-history-item" key={item.id_trabajo}>
-                      <div className="cleaner-history-icon">
-                        <span className="material-symbol" aria-hidden="true">check_circle</span>
-                      </div>
-                      <div className="cleaner-history-room">
-                        <strong>Habitación {item.id_habitacion}</strong>
-                        <span>{formatPlanName(item.tipo_limpieza)}</span>
-                      </div>
-                      <div className="cleaner-history-payout">
-                        <strong>+${RATE_PER_ROOM.toLocaleString("es-CO")}</strong>
-                        <time dateTime={item.creado_en}>{formatDate(item.creado_en)}</time>
-                      </div>
-                    </article>
-                  ))}
+              {/* Detailed Lists Column */}
+              <div className="cleaner-payroll-main">
+                {/* Sub-switcher */}
+                <div className="cleaner-payroll-switcher">
+                  <button
+                    type="button"
+                    className={payrollView === "rooms" ? "is-active" : ""}
+                    onClick={() => setPayrollView("rooms")}
+                  >
+                    Habitaciones ({history.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={payrollView === "shifts" ? "is-active" : ""}
+                    onClick={() => setPayrollView("shifts")}
+                  >
+                    Turnos Diarios ({Object.keys(historyByDate).length})
+                  </button>
                 </div>
-              ) : (
-                <div className="cleaner-shifts-list">
-                  {Object.entries(historyByDate).map(([dateStr, items]) => (
-                    <div className="cleaner-shift-day-card" key={dateStr}>
-                      <div className="cleaner-shift-day-head">
-                        <span className="material-symbol">event_available</span>
-                        <div>
-                          <strong>{dateStr}</strong>
-                          <small>{items.length} habitaciones</small>
+
+                {historyLoading ? (
+                  <p className="empty-state">Cargando registros de nómina…</p>
+                ) : history.length === 0 ? (
+                  <p className="empty-state">Aún no hay habitaciones o turnos registrados en este periodo.</p>
+                ) : payrollView === "rooms" ? (
+                  <div className="cleaner-history-list cleaner-history-grid">
+                    {history.map((item) => (
+                      <article className="cleaner-history-item" key={item.id_trabajo}>
+                        <span className="material-symbol" aria-hidden="true" style={{ color: "#10b981" }}>check_circle</span>
+                        <div className="cleaner-history-room">
+                          <strong>Habitación {item.id_habitacion}</strong>
+                          <span>{formatPlanName(item.tipo_limpieza)}</span>
+                        </div>
+                        <div className="cleaner-history-payout">
+                          <strong>+${RATE_PER_ROOM.toLocaleString("es-CO")} COP</strong>
+                          <time dateTime={item.creado_en}>{formatDate(item.creado_en)}</time>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="cleaner-shifts-list cleaner-shifts-grid">
+                    {Object.entries(historyByDate).map(([dateStr, items]) => (
+                      <div className="cleaner-shift-day-card" key={dateStr}>
+                        <div className="cleaner-shift-day-head">
+                          <span className="material-symbol">event_available</span>
+                          <div>
+                            <strong>{dateStr}</strong>
+                            <small>{items.length} habitaciones limpiadas</small>
+                          </div>
+                        </div>
+                        <div className="cleaner-shift-day-amount">
+                          +${(items.length * RATE_PER_ROOM).toLocaleString("es-CO")} COP
                         </div>
                       </div>
-                      <div className="cleaner-shift-day-amount">
-                        +${(items.length * RATE_PER_ROOM).toLocaleString("es-CO")} COP
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Policy note */}
-              <div className="cleaner-payroll-policy">
-                <span className="material-symbol">info</span>
-                <span>Tarifa fija de <strong>$18.000 COP</strong> por habitación. Liquidación quincenal los días 15 y 30.</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* TAB 3: MI PERFIL */}
+          {/* TAB 3: MI PERFIL (RESPONSIVE TABLET & DESKTOP) */}
           {activeTab === "perfil" && (
             <div className="cleaner-tab-content cleaner-profile-layout">
-              {/* Profile Hero */}
-              <div className="cleaner-profile-hero">
-                <ModernAvatar3D name={profile.nombre} size={54} className="cleaner-large-avatar" />
-                <h2 className="cleaner-profile-name">{profile.nombre}</h2>
-                <p className="cleaner-profile-role">Personal de Aseo y Camarera</p>
-                <div className="cleaner-profile-beacon">
-                  <span className="cleaner-pulse-beacon" />
-                  <span>Turno Activo en Sede Central</span>
+              {/* Profile Sidebar */}
+              <div className="cleaner-profile-sidebar">
+                <div className="cleaner-profile-hero">
+                  <ModernAvatar3D name={profile.nombre} size={52} className="cleaner-large-avatar" />
+                  <h2 className="cleaner-profile-name">{profile.nombre}</h2>
+                  <p className="cleaner-profile-role">Personal de Aseo y Camarera</p>
+                  <div className="cleaner-profile-beacon">
+                    <span className="cleaner-pulse-beacon" />
+                    Turno Activo en Sede Central
+                  </div>
                 </div>
+
+                {/* Logout Button */}
+                <button
+                  type="button"
+                  className="button cleaner-logout-full-btn"
+                  onClick={() => void signOut()}
+                  disabled={loading}
+                >
+                  <span className="material-symbol">logout</span>
+                  <span>Cerrar Sesión</span>
+                </button>
               </div>
 
-              {/* 3D Avatar Style Picker */}
-              <div className="cleaner-profile-section-card">
-                <div className="cleaner-section-label">
-                  <span className="material-symbol">palette</span>
-                  <span>Estilo de Avatar 3D</span>
+              {/* Profile Main Content */}
+              <div className="cleaner-profile-main">
+                {/* 3D Avatar Style Picker */}
+                <div className="cleaner-avatar-picker-section">
+                  <div className="cleaner-section-label">
+                    <span className="material-symbol">palette</span>
+                    <span>Estilo de Avatar</span>
+                  </div>
+                  <Avatar3DStylePicker variant="minimal" />
                 </div>
-                <Avatar3DStylePicker variant="minimal" />
-              </div>
 
-              {/* Personal Information (Read-only) */}
-              <div className="cleaner-profile-section-card">
-                <div className="cleaner-section-label">
-                  <span className="material-symbol">badge</span>
-                  <span>Información Laboral</span>
-                </div>
-                <div className="cleaner-detail-row">
-                  <span className="cleaner-detail-key">
-                    <span className="material-symbol">person</span>
-                    Nombre
-                  </span>
-                  <strong className="cleaner-detail-val">{profile.nombre}</strong>
-                </div>
-                <div className="cleaner-detail-row">
-                  <span className="cleaner-detail-key">
-                    <span className="material-symbol">mail</span>
-                    Correo
-                  </span>
-                  <strong className="cleaner-detail-val">{email || "Cuenta de aseo"}</strong>
-                </div>
-                <div className="cleaner-detail-row">
-                  <span className="cleaner-detail-key">
-                    <span className="material-symbol">fingerprint</span>
-                    ID Empleado
-                  </span>
-                  <strong className="cleaner-detail-val font-mono">EMP-{profile.id_personal.slice(0, 8).toUpperCase()}</strong>
-                </div>
-                <div className="cleaner-detail-row">
-                  <span className="cleaner-detail-key">
-                    <span className="material-symbol">verified</span>
-                    Estado
-                  </span>
-                  <strong className="cleaner-detail-val text-emerald">Activo y Autorizado</strong>
+                {/* Personal Information (Read-only) */}
+                <div className="cleaner-profile-details">
+                  <div className="cleaner-section-label">
+                    <span className="material-symbol">badge</span>
+                    <span>Información Laboral</span>
+                  </div>
+                  <div className="cleaner-detail-row">
+                    <span>Nombre</span>
+                    <strong>{profile.nombre}</strong>
+                  </div>
+                  <div className="cleaner-detail-row">
+                    <span>Correo / Acceso</span>
+                    <strong>{email || "Cuenta de aseo"}</strong>
+                  </div>
+                  <div className="cleaner-detail-row">
+                    <span>Código Empleado</span>
+                    <strong style={{ fontFamily: "monospace" }}>EMP-{profile.id_personal.slice(0, 8).toUpperCase()}</strong>
+                  </div>
+                  <div className="cleaner-detail-row">
+                    <span>Estado</span>
+                    <strong style={{ color: "#10b981" }}>Activo y Autorizado</strong>
+                  </div>
                 </div>
               </div>
-
-              {/* Logout Button */}
-              <button
-                type="button"
-                className="cleaner-logout-full-btn"
-                onClick={() => void signOut()}
-                disabled={loading}
-              >
-                <span className="material-symbol">logout</span>
-                <span>Cerrar Sesión</span>
-              </button>
             </div>
           )}
 
