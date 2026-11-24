@@ -21,12 +21,12 @@ import { ModernAvatar3D } from "./components/ModernAvatar3D";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 
 const sections = [
-  { path: "/app/inicio", label: "Inicio", icon: "space_dashboard" },
-  { path: "/app/habitaciones", label: "Habitaciones", icon: "bed" },
-  { path: "/app/limpiezas", label: "Limpiezas", icon: "cleaning_services" },
-  { path: "/app/historial", label: "Historial", icon: "history" },
-  { path: "/app/personal", label: "Personal", icon: "groups" },
-  { path: "/app/aseo", label: "Portal de aseo", icon: "cleaning_services" },
+  { path: "/app/inicio", label: "Inicio", shortLabel: "Inicio", icon: "space_dashboard" },
+  { path: "/app/habitaciones", label: "Habitaciones", shortLabel: "Cuartos", icon: "bed" },
+  { path: "/app/limpiezas", label: "Limpiezas", shortLabel: "Aseo", icon: "cleaning_services" },
+  { path: "/app/historial", label: "Historial", shortLabel: "Historial", icon: "history" },
+  { path: "/app/personal", label: "Personal", shortLabel: "Staff", icon: "groups" },
+  { path: "/app/aseo", label: "Portal de aseo", shortLabel: "Portal", icon: "badge" },
 ];
 
 function ConfigurationRequired() {
@@ -138,6 +138,9 @@ function AdminApplication() {
           behavior: "instant" as ScrollBehavior,
         });
         isNavigatingRef.current = false;
+        if (mainRef.current) {
+          mainRef.current.style.minHeight = "";
+        }
       });
 
       return () => cancelAnimationFrame(raf2);
@@ -196,13 +199,11 @@ function AdminApplication() {
                 onClick={handleNavClick}
               >
                 <span className="material-symbol" aria-hidden="true">{section.icon}</span>
-                <span>{section.label}</span>
+                <span className="nav-label-desktop">{section.label}</span>
+                <span className="nav-label-mobile">{section.shortLabel}</span>
               </NavLink>
             ))}
           </nav>
-          <div className="sidebar-theme-wrap">
-            <ThemeSwitcher variant="sidebar" />
-          </div>
           <div className="sidebar-account">
             <ModernAvatar3D
               name={session.user.email ?? "Admin"}
@@ -213,32 +214,52 @@ function AdminApplication() {
               <small>Sesión activa</small>
               <strong title={session.user.email}>{session.user.email}</strong>
             </span>
-            <button
-              className="topbar-logout"
-              aria-label="Cerrar sesión"
-              title="Cerrar sesión"
-              onClick={() => void signOut()}
-            >
-              <span className="material-symbol" aria-hidden="true">logout</span>
-            </button>
+            <div className="account-actions">
+              <ThemeSwitcher variant="sidebar" />
+              <button
+                className="topbar-logout"
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
+                onClick={() => void signOut()}
+              >
+                <span className="material-symbol" aria-hidden="true">logout</span>
+              </button>
+            </div>
           </div>
         </aside>
         <div className="workspace">
           <header className="workspace-header">
             <div className="workspace-context">
-              <span className="workspace-live"><span aria-hidden="true" /> Operación en vivo</span>
+              <span className="workspace-live">
+                <span aria-hidden="true" />
+                <strong className="workspace-brand-name">Freshly</strong>
+                <span className="workspace-live-text">Operación en vivo</span>
+              </span>
               <span className="workspace-divider" aria-hidden="true">/</span>
-              <span>{activeSection?.label ?? "Inicio"}</span>
+              <span className="workspace-section-title">{activeSection?.label ?? "Inicio"}</span>
             </div>
             <div className="workspace-header-actions">
               <span className="workspace-date">
                 <span className="material-symbol" aria-hidden="true">calendar_today</span>
-                {new Intl.DateTimeFormat("es", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                }).format(new Date())}
+                <span className="workspace-date-text">
+                  {new Intl.DateTimeFormat("es", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  }).format(new Date())}
+                </span>
               </span>
+              <div className="workspace-header-user-actions">
+                <ThemeSwitcher variant="sidebar" />
+                <button
+                  className="topbar-logout workspace-logout-btn"
+                  aria-label="Cerrar sesión"
+                  title="Cerrar sesión"
+                  onClick={() => void signOut()}
+                >
+                  <span className="material-symbol" aria-hidden="true">logout</span>
+                </button>
+              </div>
             </div>
           </header>
           <main className="main-content" ref={mainRef}>

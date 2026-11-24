@@ -135,6 +135,24 @@ body[data-theme="amber"] {
    -------------------------------------------------------------------------- */
 
 /* Body y contenedores principales */
+:root {
+  --app-zoom: 0.9;
+  --app-viewport-h: calc(100dvh / var(--app-zoom));
+  --app-viewport-vh: calc(100vh / var(--app-zoom));
+}
+
+html {
+  zoom: var(--app-zoom);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --app-zoom: 0.95;
+    --app-viewport-h: calc(100dvh / 0.95);
+    --app-viewport-vh: calc(100vh / 0.95);
+  }
+}
+
 html,
 body {
   background-color: var(--th-bg);
@@ -225,6 +243,120 @@ body {
   border-color: var(--th-sidebar-border) !important;
 }
 
+@media (min-width: 1024px) {
+  .sidebar {
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .sidebar {
+    position: fixed !important;
+    inset: auto 0 0 !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    max-height: 58px !important;
+    width: 100% !important;
+    z-index: 80 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    padding: 3px 6px calc(5px + env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    background: var(--th-sidebar-bg) !important;
+    border-top: 1px solid var(--th-sidebar-border, rgba(255, 255, 255, 0.08)) !important;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18) !important;
+  }
+
+  .sidebar > .brand,
+  .sidebar .brand,
+  .sidebar .navigation-label,
+  .sidebar .sidebar-account,
+  .sidebar-account {
+    display: none !important;
+  }
+
+  .sidebar .navigation {
+    display: flex !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    gap: 2px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+
+  .sidebar .navigation::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .sidebar .nav-link {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 3px 2px 2px !important;
+    gap: 1px !important;
+    border-radius: 12px !important;
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    color: var(--th-sidebar-text, #94a3b8) !important;
+    white-space: nowrap !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative !important;
+  }
+
+  .sidebar .nav-link:active {
+    transform: scale(0.92) !important;
+  }
+
+  .sidebar .nav-link .material-symbol {
+    font-size: 21px !important;
+    transition: transform 0.18s ease !important;
+  }
+
+  .sidebar .nav-link-active {
+    color: var(--th-accent, #e2cca0) !important;
+    font-weight: 700 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .sidebar .nav-link-active .material-symbol {
+    transform: translateY(-1px) !important;
+    color: var(--th-accent, #e2cca0) !important;
+  }
+
+  .sidebar .nav-link-active::after {
+    content: "";
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--th-accent, #e2cca0);
+    margin-top: 1px;
+    box-shadow: 0 0 8px var(--th-accent, #e2cca0);
+  }
+}
+
 .sidebar .brand {
   color: var(--th-sidebar-text) !important;
 }
@@ -251,6 +383,14 @@ body {
 
 .sidebar .nav-link {
   color: var(--th-sidebar-text) !important;
+}
+
+.nav-label-desktop {
+  display: inline;
+}
+
+.nav-label-mobile {
+  display: none;
 }
 
 .sidebar .nav-link:hover {
@@ -1229,18 +1369,44 @@ html[data-theme="amber"] .room-tag-double-mini {
    Sutil, discreto y sin sobrecargar el encabezado superior
    -------------------------------------------------------------------------- */
 
-.sidebar-theme-wrap {
-  margin-top: auto;
-  margin-bottom: 10px;
-  width: 100%;
+@media (min-width: 1024px) {
+  .sidebar .sidebar-account,
+  .sidebar-account {
+    margin-top: auto !important;
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px 2px 0;
+    border-top: 1px solid var(--th-sidebar-border, rgba(255, 255, 255, 0.1)) !important;
+  }
 }
 
-.sidebar .sidebar-account {
-  margin-top: 0 !important;
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.account-actions .theme-dial-btn,
+.sidebar .topbar-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 9px;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
 }
 
 .variant-sidebar {
-  width: 100%;
+  width: auto;
 }
 
 .variant-sidebar .theme-segmented-pill {
@@ -1289,47 +1455,35 @@ html[data-theme="light"] .variant-sidebar .theme-capsule-btn {
   transform-origin: bottom left;
 }
 
+.variant-sidebar {
+  width: auto;
+  display: inline-flex;
+}
+
 .variant-sidebar .theme-minimal-dial {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  width: 100%;
+  justify-content: center;
+  width: auto;
   box-sizing: border-box;
 }
 
 .variant-sidebar .theme-dial-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
   border-radius: 10px;
-  color: inherit;
-  cursor: pointer;
-  font-size: 11.5px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.variant-sidebar .theme-dial-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-html[data-theme="light"] .variant-sidebar .theme-dial-btn {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.08);
-  color: #244e63;
-}
-
-html[data-theme="light"] .variant-sidebar .theme-dial-btn:hover {
-  background: rgba(0, 0, 0, 0.07);
 }
 
 @media (max-width: 1023px) {
-  .sidebar-theme-wrap {
-    display: none;
+  .sidebar .sidebar-account,
+  .sidebar-account {
+    display: none !important;
   }
 }
 
@@ -1675,70 +1829,134 @@ html[data-theme="dark"] .theme-segment-btn:hover {
 }
 
 /* ==========================================================================
-   DISEÑO 3: MICRO-INTERRUPTOR DISCRETO (.theme-minimal-dial)
+   DISEÑO 3: BOTÓN DE TEMA ULTRA COMPACTO, DISCRETO Y ANIMADO (.theme-minimal-dial)
    ========================================================================== */
+
+@keyframes themeDialIconPop {
+  0% {
+    transform: rotate(-140deg) scale(0.2);
+    opacity: 0;
+    filter: blur(1.5px);
+  }
+  55% {
+    transform: rotate(22deg) scale(1.22);
+    opacity: 1;
+    filter: blur(0);
+  }
+  78% {
+    transform: rotate(-8deg) scale(0.96);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
 
 .theme-minimal-dial {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: var(--th-surface);
-  border: 1px solid var(--th-border);
-  border-radius: 999px;
-  padding: 3px 6px 3px 4px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
-}
-
-.theme-minimal-dial:hover {
-  border-color: var(--th-border-focus);
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  line-height: 1;
 }
 
 .theme-dial-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: 0;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  margin: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--th-accent, #c27803);
   cursor: pointer;
-  padding: 3px 6px;
-  border-radius: 999px;
-  color: var(--th-text-main);
-  transition: all 0.18s ease;
+  outline: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.25s ease, color 0.3s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
 }
 
-.dial-icon {
-  font-size: 18px;
-  color: var(--th-accent);
-  transition: transform 0.3s ease;
+.theme-dial-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
 }
 
-.theme-dial-btn:hover .dial-icon {
-  transform: rotate(25deg) scale(1.1);
+.theme-dial-btn:active {
+  transform: scale(0.9);
 }
 
-.dial-tooltip {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--th-text-secondary);
+.theme-dial-btn:focus-visible {
+  border-color: var(--th-accent);
+  box-shadow: 0 0 0 2px var(--th-focus-ring);
 }
 
-.theme-dial-more-btn {
+.theme-dial-btn .dial-icon {
+  font-size: 19px;
+  line-height: 1;
+  color: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  background: transparent;
-  border: 0;
-  border-radius: 50%;
-  color: var(--th-text-muted);
-  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
 }
 
-.theme-dial-more-btn:hover {
-  color: var(--th-text-main);
-  background: var(--th-surface-subtle);
+.theme-dial-btn .dial-icon.animated-icon {
+  animation: themeDialIconPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.theme-dial-btn:hover .dial-icon {
+  transform: rotate(25deg) scale(1.15);
+}
+
+/* Modos de tema específicos para el botón discreto */
+html[data-theme="light"] .theme-dial-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #2f6b52;
+}
+
+html[data-theme="light"] .theme-dial-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.18);
+  color: #174731;
+}
+
+html[data-theme="amber"] .theme-dial-btn {
+  background: rgba(194, 120, 3, 0.08);
+  border-color: rgba(194, 120, 3, 0.18);
+  color: #c27803;
+}
+
+html[data-theme="amber"] .theme-dial-btn:hover {
+  background: rgba(194, 120, 3, 0.16);
+  border-color: rgba(194, 120, 3, 0.32);
+  color: #945800;
+}
+
+html[data-theme="dark"] .theme-dial-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #a5b4fc;
+}
+
+html[data-theme="dark"] .theme-dial-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #c7d2fe;
 }
 
 /* ==========================================================================
@@ -2250,4 +2468,1727 @@ html[data-theme="amber"] .history-cat-btn.active {
   background: #d97706;
   border-color: #d97706;
   color: #ffffff;
+}
+
+/* ==========================================================================
+   ROOM EDITOR CARD - THEME ADAPTATION
+   Garantiza que .room-editor-card y .room-editor-card.is-disabled cambien
+   de color dinámicamente con los 3 temas (Luz, Obsidian, Champagne).
+   ========================================================================== */
+
+/* Reglas base con variables del tema activo */
+html .room-editor-card,
+html .room-editor-card.is-disabled {
+  background: var(--th-surface) !important;
+  border-color: var(--th-border) !important;
+  border-top-color: var(--th-accent) !important;
+  box-shadow: var(--th-card-shadow) !important;
+  color: var(--th-text-main) !important;
+}
+
+html .room-editor-card .room-editor-heading,
+html .room-editor-card.is-disabled .room-editor-heading {
+  background: linear-gradient(110deg, var(--th-surface-subtle) 0%, var(--th-surface) 100%) !important;
+  border-bottom-color: var(--th-border) !important;
+}
+
+html .room-editor-card .room-editor-icon,
+html .room-editor-card.is-disabled .room-editor-icon {
+  background: var(--th-surface-subtle) !important;
+  border-color: var(--th-border) !important;
+  color: var(--th-accent) !important;
+  box-shadow: none !important;
+}
+
+html .room-editor-card .room-editor-heading .eyebrow,
+html .room-editor-card.is-disabled .room-editor-heading .eyebrow {
+  color: var(--th-text-muted) !important;
+}
+
+html .room-editor-card .room-editor-heading h2,
+html .room-editor-card.is-disabled .room-editor-heading h2 {
+  color: var(--th-text-main) !important;
+}
+
+html .room-editor-card .room-editor-form,
+html .room-editor-card.is-disabled .room-editor-form {
+  background: var(--th-surface) !important;
+}
+
+html .room-editor-card .room-editor-form > label,
+html .room-editor-card.is-disabled .room-editor-form > label {
+  color: var(--th-text-secondary) !important;
+}
+
+html .room-editor-card .room-editor-form input,
+html .room-editor-card .room-editor-form select,
+html .room-editor-card .room-editor-form textarea {
+  background: var(--th-input-bg) !important;
+  border-color: var(--th-input-border) !important;
+  color: var(--th-text-main) !important;
+}
+
+html .room-editor-card.is-disabled .room-editor-form input:disabled,
+html .room-editor-card.is-disabled .room-editor-form select:disabled,
+html .room-editor-card.is-disabled .room-editor-form textarea:disabled {
+  background: var(--th-surface-subtle) !important;
+  border-color: var(--th-border) !important;
+  color: var(--th-text-muted) !important;
+  cursor: not-allowed !important;
+  opacity: 0.85;
+}
+
+/* --- TEMA 2: OBSIDIAN NOIR (Modo Oscuro) --- */
+html[data-theme="dark"] .room-editor-card,
+html[data-theme="dark"] .room-editor-card.is-disabled {
+  background: #151824 !important;
+  border-color: #23293d !important;
+  border-top-color: #6366f1 !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .room-editor-card.is-disabled {
+  border-top-color: #4338ca !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-heading,
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-heading {
+  background: linear-gradient(110deg, #181d2e 0%, #121522 100%) !important;
+  border-bottom-color: #23293d !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-icon,
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-icon {
+  background: #1c2132 !important;
+  border-color: #2a324b !important;
+  color: #818cf8 !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-heading .eyebrow,
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-heading .eyebrow {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-heading h2,
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-heading h2 {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-form,
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-form {
+  background: #151824 !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-form > label,
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-form > label {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-form input:disabled,
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-form select:disabled,
+html[data-theme="dark"] .room-editor-card.is-disabled .room-editor-form textarea:disabled {
+  background: #10131d !important;
+  border-color: #23293d !important;
+  color: #94a3b8 !important;
+  opacity: 0.9;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-edit-btn {
+  background: linear-gradient(115deg, #4f46e5, #4338ca) !important;
+  border-color: #6366f1 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-edit-btn:hover {
+  background: linear-gradient(115deg, #6366f1, #4f46e5) !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-cancel-btn {
+  background: #1c2132 !important;
+  border-color: #2d354e !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .room-editor-card .room-editor-cancel-btn:hover:not(:disabled) {
+  background: #252b40 !important;
+  border-color: #3b4666 !important;
+  color: #ffffff !important;
+}
+
+/* --- TEMA 3: CHAMPAGNE CÁLIDO (Modo Ámbar) --- */
+html[data-theme="amber"] .room-editor-card,
+html[data-theme="amber"] .room-editor-card.is-disabled {
+  background: #fdfbf7 !important;
+  border-color: #e3d7c5 !important;
+  border-top-color: #b45309 !important;
+  box-shadow: 0 6px 22px rgba(78, 52, 23, 0.06) !important;
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .room-editor-card.is-disabled {
+  border-top-color: #c99355 !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-heading,
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-heading {
+  background: linear-gradient(110deg, #f7efe2 0%, #ede3d1 100%) !important;
+  border-bottom-color: #e3d7c5 !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-icon,
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-icon {
+  background: #f2ece0 !important;
+  border-color: #e0d0bb !important;
+  color: #b45309 !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-heading .eyebrow,
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-heading .eyebrow {
+  color: #8c7968 !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-heading h2,
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-heading h2 {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-form,
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-form {
+  background: #fdfbf7 !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-form > label,
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-form > label {
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-form input:disabled,
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-form select:disabled,
+html[data-theme="amber"] .room-editor-card.is-disabled .room-editor-form textarea:disabled {
+  background: #f5efe4 !important;
+  border-color: #e3d7c5 !important;
+  color: #5c4736 !important;
+  opacity: 0.9;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-edit-btn {
+  background: linear-gradient(115deg, #b45309, #92400e) !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(180, 83, 9, 0.25) !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-edit-btn:hover {
+  background: linear-gradient(115deg, #d97706, #b45309) !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-cancel-btn {
+  background: #fdfbf7 !important;
+  border-color: #d8ccb8 !important;
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .room-editor-card .room-editor-cancel-btn:hover:not(:disabled) {
+  background: #f5efe4 !important;
+  border-color: #c4b59f !important;
+  color: #2a2119 !important;
+}
+
+/* ==========================================================================
+   CLEANING PAGE (/app/limpiezas) & SEARCH INPUTS - THEME ADAPTATION
+   ========================================================================== */
+
+/* Input de búsqueda en Limpiezas, Habitaciones e Historial */
+html .room-selection-controls .search-input-wrap input,
+html .rooms-page .room-selection-controls .search-input-wrap input,
+html .cleaning-page .room-selection-controls .search-input-wrap input,
+html .history-page .room-selection-controls .search-input-wrap input,
+html .search-input-wrap input {
+  background: var(--th-input-bg) !important;
+  border-color: var(--th-input-border) !important;
+  color: var(--th-text-main) !important;
+}
+
+html .room-selection-controls .search-input-wrap input::placeholder,
+html .cleaning-page .search-input-wrap input::placeholder,
+html .search-input-wrap input::placeholder {
+  color: var(--th-text-muted) !important;
+}
+
+html .room-selection-controls .search-input-wrap .material-symbol,
+html .cleaning-page .search-input-wrap .material-symbol,
+html .search-input-wrap .material-symbol {
+  color: var(--th-text-muted) !important;
+}
+
+html .search-clear-button {
+  color: var(--th-text-muted) !important;
+}
+
+html .search-clear-button:hover {
+  color: var(--th-text-main) !important;
+}
+
+html .room-results-count {
+  color: var(--th-text-muted) !important;
+}
+
+/* Tarjetas KPI de Limpiezas (Base) */
+html .cleaning-filter-card {
+  background: var(--th-surface) !important;
+  border-color: var(--th-border) !important;
+  box-shadow: var(--th-card-shadow) !important;
+  color: var(--th-text-main) !important;
+}
+
+html .cleaning-filter-card .cleaning-filter-count {
+  color: var(--th-text-main) !important;
+}
+
+html .cleaning-filter-card .cleaning-filter-label {
+  color: var(--th-text-secondary) !important;
+}
+
+html .cleaning-filter-card .cleaning-filter-icon {
+  background: var(--th-surface-subtle) !important;
+  color: var(--th-text-muted) !important;
+}
+
+html .cleaning-filter-card:hover {
+  border-color: var(--th-border-focus) !important;
+}
+
+/* --- TEMA 2: OBSIDIAN NOIR (Dark Mode) - Limpiezas --- */
+html[data-theme="dark"] .cleaning-filter-card {
+  background: #151824 !important;
+  border-color: #23293d !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="dark"] .cleaning-filter-card:hover {
+  background: #1a1e2f !important;
+  border-color: #3b4566 !important;
+}
+
+html[data-theme="dark"] .cleaning-filter-card .cleaning-filter-count {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .cleaning-filter-card .cleaning-filter-label {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .cleaning-filter-card .cleaning-filter-icon {
+  background: #1f2538 !important;
+  color: #a5b4fc !important;
+}
+
+/* Dark Mode - Estados activos por KPI */
+html[data-theme="dark"] .cleaning-filter-card.filter-all.active {
+  border-color: #818cf8 !important;
+  background: linear-gradient(145deg, #181d2e, #131726) !important;
+  box-shadow: 0 6px 20px -2px rgba(99, 102, 241, 0.3) !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-all.active .cleaning-filter-icon {
+  background: rgba(99, 102, 241, 0.25) !important;
+  color: #a5b4fc !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-all.active .cleaning-filter-label {
+  color: #c7d2fe !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-all.active .cleaning-filter-indicator {
+  background: #818cf8 !important;
+}
+
+html[data-theme="dark"] .cleaning-filter-card.filter-pending.active {
+  border-color: #f59e0b !important;
+  background: linear-gradient(145deg, #231b12, #18140c) !important;
+  box-shadow: 0 6px 20px -2px rgba(245, 158, 11, 0.25) !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-pending.active .cleaning-filter-icon {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fbbf24 !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-pending.active .cleaning-filter-label {
+  color: #fde68a !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-pending.active .cleaning-filter-indicator {
+  background: #f59e0b !important;
+}
+
+html[data-theme="dark"] .cleaning-filter-card.filter-cleaning.active {
+  border-color: #a855f7 !important;
+  background: linear-gradient(145deg, #20152e, #160f22) !important;
+  box-shadow: 0 6px 20px -2px rgba(168, 85, 247, 0.25) !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-cleaning.active .cleaning-filter-icon {
+  background: rgba(168, 85, 247, 0.2) !important;
+  color: #c084fc !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-cleaning.active .cleaning-filter-label {
+  color: #e9d5ff !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-cleaning.active .cleaning-filter-indicator {
+  background: #a855f7 !important;
+}
+
+html[data-theme="dark"] .cleaning-filter-card.filter-unassigned.active {
+  border-color: #f43f5e !important;
+  background: linear-gradient(145deg, #261218, #1a0b10) !important;
+  box-shadow: 0 6px 20px -2px rgba(244, 63, 94, 0.25) !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-unassigned.active .cleaning-filter-icon {
+  background: rgba(244, 63, 94, 0.2) !important;
+  color: #fb7185 !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-unassigned.active .cleaning-filter-label {
+  color: #fecdd3 !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-unassigned.active .cleaning-filter-indicator {
+  background: #f43f5e !important;
+}
+
+html[data-theme="dark"] .cleaning-filter-card.filter-finished.active {
+  border-color: #10b981 !important;
+  background: linear-gradient(145deg, #10241b, #0a1a12) !important;
+  box-shadow: 0 6px 20px -2px rgba(16, 185, 129, 0.25) !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-finished.active .cleaning-filter-icon {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-finished.active .cleaning-filter-label {
+  color: #a7f3d0 !important;
+}
+html[data-theme="dark"] .cleaning-filter-card.filter-finished.active .cleaning-filter-indicator {
+  background: #10b981 !important;
+}
+
+/* Dark Mode - Input de búsqueda */
+html[data-theme="dark"] .room-selection-controls .search-input-wrap input,
+html[data-theme="dark"] .rooms-page .room-selection-controls .search-input-wrap input,
+html[data-theme="dark"] .cleaning-page .room-selection-controls .search-input-wrap input,
+html[data-theme="dark"] .history-page .room-selection-controls .search-input-wrap input,
+html[data-theme="dark"] .search-input-wrap input {
+  background: #111420 !important;
+  border-color: #23293d !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .room-selection-controls .search-input-wrap input:focus,
+html[data-theme="dark"] .cleaning-page .room-selection-controls .search-input-wrap input:focus,
+html[data-theme="dark"] .search-input-wrap input:focus {
+  border-color: #818cf8 !important;
+  outline-color: rgba(129, 140, 248, 0.2) !important;
+  background: #151824 !important;
+}
+
+/* --- TEMA 3: CHAMPAGNE CÁLIDO (Amber Mode) - Limpiezas --- */
+html[data-theme="amber"] .cleaning-filter-card {
+  background: #fdfbf7 !important;
+  border-color: #e3d7c5 !important;
+  box-shadow: 0 4px 14px rgba(78, 52, 23, 0.05) !important;
+}
+
+html[data-theme="amber"] .cleaning-filter-card:hover {
+  background: #f9f4ea !important;
+  border-color: #c9b8a0 !important;
+}
+
+html[data-theme="amber"] .cleaning-filter-card .cleaning-filter-count {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .cleaning-filter-card .cleaning-filter-label {
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .cleaning-filter-card .cleaning-filter-icon {
+  background: #f2ece0 !important;
+  color: #8c7968 !important;
+}
+
+/* Amber Mode - Estados activos por KPI */
+html[data-theme="amber"] .cleaning-filter-card.filter-all.active {
+  border-color: #b45309 !important;
+  background: linear-gradient(145deg, #fdfbf7, #faede0) !important;
+  box-shadow: 0 6px 18px -2px rgba(180, 83, 9, 0.2) !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-all.active .cleaning-filter-icon {
+  background: rgba(180, 83, 9, 0.15) !important;
+  color: #92400e !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-all.active .cleaning-filter-label {
+  color: #78350f !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-all.active .cleaning-filter-indicator {
+  background: #b45309 !important;
+}
+
+html[data-theme="amber"] .cleaning-filter-card.filter-pending.active {
+  border-color: #d97706 !important;
+  background: linear-gradient(145deg, #fdfbf7, #fef3c7) !important;
+  box-shadow: 0 6px 18px -2px rgba(217, 119, 6, 0.2) !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-pending.active .cleaning-filter-icon {
+  background: rgba(217, 119, 6, 0.15) !important;
+  color: #b45309 !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-pending.active .cleaning-filter-label {
+  color: #78350f !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-pending.active .cleaning-filter-indicator {
+  background: #d97706 !important;
+}
+
+html[data-theme="amber"] .cleaning-filter-card.filter-cleaning.active {
+  border-color: #c27803 !important;
+  background: linear-gradient(145deg, #fdfbf7, #faedd8) !important;
+  box-shadow: 0 6px 18px -2px rgba(194, 120, 3, 0.2) !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-cleaning.active .cleaning-filter-icon {
+  background: rgba(194, 120, 3, 0.15) !important;
+  color: #a15c00 !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-cleaning.active .cleaning-filter-label {
+  color: #6d3e00 !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-cleaning.active .cleaning-filter-indicator {
+  background: #c27803 !important;
+}
+
+html[data-theme="amber"] .cleaning-filter-card.filter-unassigned.active {
+  border-color: #dc2626 !important;
+  background: linear-gradient(145deg, #fdfbf7, #fee2e2) !important;
+  box-shadow: 0 6px 18px -2px rgba(220, 38, 38, 0.2) !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-unassigned.active .cleaning-filter-icon {
+  background: rgba(220, 38, 38, 0.12) !important;
+  color: #b91c1c !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-unassigned.active .cleaning-filter-label {
+  color: #7f1d1d !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-unassigned.active .cleaning-filter-indicator {
+  background: #dc2626 !important;
+}
+
+html[data-theme="amber"] .cleaning-filter-card.filter-finished.active {
+  border-color: #059669 !important;
+  background: linear-gradient(145deg, #fdfbf7, #d1fae5) !important;
+  box-shadow: 0 6px 18px -2px rgba(5, 150, 105, 0.2) !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-finished.active .cleaning-filter-icon {
+  background: rgba(5, 150, 105, 0.15) !important;
+  color: #047857 !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-finished.active .cleaning-filter-label {
+  color: #064e3b !important;
+}
+html[data-theme="amber"] .cleaning-filter-card.filter-finished.active .cleaning-filter-indicator {
+  background: #059669 !important;
+}
+
+/* Amber Mode - Input de búsqueda */
+html[data-theme="amber"] .room-selection-controls .search-input-wrap input,
+html[data-theme="amber"] .rooms-page .room-selection-controls .search-input-wrap input,
+html[data-theme="amber"] .cleaning-page .room-selection-controls .search-input-wrap input,
+html[data-theme="amber"] .history-page .room-selection-controls .search-input-wrap input,
+html[data-theme="amber"] .search-input-wrap input {
+  background: #fcf9f2 !important;
+  border-color: #d8ccb8 !important;
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .room-selection-controls .search-input-wrap input:focus,
+html[data-theme="amber"] .cleaning-page .room-selection-controls .search-input-wrap input:focus,
+html[data-theme="amber"] .search-input-wrap input:focus {
+  border-color: #b45309 !important;
+  outline-color: rgba(180, 83, 9, 0.2) !important;
+  background: #ffffff !important;
+}
+
+
+/* ==========================================================================
+   MODALES THEME-ADAPTIVE: .matrix-modal-dialog & .minimal-modal-dialog
+   Adapta los diálogos modales (Eliminar sala, Nuevo espacio/piso, Personal,
+   Contraseña y Matrix quick-actions) a los 3 temas visuales.
+   ========================================================================== */
+
+/* 1. BASE Y VARIABLES GLOBALES */
+.matrix-modal-backdrop {
+  background: var(--th-modal-overlay) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.matrix-modal-dialog,
+.minimal-modal-dialog {
+  background: var(--th-surface) !important;
+  border: 1px solid var(--th-border) !important;
+  color: var(--th-text-main) !important;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.matrix-modal-header,
+.minimal-modal-header {
+  border-bottom: 1px solid var(--th-border-subtle) !important;
+}
+
+.matrix-modal-header h2,
+.matrix-modal-header h3,
+.matrix-modal-title-group h2,
+.matrix-modal-title-group h3,
+.minimal-modal-title h2,
+#delete-room-title,
+#create-staff-modal-title,
+#admin-pwd-modal-title {
+  color: var(--th-text-main) !important;
+}
+
+.matrix-modal-header .page-description,
+.matrix-modal-title-group .page-description {
+  color: var(--th-text-muted) !important;
+}
+
+.matrix-modal-close {
+  background: var(--th-surface-subtle) !important;
+  border: 1px solid var(--th-border) !important;
+  color: var(--th-text-secondary) !important;
+}
+
+.matrix-modal-close:hover {
+  background: var(--th-surface-raised) !important;
+  color: var(--th-text-main) !important;
+  border-color: var(--th-border-focus) !important;
+}
+
+.matrix-modal-details-grid {
+  background: var(--th-surface-subtle) !important;
+  border: 1px solid var(--th-border-subtle) !important;
+}
+
+.matrix-detail-label {
+  color: var(--th-text-muted) !important;
+}
+
+.matrix-detail-value {
+  color: var(--th-text-main) !important;
+}
+
+.matrix-modal-dialog p,
+.minimal-modal-dialog p,
+.delete-staff-body p {
+  color: var(--th-text-secondary) !important;
+}
+
+.matrix-modal-dialog label span,
+.delete-staff-body label span,
+.minimal-field label,
+.minimal-structures-wrap label {
+  color: var(--th-text-secondary) !important;
+}
+
+.matrix-modal-dialog input,
+.matrix-modal-dialog select,
+.matrix-modal-dialog textarea,
+.minimal-field input,
+.minimal-field select {
+  background: var(--th-input-bg) !important;
+  border-color: var(--th-input-border) !important;
+  color: var(--th-text-main) !important;
+}
+
+.matrix-modal-footer,
+.minimal-modal-footer,
+.matrix-modal-actions-section {
+  border-top: 1px solid var(--th-border-subtle) !important;
+  background: transparent !important;
+}
+
+/* 2. MODO OBSIDIAN NOIR (DARK) */
+html[data-theme="dark"] .matrix-modal-backdrop {
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(8px);
+}
+
+html[data-theme="dark"] .matrix-modal-dialog,
+html[data-theme="dark"] .minimal-modal-dialog {
+  background: #151824 !important;
+  border: 1px solid #23293d !important;
+  color: #f8fafc !important;
+  box-shadow: 0 25px 65px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+html[data-theme="dark"] .matrix-modal-header,
+html[data-theme="dark"] .minimal-modal-header {
+  border-bottom: 1px solid #23293d !important;
+}
+
+html[data-theme="dark"] .matrix-modal-header h2,
+html[data-theme="dark"] .matrix-modal-header h3,
+html[data-theme="dark"] .matrix-modal-title-group h2,
+html[data-theme="dark"] .matrix-modal-title-group h3,
+html[data-theme="dark"] .minimal-modal-title h2,
+html[data-theme="dark"] #delete-room-title,
+html[data-theme="dark"] #create-staff-modal-title,
+html[data-theme="dark"] #admin-pwd-modal-title {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] #delete-staff-title {
+  color: #f87171 !important;
+}
+
+html[data-theme="dark"] .matrix-modal-header .page-description,
+html[data-theme="dark"] .matrix-modal-title-group .page-description {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .matrix-modal-close {
+  background: #1c2132 !important;
+  border: 1px solid #2a324b !important;
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .matrix-modal-close:hover {
+  background: #232a3f !important;
+  border-color: #818cf8 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .matrix-modal-details-grid {
+  background: #111420 !important;
+  border: 1px solid #23293d !important;
+}
+
+html[data-theme="dark"] .matrix-detail-label {
+  color: #64748b !important;
+}
+
+html[data-theme="dark"] .matrix-detail-value {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .matrix-modal-notes {
+  background: #231b12 !important;
+  border: 1px solid #3d2f24 !important;
+}
+
+html[data-theme="dark"] .matrix-modal-notes p {
+  color: #fbbf24 !important;
+}
+
+html[data-theme="dark"] .matrix-actions-heading {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .matrix-modal-dialog p,
+html[data-theme="dark"] .minimal-modal-dialog p,
+html[data-theme="dark"] .delete-staff-body p {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .matrix-modal-dialog strong,
+html[data-theme="dark"] .delete-staff-body strong {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .matrix-modal-dialog strong[style*="fee2e2"],
+html[data-theme="dark"] .matrix-modal-dialog strong[style*="color: #dc2626"] {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+}
+
+html[data-theme="dark"] .delete-staff-body strong[style*="f3f4f6"] {
+  background-color: #1e2438 !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .matrix-modal-dialog label span,
+html[data-theme="dark"] .delete-staff-body label span,
+html[data-theme="dark"] .minimal-field label,
+html[data-theme="dark"] .minimal-structures-wrap label {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .matrix-modal-dialog input,
+html[data-theme="dark"] .matrix-modal-dialog select,
+html[data-theme="dark"] .matrix-modal-dialog textarea,
+html[data-theme="dark"] .minimal-field input,
+html[data-theme="dark"] .minimal-field select {
+  background: #111420 !important;
+  border: 1.5px solid #23293d !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .matrix-modal-dialog input:focus,
+html[data-theme="dark"] .matrix-modal-dialog select:focus,
+html[data-theme="dark"] .minimal-field input:focus,
+html[data-theme="dark"] .minimal-field select:focus {
+  border-color: #818cf8 !important;
+  background: #151824 !important;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18) !important;
+}
+
+html[data-theme="dark"] .matrix-modal-footer,
+html[data-theme="dark"] .minimal-modal-footer,
+html[data-theme="dark"] .matrix-modal-actions-section {
+  border-top: 1px solid #23293d !important;
+  background: transparent !important;
+}
+
+/* Selector Piso / Habitación en minimal-modal */
+html[data-theme="dark"] .minimal-type-selector {
+  background: #111420 !important;
+  border: 1px solid #23293d !important;
+}
+
+html[data-theme="dark"] .minimal-type-btn {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .minimal-type-btn.active {
+  background: #1e2438 !important;
+  color: #818cf8 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="dark"] .minimal-struct-chip {
+  background: #111420 !important;
+  border: 1.5px solid #23293d !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .minimal-struct-chip:hover {
+  background: #1c2132 !important;
+  border-color: #3b4566 !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .minimal-struct-chip.selected {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border-color: #818cf8 !important;
+  color: #a5b4fc !important;
+}
+
+/* 3. MODO CHAMPAGNE CÁLIDO (AMBER) */
+html[data-theme="amber"] .matrix-modal-backdrop {
+  background: rgba(35, 25, 18, 0.55) !important;
+  backdrop-filter: blur(8px);
+}
+
+html[data-theme="amber"] .matrix-modal-dialog,
+html[data-theme="amber"] .minimal-modal-dialog {
+  background: #fdfbf7 !important;
+  border: 1px solid #e3d7c5 !important;
+  color: #2a2119 !important;
+  box-shadow: 0 25px 65px -10px rgba(78, 52, 23, 0.22), 0 0 0 1px rgba(180, 83, 9, 0.08) !important;
+}
+
+html[data-theme="amber"] .matrix-modal-header,
+html[data-theme="amber"] .minimal-modal-header {
+  border-bottom: 1px solid #ede3d3 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-header h2,
+html[data-theme="amber"] .matrix-modal-header h3,
+html[data-theme="amber"] .matrix-modal-title-group h2,
+html[data-theme="amber"] .matrix-modal-title-group h3,
+html[data-theme="amber"] .minimal-modal-title h2,
+html[data-theme="amber"] #delete-room-title,
+html[data-theme="amber"] #create-staff-modal-title,
+html[data-theme="amber"] #admin-pwd-modal-title {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] #delete-staff-title {
+  color: #b91c1c !important;
+}
+
+html[data-theme="amber"] .matrix-modal-header .page-description,
+html[data-theme="amber"] .matrix-modal-title-group .page-description {
+  color: #8c7968 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-close {
+  background: #f2ece0 !important;
+  border: 1px solid #e3d7c5 !important;
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-close:hover {
+  background: #ebe3d4 !important;
+  border-color: #b45309 !important;
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-details-grid {
+  background: #f9f5ed !important;
+  border: 1px solid #ede3d3 !important;
+}
+
+html[data-theme="amber"] .matrix-detail-label {
+  color: #8c7968 !important;
+}
+
+html[data-theme="amber"] .matrix-detail-value {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-notes {
+  background: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+}
+
+html[data-theme="amber"] .matrix-modal-notes p {
+  color: #92400e !important;
+}
+
+html[data-theme="amber"] .matrix-actions-heading {
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-dialog p,
+html[data-theme="amber"] .minimal-modal-dialog p,
+html[data-theme="amber"] .delete-staff-body p {
+  color: #5c4d40 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-dialog strong,
+html[data-theme="amber"] .delete-staff-body strong {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-dialog strong[style*="fee2e2"],
+html[data-theme="amber"] .matrix-modal-dialog strong[style*="color: #dc2626"] {
+  background-color: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+html[data-theme="amber"] .delete-staff-body strong[style*="f3f4f6"] {
+  background-color: #f2ece0 !important;
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-dialog label span,
+html[data-theme="amber"] .delete-staff-body label span,
+html[data-theme="amber"] .minimal-field label,
+html[data-theme="amber"] .minimal-structures-wrap label {
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-dialog input,
+html[data-theme="amber"] .matrix-modal-dialog select,
+html[data-theme="amber"] .matrix-modal-dialog textarea,
+html[data-theme="amber"] .minimal-field input,
+html[data-theme="amber"] .minimal-field select {
+  background: #fcf9f2 !important;
+  border: 1.5px solid #d8ccb8 !important;
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .matrix-modal-dialog input:focus,
+html[data-theme="amber"] .matrix-modal-dialog select:focus,
+html[data-theme="amber"] .minimal-field input:focus,
+html[data-theme="amber"] .minimal-field select:focus {
+  border-color: #b45309 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.16) !important;
+}
+
+html[data-theme="amber"] .matrix-modal-footer,
+html[data-theme="amber"] .minimal-modal-footer,
+html[data-theme="amber"] .matrix-modal-actions-section {
+  border-top: 1px solid #ede3d3 !important;
+  background: transparent !important;
+}
+
+/* Selector Piso / Habitación en minimal-modal */
+html[data-theme="amber"] .minimal-type-selector {
+  background: #f2ece0 !important;
+  border: 1px solid #e3d7c5 !important;
+}
+
+html[data-theme="amber"] .minimal-type-btn {
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .minimal-type-btn.active {
+  background: #ffffff !important;
+  color: #b45309 !important;
+  box-shadow: 0 1px 4px rgba(78, 52, 23, 0.1) !important;
+}
+
+html[data-theme="amber"] .minimal-struct-chip {
+  background: #fcf9f2 !important;
+  border: 1.5px solid #d8ccb8 !important;
+  color: #5c4d40 !important;
+}
+
+html[data-theme="amber"] .minimal-struct-chip:hover {
+  background: #f5efe4 !important;
+  border-color: #b45309 !important;
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .minimal-struct-chip.selected {
+  background: #fbeee0 !important;
+  border-color: #b45309 !important;
+  color: #92400e !important;
+}
+
+
+/* ==========================================================================
+   ESTADOS VACÍOS THEME-ADAPTIVE: .empty-filter-state & .empty-state
+   Manejo de tarjetas y mensajes de sin resultados para los 3 temas.
+   ========================================================================== */
+
+/* 1. BASE Y VARIABLES GLOBALES */
+.empty-filter-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 44px 24px;
+  margin: 20px 0;
+  border-radius: 18px;
+  background: var(--th-surface) !important;
+  border: 1.5px dashed var(--th-border) !important;
+  color: var(--th-text-secondary) !important;
+  gap: 14px;
+  box-shadow: var(--th-card-shadow) !important;
+  transition: all 0.2s ease;
+}
+
+.empty-filter-state .material-symbol {
+  font-size: 36px;
+  color: var(--th-accent) !important;
+  background: var(--th-surface-subtle) !important;
+  padding: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--th-border-subtle) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.empty-filter-state p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--th-text-secondary) !important;
+  max-width: 460px;
+}
+
+.empty-filter-state strong {
+  color: var(--th-text-main) !important;
+  font-weight: 600;
+}
+
+.empty-filter-state .button {
+  margin-top: 6px;
+}
+
+.empty-state {
+  padding: 24px 18px !important;
+  border: 1.5px dashed var(--th-border) !important;
+  border-radius: 14px !important;
+  background: var(--th-surface) !important;
+  color: var(--th-text-muted) !important;
+  font-size: 13.5px !important;
+  text-align: center !important;
+  line-height: 1.6 !important;
+}
+
+.staff-directory-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 44px 24px;
+  border-radius: 16px;
+  background: var(--th-surface) !important;
+  border: 1.5px dashed var(--th-border) !important;
+  color: var(--th-text-secondary) !important;
+  gap: 10px;
+}
+
+.staff-directory-empty .material-symbol {
+  font-size: 40px;
+  color: var(--th-accent) !important;
+  background: var(--th-surface-subtle) !important;
+  padding: 14px;
+  border-radius: 50%;
+}
+
+.staff-directory-empty strong {
+  color: var(--th-text-main) !important;
+  font-size: 16px;
+}
+
+.staff-directory-empty span {
+  color: var(--th-text-muted) !important;
+  font-size: 13px;
+  max-width: 380px;
+}
+
+.staff-search-empty {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--th-text-muted) !important;
+  font-size: 13.5px;
+}
+
+/* 2. MODO OBSIDIAN NOIR (DARK) */
+html[data-theme="dark"] .empty-filter-state {
+  background: #151824 !important;
+  border: 1.5px dashed #23293d !important;
+  color: #cbd5e1 !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="dark"] .empty-filter-state .material-symbol {
+  color: #818cf8 !important;
+  background: #1c2132 !important;
+  border-color: #2a324b !important;
+}
+
+html[data-theme="dark"] .empty-filter-state p {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .empty-filter-state strong {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .empty-filter-state .button.button-secondary {
+  background: #1c2132 !important;
+  border: 1px solid #2a324b !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .empty-filter-state .button.button-secondary:hover {
+  background: #232a3f !important;
+  border-color: #818cf8 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .empty-state {
+  background: #151824 !important;
+  border: 1.5px dashed #23293d !important;
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .staff-directory-empty {
+  background: #151824 !important;
+  border-color: #23293d !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .staff-directory-empty .material-symbol {
+  color: #818cf8 !important;
+  background: #1c2132 !important;
+}
+
+html[data-theme="dark"] .staff-directory-empty strong {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .staff-directory-empty span,
+html[data-theme="dark"] .staff-search-empty {
+  color: #94a3b8 !important;
+}
+
+/* 3. MODO CHAMPAGNE CÁLIDO (AMBER) */
+html[data-theme="amber"] .empty-filter-state {
+  background: #fdfbf7 !important;
+  border: 1.5px dashed #d8ccb8 !important;
+  color: #5c4d40 !important;
+  box-shadow: 0 6px 20px rgba(78, 52, 23, 0.06) !important;
+}
+
+html[data-theme="amber"] .empty-filter-state .material-symbol {
+  color: #b45309 !important;
+  background: #f7f2e9 !important;
+  border-color: #e3d7c5 !important;
+}
+
+html[data-theme="amber"] .empty-filter-state p {
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .empty-filter-state strong {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .empty-filter-state .button.button-secondary {
+  background: #f2ece0 !important;
+  border: 1px solid #d8ccb8 !important;
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .empty-filter-state .button.button-secondary:hover {
+  background: #ebe3d4 !important;
+  border-color: #b45309 !important;
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .empty-state {
+  background: #fdfbf7 !important;
+  border: 1.5px dashed #d8ccb8 !important;
+  color: #8c7968 !important;
+}
+
+html[data-theme="amber"] .staff-directory-empty {
+  background: #fdfbf7 !important;
+  border-color: #d8ccb8 !important;
+  color: #5c4d40 !important;
+}
+
+html[data-theme="amber"] .staff-directory-empty .material-symbol {
+  color: #b45309 !important;
+  background: #f7f2e9 !important;
+}
+
+html[data-theme="amber"] .staff-directory-empty strong {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .staff-directory-empty span,
+html[data-theme="amber"] .staff-search-empty {
+  color: #8c7968 !important;
+}
+
+
+/* ==========================================================================
+   MATRIX ROOM PODS THEME-ADAPTIVE: .matrix-room-pod (TODOS LOS ESTADOS)
+   Garantiza que las cápsulas de habitación (status-finished, status-free,
+   status-occupied, status-pending, status-cleaning) se adapten al 100% en
+   Obsidian Noir (Dark) y Champagne Cálido (Amber).
+   ========================================================================== */
+
+/* 1. MODO OBSIDIAN NOIR (DARK) */
+html[data-theme="dark"] .matrix-spatial-body {
+  background-color: #0c0e14 !important;
+  background-image: radial-gradient(rgba(129, 140, 248, 0.1) 1.2px, transparent 1.2px) !important;
+}
+
+html[data-theme="dark"] .matrix-floor-group-header {
+  background: rgba(21, 24, 36, 0.85) !important;
+  border: 1px solid #23293d !important;
+}
+
+html[data-theme="dark"] .matrix-floor-group-title {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .matrix-floor-group-count {
+  background: #1c2132 !important;
+  color: #94a3b8 !important;
+  border: 1px solid #2a324b !important;
+}
+
+/* Base del Pod en Dark */
+html[data-theme="dark"] .matrix-room-pod {
+  background: #151824 !important;
+  border: 1.5px solid #23293d !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="dark"] .matrix-room-pod .matrix-pod-num {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .matrix-room-pod .matrix-pod-subtext {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .matrix-room-pod .matrix-pod-vip-tag {
+  background: #2b1f09 !important;
+  color: #f59e0b !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Pod: Lista / Finalizada (status-finished) */
+html[data-theme="dark"] .matrix-room-pod.status-finished {
+  background: linear-gradient(135deg, #151824 0%, #0c252b 100%) !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-finished:hover {
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.35), 0 8px 20px rgba(0, 0, 0, 0.5) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-finished .matrix-pod-status-pill {
+  color: #22d3ee !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-finished .matrix-pod-beacon {
+  background: #06b6d4 !important;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.8) !important;
+}
+
+/* Pod: Libre (status-free) */
+html[data-theme="dark"] .matrix-room-pod.status-free {
+  background: linear-gradient(135deg, #151824 0%, #0d271c 100%) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-free:hover {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35), 0 8px 20px rgba(0, 0, 0, 0.5) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-free .matrix-pod-status-pill {
+  color: #34d399 !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-free .matrix-pod-beacon {
+  background: #10b981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8) !important;
+}
+
+/* Pod: Ocupada (status-occupied) */
+html[data-theme="dark"] .matrix-room-pod.status-occupied {
+  background: linear-gradient(135deg, #151824 0%, #2c0e18 100%) !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-occupied:hover {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.35), 0 8px 20px rgba(0, 0, 0, 0.5) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-occupied .matrix-pod-status-pill {
+  color: #fb7185 !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-occupied .matrix-pod-beacon {
+  background: #f43f5e !important;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.8) !important;
+}
+
+/* Pod: Aseo / Pendiente (status-pending) */
+html[data-theme="dark"] .matrix-room-pod.status-pending {
+  background: linear-gradient(135deg, #151824 0%, #2a1a06 100%) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-pending:hover {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35), 0 8px 20px rgba(0, 0, 0, 0.5) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-pending .matrix-pod-status-pill {
+  color: #fbbf24 !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-pending .matrix-pod-beacon {
+  background: #f59e0b !important;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8) !important;
+}
+
+/* Pod: En Limpieza (status-cleaning) */
+html[data-theme="dark"] .matrix-room-pod.status-cleaning {
+  background: linear-gradient(135deg, #151824 0%, #1e133a 100%) !important;
+  border-color: rgba(139, 92, 246, 0.4) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-cleaning:hover {
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.35), 0 8px 20px rgba(0, 0, 0, 0.5) !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-cleaning .matrix-pod-status-pill {
+  color: #a78bfa !important;
+}
+html[data-theme="dark"] .matrix-room-pod.status-cleaning .matrix-pod-beacon {
+  background: #8b5cf6 !important;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.8) !important;
+}
+
+/* Tooltip en Dark */
+html[data-theme="dark"] .matrix-tile-tooltip {
+  background: #1c2132 !important;
+  border-color: #2a324b !important;
+  color: #f8fafc !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75) !important;
+}
+html[data-theme="dark"] .matrix-tooltip-head {
+  border-bottom-color: #23293d !important;
+}
+html[data-theme="dark"] .matrix-tooltip-title strong {
+  color: #f8fafc !important;
+}
+html[data-theme="dark"] .matrix-tooltip-body {
+  color: #94a3b8 !important;
+}
+html[data-theme="dark"] .matrix-tooltip-body span {
+  color: #f1f5f9 !important;
+}
+html[data-theme="dark"] .matrix-tooltip-body small {
+  color: #64748b !important;
+}
+html[data-theme="dark"] .matrix-tooltip-hint {
+  color: #818cf8 !important;
+}
+
+
+/* 2. MODO CHAMPAGNE CÁLIDO (AMBER) */
+html[data-theme="amber"] .matrix-spatial-body {
+  background-color: #f5eee2 !important;
+  background-image: radial-gradient(rgba(180, 83, 9, 0.08) 1.2px, transparent 1.2px) !important;
+}
+
+html[data-theme="amber"] .matrix-floor-group-header {
+  background: rgba(253, 251, 247, 0.88) !important;
+  border: 1px solid #e3d7c5 !important;
+}
+
+html[data-theme="amber"] .matrix-floor-group-title {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .matrix-floor-group-count {
+  background: #f2ece0 !important;
+  color: #635243 !important;
+  border: 1px solid #e3d7c5 !important;
+}
+
+/* Base del Pod en Amber */
+html[data-theme="amber"] .matrix-room-pod {
+  background: #fdfbf7 !important;
+  border: 1.5px solid #e3d7c5 !important;
+  box-shadow: 0 2px 7px rgba(78, 52, 23, 0.05) !important;
+}
+
+html[data-theme="amber"] .matrix-room-pod .matrix-pod-num {
+  color: #2a2119 !important;
+}
+
+html[data-theme="amber"] .matrix-room-pod .matrix-pod-subtext {
+  color: #635243 !important;
+}
+
+html[data-theme="amber"] .matrix-room-pod .matrix-pod-vip-tag {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: rgba(180, 83, 9, 0.3) !important;
+}
+
+/* Pod: Lista / Finalizada (status-finished) */
+html[data-theme="amber"] .matrix-room-pod.status-finished {
+  background: linear-gradient(135deg, #fdfbf7 0%, #e6f7f5 100%) !important;
+  border-color: rgba(13, 148, 136, 0.35) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-finished:hover {
+  border-color: #0d9488 !important;
+  box-shadow: 0 0 14px rgba(13, 148, 136, 0.25), 0 8px 18px rgba(78, 52, 23, 0.1) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-finished .matrix-pod-status-pill {
+  color: #0f766e !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-finished .matrix-pod-beacon {
+  background: #0d9488 !important;
+  box-shadow: 0 0 6px rgba(13, 148, 136, 0.6) !important;
+}
+
+/* Pod: Libre (status-free) */
+html[data-theme="amber"] .matrix-room-pod.status-free {
+  background: linear-gradient(135deg, #fdfbf7 0%, #ecf8f1 100%) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-free:hover {
+  border-color: #059669 !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.25), 0 8px 18px rgba(78, 52, 23, 0.1) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-free .matrix-pod-status-pill {
+  color: #047857 !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-free .matrix-pod-beacon {
+  background: #10b981 !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6) !important;
+}
+
+/* Pod: Ocupada (status-occupied) */
+html[data-theme="amber"] .matrix-room-pod.status-occupied {
+  background: linear-gradient(135deg, #fdfbf7 0%, #fef2f2 100%) !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-occupied:hover {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 14px rgba(220, 38, 38, 0.22), 0 8px 18px rgba(78, 52, 23, 0.1) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-occupied .matrix-pod-status-pill {
+  color: #b91c1c !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-occupied .matrix-pod-beacon {
+  background: #dc2626 !important;
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.6) !important;
+}
+
+/* Pod: Aseo / Pendiente (status-pending) */
+html[data-theme="amber"] .matrix-room-pod.status-pending {
+  background: linear-gradient(135deg, #fdfbf7 0%, #fef8ee 100%) !important;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-pending:hover {
+  border-color: #d97706 !important;
+  box-shadow: 0 0 14px rgba(217, 119, 6, 0.25), 0 8px 18px rgba(78, 52, 23, 0.1) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-pending .matrix-pod-status-pill {
+  color: #b45309 !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-pending .matrix-pod-beacon {
+  background: #d97706 !important;
+  box-shadow: 0 0 6px rgba(217, 119, 6, 0.6) !important;
+}
+
+/* Pod: En Limpieza (status-cleaning) */
+html[data-theme="amber"] .matrix-room-pod.status-cleaning {
+  background: linear-gradient(135deg, #fdfbf7 0%, #f7f1fe 100%) !important;
+  border-color: rgba(124, 58, 237, 0.35) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-cleaning:hover {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 14px rgba(124, 58, 237, 0.22), 0 8px 18px rgba(78, 52, 23, 0.1) !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-cleaning .matrix-pod-status-pill {
+  color: #6d28d9 !important;
+}
+html[data-theme="amber"] .matrix-room-pod.status-cleaning .matrix-pod-beacon {
+  background: #7c3aed !important;
+  box-shadow: 0 0 6px rgba(124, 58, 237, 0.6) !important;
+}
+
+/* Tooltip en Amber */
+html[data-theme="amber"] .matrix-tile-tooltip {
+  background: #fdfbf7 !important;
+  border-color: #e3d7c5 !important;
+  color: #2a2119 !important;
+  box-shadow: 0 14px 32px rgba(78, 52, 23, 0.15) !important;
+}
+html[data-theme="amber"] .matrix-tooltip-head {
+  border-bottom-color: #ede3d3 !important;
+}
+html[data-theme="amber"] .matrix-tooltip-title strong {
+  color: #2a2119 !important;
+}
+html[data-theme="amber"] .matrix-tooltip-body {
+  color: #635243 !important;
+}
+html[data-theme="amber"] .matrix-tooltip-body span {
+  color: #2a2119 !important;
+}
+html[data-theme="amber"] .matrix-tooltip-body small {
+  color: #8c7968 !important;
+}
+html[data-theme="amber"] .matrix-tooltip-hint {
+  color: #b45309 !important;
+}
+
+/* ==========================================================================
+   TABLET & MOBILE CRITICAL RESPONSIVE REPAIRS
+   ========================================================================== */
+
+@media (max-width: 1023px) {
+  /* 1. App Shell and Workspace layout */
+  .app-shell {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    padding-bottom: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .workspace {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    background: var(--th-workspace-bg) !important;
+  }
+
+  .main-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 16px 20px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    min-width: 0 !important;
+  }
+
+  /* 2. Fixed bottom bar (.sidebar) — Never full screen! */
+  .sidebar {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: auto !important;
+    min-height: 54px !important;
+    max-height: 72px !important;
+    z-index: 80 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    padding: 4px 6px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    background: var(--th-sidebar-bg) !important;
+    border-top: 1px solid var(--th-sidebar-border) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .sidebar > .brand,
+  .sidebar .brand,
+  .sidebar .navigation-label,
+  .sidebar .sidebar-account,
+  .sidebar-account {
+    display: none !important;
+  }
+
+  .sidebar .navigation {
+    display: flex !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    gap: 2px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+
+  .sidebar .navigation::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .sidebar .nav-link {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 4px 2px !important;
+    gap: 2px !important;
+    border-radius: 8px !important;
+    font-size: 10px !important;
+    white-space: nowrap !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--th-sidebar-text) !important;
+    text-decoration: none !important;
+  }
+
+  .sidebar .nav-link .material-symbol {
+    font-size: 20px !important;
+    color: inherit !important;
+  }
+
+  .sidebar .nav-link-active {
+    box-shadow: inset 0 2.5px var(--th-sidebar-active-accent, #818cf8) !important;
+    background: var(--th-sidebar-active-bg, rgba(255, 255, 255, 0.08)) !important;
+    color: var(--th-sidebar-active-text, #ffffff) !important;
+  }
+
+  .sidebar .nav-link-active .material-symbol {
+    color: var(--th-sidebar-active-accent, #818cf8) !important;
+  }
+
+  /* 3. Top sticky header */
+  .workspace-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 40 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    min-height: 52px !important;
+    padding: 8px 16px !important;
+    background: var(--th-header-bg) !important;
+    border-bottom: 1px solid var(--th-header-border) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  .workspace-header-user-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .workspace-logout-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    border-radius: 9px !important;
+    padding: 0 !important;
+    border: 1px solid var(--th-border, rgba(255, 255, 255, 0.15)) !important;
+    background: var(--th-surface-subtle, rgba(255, 255, 255, 0.06)) !important;
+    color: var(--th-text-secondary) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .workspace-logout-btn:hover {
+    color: #ef4444 !important;
+    border-color: #fca5a5 !important;
+  }
+
+  /* 4. Assistant floating above bottom bar */
+  .assistant-trigger {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 16px !important;
+    z-index: 90 !important;
+  }
+
+  .assistant-panel {
+    bottom: calc(134px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: 440px !important;
+    margin-left: auto !important;
+    max-height: calc(100dvh - 150px - env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 95 !important;
+  }
+}
+
+/* Mobile specific (<= 640px) */
+@media (max-width: 640px) {
+  .main-content {
+    padding: 12px 10px calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .workspace-date {
+    display: none !important;
+  }
+
+  .workspace-live {
+    display: none !important;
+  }
+
+  .workspace-divider {
+    display: none !important;
+  }
+
+  .nav-label-desktop {
+    display: none !important;
+  }
+
+  .nav-label-mobile {
+    display: inline !important;
+    font-size: 10px !important;
+  }
 }

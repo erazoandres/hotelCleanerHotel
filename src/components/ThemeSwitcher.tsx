@@ -65,9 +65,36 @@ export function ThemeSwitcher({ className = "", variant = "header" }: ThemeSwitc
       aria-label="Cambiador de tema visual"
     >
       {/* =========================================================================
+          DISEÑO DISCRETO / MINIMAL / SIDEBAR: SOLO ICONO ANIMADO COMPACTO
+          ========================================================================= */}
+      {(variant === "sidebar" || switcherStyle === "minimal") && (
+        <div className="theme-minimal-dial">
+          <button
+            type="button"
+            className="theme-dial-btn"
+            onClick={cycleTheme}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setShowConfigModal(true);
+            }}
+            title={`${activeConfig.name} (${activeConfig.badge}) — Clic para alternar tema`}
+            aria-label={`Tema actual: ${activeConfig.name}. Clic para cambiar al siguiente.`}
+          >
+            <span
+              key={theme}
+              className="material-symbol dial-icon animated-icon"
+              aria-hidden="true"
+            >
+              {activeConfig.icon}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* =========================================================================
           DISEÑO 1: PÍLDORA SEGMENTADA MINIMALISTA (Segmented Pill)
           ========================================================================= */}
-      {switcherStyle === "segmented" && (
+      {variant !== "sidebar" && switcherStyle === "segmented" && (
         <div className="theme-segmented-pill">
           {themeList.map((cfg) => {
             const isActive = theme === cfg.id;
@@ -107,7 +134,7 @@ export function ThemeSwitcher({ className = "", variant = "header" }: ThemeSwitc
       {/* =========================================================================
           DISEÑO 2: CÁPSULA EDITORIAL CON MENÚ Y TARJETAS (Interactive Cards Popover)
           ========================================================================= */}
-      {switcherStyle === "cards" && (
+      {variant !== "sidebar" && switcherStyle === "cards" && (
         <div className="theme-cards-capsule">
           <button
             type="button"
@@ -232,37 +259,7 @@ export function ThemeSwitcher({ className = "", variant = "header" }: ThemeSwitc
         </div>
       )}
 
-      {/* =========================================================================
-          DISEÑO 3: MICRO-INTERRUPTOR DISCRETO (Minimal Quick Dial)
-          ========================================================================= */}
-      {switcherStyle === "minimal" && (
-        <div className="theme-minimal-dial">
-          <button
-            type="button"
-            className="theme-dial-btn"
-            onClick={cycleTheme}
-            title={`${activeConfig.name} (${activeConfig.badge}) — Clic para alternar tema`}
-            aria-label={`Tema actual: ${activeConfig.name}. Clic para cambiar al siguiente.`}
-          >
-            <span className="material-symbol dial-icon rotating" aria-hidden="true">
-              {activeConfig.icon}
-            </span>
-            <span className="dial-tooltip">{activeConfig.badge}</span>
-          </button>
 
-          <button
-            type="button"
-            className="theme-dial-more-btn"
-            onClick={() => setShowConfigModal(true)}
-            title="Abrir detalles de los 3 estilos"
-            aria-label="Ver detalles de temas"
-          >
-            <span className="material-symbol" aria-hidden="true">
-              more_vert
-            </span>
-          </button>
-        </div>
-      )}
 
       {/* =========================================================================
           MODAL COMPLETO DE MODOS DE ESTILO & SELECTOR DE CONTROL

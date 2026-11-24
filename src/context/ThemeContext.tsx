@@ -130,7 +130,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         return saved;
       }
     } catch {}
-    return "segmented";
+    return "minimal";
   });
 
   useEffect(() => {

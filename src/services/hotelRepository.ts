@@ -39,6 +39,249 @@ function dateInputValue(value: string | null): string | null {
     : date;
 }
 
+export interface StructureItemDefinition {
+  name: string;
+  category: "Circulación" | "Aseos y Servicios" | "Estudio y Trabajo" | "Ocio y Convivencia" | "Bienestar y Exteriores";
+  icon: string;
+  suggestedDuration: number;
+}
+
+export const HOTEL_STRUCTURE_CATALOG: StructureItemDefinition[] = [
+  // Circulación y Accesos
+  { name: "Área ascensor", category: "Circulación", icon: "elevator", suggestedDuration: 20 },
+  { name: "Zona ascensor", category: "Circulación", icon: "elevator", suggestedDuration: 20 },
+  { name: "Ascensor hall", category: "Circulación", icon: "elevator", suggestedDuration: 20 },
+  { name: "Ascensor salida 2", category: "Circulación", icon: "elevator", suggestedDuration: 20 },
+  { name: "Escaleras", category: "Circulación", icon: "stairs", suggestedDuration: 25 },
+  { name: "Escaleras A", category: "Circulación", icon: "stairs", suggestedDuration: 25 },
+  { name: "Escaleras B", category: "Circulación", icon: "stairs", suggestedDuration: 25 },
+  { name: "Escaleras de la piscina", category: "Circulación", icon: "stairs", suggestedDuration: 20 },
+  { name: "Pasillos", category: "Circulación", icon: "alt_route", suggestedDuration: 30 },
+  { name: "Baño y pasillo salones", category: "Circulación", icon: "alt_route", suggestedDuration: 30 },
+  { name: "Hall", category: "Circulación", icon: "door_sliding", suggestedDuration: 25 },
+
+  // Aseos y Servicios
+  { name: "Baño 1", category: "Aseos y Servicios", icon: "wc", suggestedDuration: 25 },
+  { name: "Baños", category: "Aseos y Servicios", icon: "wc", suggestedDuration: 30 },
+  { name: "Baño PMR", category: "Aseos y Servicios", icon: "accessible", suggestedDuration: 25 },
+  { name: "Baños vestieres", category: "Aseos y Servicios", icon: "checkroom", suggestedDuration: 35 },
+  { name: "Baños de la piscina", category: "Aseos y Servicios", icon: "wc", suggestedDuration: 30 },
+  { name: "Cuarto de basuras", category: "Aseos y Servicios", icon: "delete_sweep", suggestedDuration: 20 },
+  { name: "Lavandería", category: "Aseos y Servicios", icon: "local_laundry_service", suggestedDuration: 35 },
+
+  // Estudio y Trabajo
+  { name: "Salón de estudio", category: "Estudio y Trabajo", icon: "school", suggestedDuration: 30 },
+  { name: "Salón de estudio 1", category: "Estudio y Trabajo", icon: "menu_book", suggestedDuration: 30 },
+  { name: "Salón de estudio 2", category: "Estudio y Trabajo", icon: "menu_book", suggestedDuration: 30 },
+  { name: "Salón de conferencias", category: "Estudio y Trabajo", icon: "groups", suggestedDuration: 40 },
+  { name: "Recepción", category: "Estudio y Trabajo", icon: "desk", suggestedDuration: 30 },
+  { name: "Oficinas", category: "Estudio y Trabajo", icon: "business_center", suggestedDuration: 30 },
+  { name: "Salas de espera 1-2-3", category: "Estudio y Trabajo", icon: "weekend", suggestedDuration: 25 },
+
+  // Ocio y Convivencia
+  { name: "Sala de TikTok", category: "Ocio y Convivencia", icon: "videocam", suggestedDuration: 30 },
+  { name: "Sala de cine", category: "Ocio y Convivencia", icon: "movie", suggestedDuration: 35 },
+  { name: "Sala de Play", category: "Ocio y Convivencia", icon: "sports_esports", suggestedDuration: 30 },
+  { name: "Txoco", category: "Ocio y Convivencia", icon: "soup_kitchen", suggestedDuration: 45 },
+  { name: "Zonas de mesas de juegos", category: "Ocio y Convivencia", icon: "casino", suggestedDuration: 30 },
+  { name: "Comedor", category: "Ocio y Convivencia", icon: "restaurant", suggestedDuration: 40 },
+
+  // Bienestar y Exteriores
+  { name: "Gimnasio", category: "Bienestar y Exteriores", icon: "fitness_center", suggestedDuration: 40 },
+  { name: "Zona de calistenia", category: "Bienestar y Exteriores", icon: "fitness_center", suggestedDuration: 25 },
+  { name: "Área de la piscina", category: "Bienestar y Exteriores", icon: "pool", suggestedDuration: 45 },
+  { name: "Terraza", category: "Bienestar y Exteriores", icon: "deck", suggestedDuration: 35 },
+  { name: "Roof top", category: "Bienestar y Exteriores", icon: "roofing", suggestedDuration: 40 },
+];
+
+export function getStructureIcon(name: string): string {
+  const clean = name.trim();
+  const match = HOTEL_STRUCTURE_CATALOG.find(
+    (item) => item.name.toLowerCase() === clean.toLowerCase()
+  );
+  if (match) return match.icon;
+  const lower = clean.toLowerCase();
+  if (lower.includes("ascensor") || lower.includes("elevador")) return "elevator";
+  if (lower.includes("escalera")) return "stairs";
+  if (lower.includes("baño") || lower.includes("bano") || lower.includes("wc")) return "wc";
+  if (lower.includes("pmr")) return "accessible";
+  if (lower.includes("vestier")) return "checkroom";
+  if (lower.includes("basura")) return "delete_sweep";
+  if (lower.includes("lavander")) return "local_laundry_service";
+  if (lower.includes("tiktok") || lower.includes("video")) return "videocam";
+  if (lower.includes("estudio") || lower.includes("libro")) return "menu_book";
+  if (lower.includes("conferencia") || lower.includes("reunion")) return "groups";
+  if (lower.includes("recepcion") || lower.includes("desk")) return "desk";
+  if (lower.includes("oficina")) return "business_center";
+  if (lower.includes("cine")) return "movie";
+  if (lower.includes("play") || lower.includes("juego") || lower.includes("gamer")) return "sports_esports";
+  if (lower.includes("txoco") || lower.includes("comedor") || lower.includes("cocina")) return "restaurant";
+  if (lower.includes("mesa")) return "casino";
+  if (lower.includes("espera")) return "weekend";
+  if (lower.includes("piscina") || lower.includes("pool")) return "pool";
+  if (lower.includes("gym") || lower.includes("gimnasio") || lower.includes("calistenia")) return "fitness_center";
+  if (lower.includes("terraza") || lower.includes("deck")) return "deck";
+  if (lower.includes("roof")) return "roofing";
+  if (lower.includes("pasillo") || lower.includes("hall")) return "alt_route";
+  return "domain";
+}
+
+export function getStructurePhoto(name: string): string {
+  const lower = name.trim().toLowerCase();
+
+  // 1. Casos compuestos altamente específicos
+  if (lower.includes("escalera") && (lower.includes("piscina") || lower.includes("pool"))) {
+    return "/images/structures/escaleras-piscina.jpg";
+  }
+
+  if ((lower.includes("baño") || lower.includes("bano")) && (lower.includes("piscina") || lower.includes("pool"))) {
+    return "/images/structures/bano-piscina.jpg";
+  }
+
+  if ((lower.includes("baño") || lower.includes("bano")) && (lower.includes("pasillo") || lower.includes("salon") || lower.includes("salón"))) {
+    return "/images/structures/bano-pasillo.jpg";
+  }
+
+  // 2. Escaleras
+  if (lower.includes("escalera")) {
+    return "/images/structures/escaleras.jpg";
+  }
+
+  // 3. Cuarto de basuras y residuos
+  if (lower.includes("basura")) {
+    return "/images/structures/basuras.jpg";
+  }
+
+  // 4. Lavandería y lencería
+  if (lower.includes("lavander") || lower.includes("laundry")) {
+    return "/images/structures/lavanderia.jpg";
+  }
+
+  // 5. Baños y Aseos generales
+  if (
+    lower.includes("baño") ||
+    lower.includes("bano") ||
+    lower.includes("wc") ||
+    lower.includes("pmr") ||
+    lower.includes("vestier") ||
+    lower.includes("toilet") ||
+    lower.includes("ducha") ||
+    lower.includes("aseo")
+  ) {
+    return "/images/structures/bathroom.jpg";
+  }
+
+  // 6. Gimnasio y Calistenia
+  if (
+    lower.includes("gym") ||
+    lower.includes("gimnasio") ||
+    lower.includes("calistenia") ||
+    lower.includes("fitness") ||
+    lower.includes("pesas") ||
+    lower.includes("cardio")
+  ) {
+    return "/images/structures/gym.jpg";
+  }
+
+  // 7. Sala de Play, Juegos, Consolas, TikTok
+  if (
+    lower.includes("play") ||
+    lower.includes("juego") ||
+    lower.includes("gamer") ||
+    lower.includes("gaming") ||
+    lower.includes("consola") ||
+    lower.includes("arcade") ||
+    lower.includes("tiktok") ||
+    lower.includes("video") ||
+    lower.includes("mesa")
+  ) {
+    return "/images/structures/playroom.jpg";
+  }
+
+  // 8. Piscina
+  if (
+    lower.includes("piscina") ||
+    lower.includes("pool") ||
+    lower.includes("alberca") ||
+    lower.includes("pileta") ||
+    lower.includes("jacuzzi")
+  ) {
+    return "/images/structures/pool.jpg";
+  }
+
+  // 9. Terraza y Rooftop
+  if (
+    lower.includes("terraza") ||
+    lower.includes("deck") ||
+    lower.includes("roof") ||
+    lower.includes("rooftop") ||
+    lower.includes("mirador") ||
+    lower.includes("balcon") ||
+    lower.includes("balcón")
+  ) {
+    return "/images/structures/terrace.jpg";
+  }
+
+  // 10. Cine
+  if (
+    lower.includes("cine") ||
+    lower.includes("cinema") ||
+    lower.includes("movie") ||
+    lower.includes("pelicula") ||
+    lower.includes("película") ||
+    lower.includes("teatro")
+  ) {
+    return "/images/structures/cinema.jpg";
+  }
+
+  // 11. Estudio, Coworking, Conferencias, Oficinas
+  if (
+    lower.includes("estudio") ||
+    lower.includes("libro") ||
+    lower.includes("biblioteca") ||
+    lower.includes("conferencia") ||
+    lower.includes("reunion") ||
+    lower.includes("reunión") ||
+    lower.includes("oficina") ||
+    lower.includes("cowork")
+  ) {
+    return "/images/structures/coworking.jpg";
+  }
+
+  // 12. Comedor, Cocina, Txoco, Restaurante
+  if (
+    lower.includes("txoco") ||
+    lower.includes("choko") ||
+    lower.includes("comedor") ||
+    lower.includes("cocina") ||
+    lower.includes("restaurante") ||
+    lower.includes("restaurant") ||
+    lower.includes("bar") ||
+    lower.includes("cafeteria") ||
+    lower.includes("cafetería") ||
+    lower.includes("buffet")
+  ) {
+    return "/images/structures/dining.jpg";
+  }
+
+  // 13. Pasillos, Ascensores, Hall, Recepción, Lobby
+  if (
+    lower.includes("ascensor") ||
+    lower.includes("elevador") ||
+    lower.includes("pasillo") ||
+    lower.includes("hall") ||
+    lower.includes("recepcion") ||
+    lower.includes("recepción") ||
+    lower.includes("espera") ||
+    lower.includes("lobby") ||
+    lower.includes("entrada")
+  ) {
+    return "/images/structures/hallway.jpg";
+  }
+
+  return "/images/structures/common-area.jpg";
+}
+
 export function detectSpaceType(
   roomId: string,
   rawSpaceType?: string | null,
@@ -51,6 +294,7 @@ export function detectSpaceType(
     "lobby",
     "piscina",
     "pasillo",
+    "pasillos",
     "zona",
     "comun",
     "común",
@@ -75,6 +319,34 @@ export function detectSpaceType(
     "cafeteria",
     "cafetería",
     "bar",
+    "baño",
+    "baños",
+    "bano",
+    "banos",
+    "escalera",
+    "escaleras",
+    "basura",
+    "basuras",
+    "pmr",
+    "vestier",
+    "vestieres",
+    "tiktok",
+    "conferencia",
+    "conferencias",
+    "hall",
+    "oficina",
+    "oficinas",
+    "cine",
+    "play",
+    "txoco",
+    "choko",
+    "mesas",
+    "juegos",
+    "comedor",
+    "espera",
+    "calistenia",
+    "roof",
+    "rooftop",
   ];
   if (commonKeywords.some((kw) => lower.includes(kw))) {
     return "zona_comun";
@@ -83,17 +355,9 @@ export function detectSpaceType(
 }
 
 export function detectRoomType(
-  roomId: string,
-  rawRoomType?: string | null,
-): "normal" | "doble" {
-  if (rawRoomType === "doble" || rawRoomType === "normal") {
-    return rawRoomType;
-  }
-  const cleanId = roomId.trim();
-  // Si contiene punto decimal seguido de dígitos (ej. "1.1", "1.2", "2.1", "101.1", etc.)
-  if (/\b\d+\.\d+\b/.test(cleanId) || /^\d+\.\d+$/.test(cleanId) || /\.\d+/.test(cleanId)) {
-    return "doble";
-  }
+  _roomId?: string,
+  _rawRoomType?: string | null,
+): "normal" {
   return "normal";
 }
 
@@ -431,16 +695,24 @@ export async function createRoom(data: {
   const status = statusToDatabase[data.estado ?? "free"] ?? "libre";
   const spaceType = data.tipo_espacio ?? detectSpaceType(roomId);
   const floor = data.piso?.trim() || detectFloor(roomId, undefined, spaceType === "zona_comun");
-  const roomType = data.tipo_habitacion ?? detectRoomType(roomId);
-  const doubleNumber = data.numero_doble?.trim() || (roomType === "doble" ? roomId : null);
+  const roomType = "normal";
+  const doubleNumber = null;
   const tiempoLimpieza = typeof data.tiempo_limpieza === "number" && data.tiempo_limpieza > 0 ? data.tiempo_limpieza : 30;
 
   // Verificar si ya existe
-  const { data: existing } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from("habitaciones")
     .select("id_habitacion")
     .eq("id_habitacion", roomId)
     .maybeSingle();
+
+  if (selectError) {
+    if (selectError.message?.includes("schema cache") || (selectError as { code?: string }).code === "PGRST205") {
+      throw new Error(
+        "La tabla 'public.habitaciones' no se encuentra en Supabase. Debes ejecutar el script SQL 'crear-o-reparar-tabla-habitaciones.sql' en el Editor SQL de Supabase para solucionarlo.",
+      );
+    }
+  }
 
   if (existing) {
     throw new Error(`Ya existe un espacio con el identificador "${roomId}".`);
@@ -464,6 +736,12 @@ export async function createRoom(data: {
     .insert(fullRow);
 
   if (fullError) {
+    if (fullError.message?.includes("schema cache") || (fullError as { code?: string }).code === "PGRST205") {
+      throw new Error(
+        "La tabla 'public.habitaciones' no existe en Supabase. Ejecuta el script SQL 'crear-o-reparar-tabla-habitaciones.sql' en tu panel de Supabase.",
+      );
+    }
+
     // Si falla porque las columnas nuevas aún no existen en la BD, reintentar con las base
     console.warn("Fallo al insertar con nuevas columnas, intentando inserción base:", fullError.message);
     const baseRow = {
@@ -477,6 +755,11 @@ export async function createRoom(data: {
       .from("habitaciones")
       .insert(baseRow);
     if (baseError) {
+      if (baseError.message?.includes("schema cache") || (baseError as { code?: string }).code === "PGRST205") {
+        throw new Error(
+          "La tabla 'public.habitaciones' no existe en Supabase. Ejecuta el script 'crear-o-reparar-tabla-habitaciones.sql' en el Editor SQL de Supabase.",
+        );
+      }
       throw new Error(`No se pudo crear el espacio: ${baseError.message}`);
     }
   }
@@ -484,12 +767,11 @@ export async function createRoom(data: {
   // Registrar evento inicial en la cámara de seguridad
   try {
     const spaceLabel = spaceType === "zona_comun" ? "Zona común creada" : "Habitación creada";
-    const detailType = spaceType === "habitacion" ? ` (${roomType === "doble" ? "Doble" : "Estándar"})` : "";
     const creator = data.actor?.trim() || "Administrador";
     await addEvent({
       room: roomId,
       status: data.estado ?? "free",
-      action: `${spaceLabel}${detailType}: ${roomId} (${floor})`,
+      action: `${spaceLabel}: ${roomId} (${floor})`,
       guest: data.guest?.trim() || null,
       actor: creator,
       cleanerId: null,
@@ -499,6 +781,98 @@ export async function createRoom(data: {
   } catch (eventErr) {
     console.warn("No se pudo registrar evento inicial:", eventErr);
   }
+}
+
+export interface CreateFloorPayload {
+  floorName: string;
+  structures: Array<{
+    name: string;
+    type?: "habitacion" | "zona_comun";
+    roomType?: "normal" | "doble";
+    status?: RoomStatus;
+    cleaningDuration?: number;
+  }>;
+  actor?: string | null;
+}
+
+export async function createFloorWithStructures(data: CreateFloorPayload): Promise<{
+  floor: string;
+  createdCount: number;
+  createdIds: string[];
+}> {
+  const supabase = getSupabaseClient();
+  const floorName = data.floorName.trim();
+  if (!floorName) {
+    throw new Error("El nombre personalizado del piso es obligatorio.");
+  }
+  if (!data.structures || data.structures.length === 0) {
+    throw new Error("Debes indicar al menos un área compartida o habitación para este piso.");
+  }
+
+  // Leer registros existentes para evitar choques de clave primaria
+  const { data: existingRows, error: fetchErr } = await supabase
+    .from("habitaciones")
+    .select("id_habitacion");
+
+  if (fetchErr && (fetchErr.message?.includes("schema cache") || (fetchErr as { code?: string }).code === "PGRST205")) {
+    throw new Error(
+      "La tabla 'public.habitaciones' no se encuentra en la base de datos de Supabase. Ejecuta el script SQL 'crear-o-reparar-tabla-habitaciones.sql' en el Editor SQL de Supabase para repararla.",
+    );
+  }
+
+  const existingSet = new Set<string>(
+    (existingRows || []).map((r: { id_habitacion: string }) => r.id_habitacion.trim().toLowerCase()),
+  );
+
+  const createdIds: string[] = [];
+  const errors: string[] = [];
+
+  for (const st of data.structures) {
+    const rawName = st.name.trim();
+    if (!rawName) continue;
+
+    // Si ya existe este nombre (por ejemplo "Pasillos" o "Escaleras" en otro piso),
+    // lo identificamos unívocamente con el piso para la clave primaria: "Pasillos - Piso 2"
+    let targetId = rawName;
+    if (existingSet.has(targetId.toLowerCase())) {
+      targetId = `${rawName} - ${floorName}`;
+      if (existingSet.has(targetId.toLowerCase())) {
+        targetId = `${rawName} (${floorName}) ${Date.now().toString().slice(-3)}`;
+      }
+    }
+    existingSet.add(targetId.toLowerCase());
+
+    const spaceType = st.type ?? detectSpaceType(rawName);
+    const roomType = st.roomType ?? (spaceType === "habitacion" ? detectRoomType(rawName) : "normal");
+    const duration = st.cleaningDuration && st.cleaningDuration > 0 ? st.cleaningDuration : 30;
+    const initialStatus = st.status ?? "free";
+
+    try {
+      await createRoom({
+        id: targetId,
+        piso: floorName,
+        tipo_espacio: spaceType,
+        tipo_habitacion: roomType,
+        tiempo_limpieza: duration,
+        estado: initialStatus,
+        actor: data.actor ?? "Administrador",
+      });
+      createdIds.push(targetId);
+    } catch (err) {
+      console.error(`Error al crear área compartida "${targetId}":`, err);
+      errors.push(`${rawName}: ${err instanceof Error ? err.message : "Error desconocido"}`);
+    }
+  }
+
+  if (createdIds.length === 0 && errors.length > 0) {
+    throw new Error(`No se pudo crear ninguna área compartida: ${errors.join(", ")}`);
+  }
+
+  return {
+    floor: floorName,
+    createdCount: createdIds.length,
+    createdIds,
+  };
 }
 
 export async function deleteRoom(

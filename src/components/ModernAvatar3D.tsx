@@ -157,7 +157,7 @@ export const ModernAvatar3D: React.FC<ModernAvatar3DProps> = ({
  * Visual control for toggling between 3D avatar styles.
  */
 export const Avatar3DStylePicker: React.FC<{
-  variant?: "compact" | "aside" | "panel" | "card" | "dropdown";
+  variant?: "compact" | "aside" | "panel" | "card" | "dropdown" | "minimal";
   compact?: boolean;
 }> = ({ variant, compact = false }) => {
   const [current, setCurrent] = useState<Avatar3DStyle>(getActiveAvatarStyle());
@@ -181,6 +181,43 @@ export const Avatar3DStylePicker: React.FC<{
   };
 
   const mode = variant || (compact ? "compact" : "aside");
+
+  if (mode === "minimal") {
+    const selectedStyle =
+      AVATAR_3D_STYLES.find((s) => s.id === current) || AVATAR_3D_STYLES[0];
+
+    return (
+      <div className="avatar-3d-minimal-picker" role="radiogroup" aria-label="Estilo de avatar 3D">
+        <div className="avatar-3d-minimal-row">
+          {AVATAR_3D_STYLES.map((st) => {
+            const isSelected = current === st.id;
+            const previewUrl = get3DAvatarUrl("DemoStaff", st.id);
+
+            return (
+              <button
+                key={st.id}
+                type="button"
+                className={`avatar-3d-circle-btn ${isSelected ? "is-selected" : ""}`}
+                onClick={() => handleSelect(st.id)}
+                role="radio"
+                aria-checked={isSelected}
+                title={`${st.label}: ${st.description}`}
+              >
+                <img src={previewUrl} alt={st.label} loading="lazy" />
+                {isSelected && (
+                  <span className="avatar-3d-circle-dot" aria-hidden="true" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="avatar-3d-minimal-caption">
+          <span>Estilo:</span> <strong>{selectedStyle.label}</strong>
+        </div>
+      </div>
+    );
+  }
+
 
   if (mode === "dropdown") {
     const activeStyleObj =

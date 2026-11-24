@@ -8,6 +8,10 @@ import {
   addEvent,
   changeStaffPassword,
   createRoom,
+  createFloorWithStructures,
+  HOTEL_STRUCTURE_CATALOG,
+  getStructureIcon,
+  getStructurePhoto,
   createStaff,
   deleteRoom,
   deleteStaff,
@@ -82,120 +86,71 @@ function ActionMessage({
   return null;
 }
 
-function MinimalVectorIcon({ status, isVip = false, className = "" }: { status: RoomStatus; isVip?: boolean; className?: string }) {
-  if (isVip) {
-    return (
-      <svg className={`min-icon min-icon-vip ${className}`} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M12 2l2.6 6.8L22 12l-7.4 3.2L12 22l-2.6-6.8L2 12l7.4-3.2z" />
-      </svg>
-    );
-  }
-  switch (status) {
-    case "free":
-      return (
-        <svg className={`min-icon min-icon-free ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M2 4v16M2 11h20M22 4v16M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4" />
-        </svg>
-      );
-    case "occupied":
-      return (
-        <svg className={`min-icon min-icon-occupied ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M18 20a6 6 0 0 0-12 0" />
-          <circle cx="12" cy="10" r="4" />
-        </svg>
-      );
-    case "cleaning":
-      return (
-        <svg className={`min-icon min-icon-cleaning icon-spin-orbit ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-          <path d="M3 3v5h5" />
-          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-          <path d="M21 21v-5h-5" />
-        </svg>
-      );
-    case "pending":
-      return (
-        <svg className={`min-icon min-icon-pending ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
-      );
-    case "finished":
-      return (
-        <svg className={`min-icon min-icon-finished ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-          <polyline points="22 4 12 14.01 9 11.01" />
-        </svg>
-      );
-    default:
-      return (
-        <svg className={`min-icon ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="4" y="2" width="16" height="20" rx="2" />
-          <line x1="14" y1="12" x2="16" y2="12" />
-        </svg>
-      );
-  }
-}
 
-function MinimalArrowLink({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg
-      className={`min-icon-arrow-link ${className}`}
-      style={style}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <line x1="7" y1="17" x2="17" y2="7" />
-      <polyline points="7 7 17 7 17 17" />
-    </svg>
-  );
-}
 
 export function DashboardPage() {
-  const navigate = useNavigate();
   const { state } = useHotelData();
-  const [matrixFilter, setMatrixFilter] = useState<"all" | "free" | "occupied" | "pending" | "cleaning" | "finished">("all");
-  const [selectedFloor, setSelectedFloor] = useState<string>("all");
-  const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | RoomStatus>("all");
 
-  const isVipRoom = (plan?: string) => {
-    if (!plan) return false;
-    const p = plan.toLowerCase();
-    return p.includes("premium") || p.includes("vip") || p.includes("suite");
-  };
+  const today = localDateValue(new Date());
 
-  const roomIds = useMemo(
+  // 1. Clasificación real de espacios
+  const allSpaceIds = useMemo(
     () => Object.keys(state.rooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [state.rooms],
   );
+  const roomIds = useMemo(
+    () => allSpaceIds.filter((id) => state.spaceTypes[id] !== "zona_comun"),
+    [allSpaceIds, state.spaceTypes],
+  );
+
+  const totalSpaces = allSpaceIds.length;
   const totalRooms = roomIds.length;
-  const occupiedCount = roomIds.filter((id) => state.rooms[id] === "occupied").length;
-  const freeOnlyCount = roomIds.filter((id) => state.rooms[id] === "free").length;
-  const finishedCount = roomIds.filter((id) => state.rooms[id] === "finished").length;
-  const freeCount = freeOnlyCount + finishedCount;
-  const pendingCount = roomIds.filter((id) => state.rooms[id] === "pending").length;
-  const cleaningCount = roomIds.filter((id) => state.rooms[id] === "cleaning").length;
-  const turnoverCount = pendingCount + cleaningCount;
+
+  // 2. Métricas auténticas
+  const occupiedCount = useMemo(
+    () => roomIds.filter((id) => state.rooms[id] === "occupied").length,
+    [roomIds, state.rooms],
+  );
+  const freeCount = useMemo(
+    () => allSpaceIds.filter((id) => state.rooms[id] === "free").length,
+    [allSpaceIds, state.rooms],
+  );
+  const cleaningCount = useMemo(
+    () => allSpaceIds.filter((id) => state.rooms[id] === "cleaning").length,
+    [allSpaceIds, state.rooms],
+  );
+  const pendingCount = useMemo(
+    () => allSpaceIds.filter((id) => state.rooms[id] === "pending").length,
+    [allSpaceIds, state.rooms],
+  );
+  const finishedCount = useMemo(
+    () => allSpaceIds.filter((id) => state.rooms[id] === "finished").length,
+    [allSpaceIds, state.rooms],
+  );
 
   const occupancyRate = totalRooms > 0 ? Math.round((occupiedCount / totalRooms) * 100) : 0;
-  const freeRate = totalRooms > 0 ? Math.round((freeCount / totalRooms) * 100) : 0;
-  const turnoverRate = totalRooms > 0 ? Math.max(0, 100 - occupancyRate - freeRate) : 0;
+  const donutRadius = 14;
+  const donutCircumference = 2 * Math.PI * donutRadius;
+  const occStroke = (occupancyRate / 100) * donutCircumference;
 
-  // Active staff on shift
-  const activeStaffCount = state.attendance.filter((a) => !a.checkOut).length;
-  const roomsPerActiveStaff = activeStaffCount > 0 ? (turnoverCount / activeStaffCount).toFixed(1) : String(turnoverCount);
+  // 3. Personal activo en turno
+  const activeAttendanceMap = useMemo(() => {
+    const map = new Map<string, (typeof state.attendance)[0]>();
+    for (const a of state.attendance) {
+      if (!a.checkOut && !map.has(a.staffId)) {
+        map.set(a.staffId, a);
+      }
+    }
+    return map;
+  }, [state.attendance]);
 
-  // Operational health calculation
-  const today = localDateValue(new Date());
-  const nextWeekDate = new Date();
-  nextWeekDate.setDate(nextWeekDate.getDate() + 7);
-  const nextWeek = localDateValue(nextWeekDate);
+  const activeStaff = useMemo(
+    () => state.staff.filter((s) => activeAttendanceMap.has(s.id)),
+    [activeAttendanceMap, state.staff],
+  );
 
+  // 4. Urgencias de aseo
   const scheduledRooms = useMemo(() => {
     return Object.entries(state.scheduledCleaningDates)
       .filter(([roomId, date]) => Boolean(date && state.rooms[roomId]))
@@ -204,792 +159,334 @@ export function DashboardPage() {
         date,
         status: state.rooms[roomId],
         cleaner: state.assignedCleanings[roomId]?.staffName || "Sin asignar",
+        isCommon: state.spaceTypes[roomId] === "zona_comun",
       }))
       .sort((a, b) => {
         const aOverdue = a.date < today && a.status !== "finished";
         const bOverdue = b.date < today && b.status !== "finished";
         if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
-        return a.date.localeCompare(b.date)
-          || a.roomId.localeCompare(b.roomId, undefined, { numeric: true });
+        return a.date.localeCompare(b.date) || a.roomId.localeCompare(b.roomId, undefined, { numeric: true });
       });
-  }, [state.rooms, state.scheduledCleaningDates, state.assignedCleanings, today]);
+  }, [state.rooms, state.scheduledCleaningDates, state.assignedCleanings, state.spaceTypes, today]);
 
-  const overdueCount = scheduledRooms.filter(
-    (room) => room.date < today && room.status !== "finished",
-  ).length;
-  const upcomingCount = scheduledRooms.filter(
-    (room) => room.date >= today && room.date <= nextWeek && room.status !== "finished",
-  ).length;
+  const overdueRooms = useMemo(
+    () => scheduledRooms.filter((r) => r.date < today && r.status !== "finished"),
+    [scheduledRooms, today],
+  );
+  const dueTodayRooms = useMemo(
+    () => scheduledRooms.filter((r) => r.date === today && r.status !== "finished"),
+    [scheduledRooms, today],
+  );
+  const unassignedPendingSpaces = useMemo(
+    () => allSpaceIds.filter((id) => state.rooms[id] === "pending" && !state.assignedCleanings[id]?.staffId),
+    [allSpaceIds, state.assignedCleanings, state.rooms],
+  );
 
-  const operationalHealth = Math.max(70, Math.min(100, Math.round(100 - (overdueCount * 6) - (pendingCount * 2))));
+  const operationalHealth = Math.max(
+    70,
+    Math.min(100, Math.round(100 - (overdueRooms.length * 6) - (unassignedPendingSpaces.length * 4) - (pendingCount * 2))),
+  );
 
-  // Group rooms by floors (extracts floor or detects, grouping common spaces into "Áreas Comunes")
+  // 5. Agrupación por pisos
   const floors = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const id of roomIds) {
+    for (const id of allSpaceIds) {
       const isCommon = state.spaceTypes[id] === "zona_comun";
-      let key = "Áreas Comunes";
-      if (!isCommon) {
-        if (state.floors[id]) {
-          key = state.floors[id];
-        } else {
-          const digitsMatch = id.match(/\d+/);
-          if (digitsMatch) {
-            const numStr = digitsMatch[0];
-            const floorNum = numStr.length >= 3 ? numStr.slice(0, -2) : "1";
-            key = `Piso ${parseInt(floorNum, 10) || 1}`;
-          } else {
-            key = "Piso 1";
-          }
-        }
+      let key = state.floors[id]?.trim() || detectFloor(id, undefined, isCommon);
+      if (!key || key.toLowerCase() === "sin piso") {
+        key = isCommon ? "Zonas Comunes" : "Piso 1";
       }
       if (!map[key]) map[key] = [];
       map[key].push(id);
     }
-    // Sort Pisos first, then Áreas Comunes
     const sortedMap: Record<string, string[]> = {};
     const keys = Object.keys(map).sort((a, b) => {
-      if (a === "Áreas Comunes") return 1;
-      if (b === "Áreas Comunes") return -1;
+      const aIsCommon = a.toLowerCase().includes("comun") || a.toLowerCase().includes("común");
+      const bIsCommon = b.toLowerCase().includes("comun") || b.toLowerCase().includes("común");
+      if (aIsCommon && !bIsCommon) return 1;
+      if (!aIsCommon && bIsCommon) return -1;
       return a.localeCompare(b, undefined, { numeric: true });
     });
     for (const k of keys) {
       sortedMap[k] = map[k];
     }
     return sortedMap;
-  }, [roomIds, state.floors, state.spaceTypes]);
+  }, [allSpaceIds, state.floors, state.spaceTypes]);
 
-  // Hourly operational activity distribution from events
-  const activityHours = useMemo(() => {
-    const blocks = [
-      { label: "07:00 - 11:00", name: "Apertura / Check-outs", count: 0 },
-      { label: "11:00 - 15:00", name: "Pico de Limpieza", count: 0 },
-      { label: "15:00 - 19:00", name: "Check-ins / Entregas", count: 0 },
-      { label: "19:00 - 23:00", name: "Cierre de Jornada", count: 0 },
-    ];
-    for (const ev of state.events) {
-      const d = new Date(ev.time);
-      if (!Number.isNaN(d.getTime())) {
-        const h = d.getHours();
-        if (h >= 7 && h < 11) blocks[0].count++;
-        else if (h >= 11 && h < 15) blocks[1].count++;
-        else if (h >= 15 && h < 19) blocks[2].count++;
-        else if (h >= 19 && h < 23) blocks[3].count++;
-      }
-    }
-    const maxCount = Math.max(...blocks.map((b) => b.count), 1);
-    return { blocks, maxCount };
-  }, [state.events]);
+  // Filtros rápidos
+  const filterOptions = [
+    { key: "all" as const, label: "Todas", count: totalSpaces },
+    { key: "free" as const, label: "Libres", count: freeCount, color: "var(--st-free)" },
+    { key: "occupied" as const, label: "Ocupadas", count: occupiedCount, color: "var(--st-occupied)" },
+    { key: "cleaning" as const, label: "En Limpieza", count: cleaningCount, color: "var(--st-cleaning)" },
+    { key: "pending" as const, label: "Pendiente", count: pendingCount, color: "var(--st-pending)" },
+    { key: "finished" as const, label: "Listas", count: finishedCount, color: "var(--st-finished)" },
+  ];
 
-  // Service plan distribution
-  const serviceDistribution = useMemo(() => {
-    let semanal = 0;
-    let mensual = 0;
-    let premium = 0;
-    let other = 0;
-    for (const id of roomIds) {
-      const plan = (state.servicePlans[id] ?? "").toLowerCase();
-      if (plan.includes("semanal")) semanal++;
-      else if (plan.includes("mensual")) mensual++;
-      else if (plan.includes("premium")) premium++;
-      else other++;
-    }
-    const semPct = totalRooms > 0 ? Math.round((semanal / totalRooms) * 100) : 0;
-    const menPct = totalRooms > 0 ? Math.round((mensual / totalRooms) * 100) : 0;
-    const prePct = totalRooms > 0 ? Math.round((premium / totalRooms) * 100) : 0;
-    const othPct = Math.max(0, 100 - semPct - menPct - prePct);
-    return {
-      semanal,
-      mensual,
-      premium,
-      other,
-      semPct,
-      menPct,
-      prePct,
-      othPct,
-    };
-  }, [roomIds, state.servicePlans, totalRooms]);
-
-  // Donut SVG circumference calculation
-  const donutRadius = 50;
-  const donutCircumference = 2 * Math.PI * donutRadius;
-  const occStroke = (occupancyRate / 100) * donutCircumference;
-  const freeStroke = (freeRate / 100) * donutCircumference;
-  const turnStroke = (turnoverRate / 100) * donutCircumference;
-
-  // Filtered rooms for floor matrix
-  const matrixFilterFn = (id: string) => {
-    const s = state.rooms[id] || "free";
-    if (matrixFilter !== "all" && s !== matrixFilter) return false;
-    return true;
-  };
+  const recentEvents = useMemo(() => state.events.slice(0, 3), [state.events]);
 
   return (
-    <div className="page-stack dashboard-page dash-compact-page">
-      {/* 1. Header con la misma tipografía Fraunces y estilo de las otras secciones */}
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Operación general</p>
+    <div className="dash-compact-shell">
+      {/* 1. TOPBAR MINIMALISTA */}
+      <header className="dash-topbar">
+        <div className="dash-topbar-left">
           <h1>Inicio</h1>
-          <p className="page-description">
-            Monitoreo en tiempo real de habitaciones, rotación de limpieza y ocupación general.
-          </p>
-        </div>
-        <div className="dashboard-heading-badges">
-          <span className="dash-live-chip">
-            <span className="dashboard-pulse-dot" aria-hidden="true" />
-            <strong>{totalRooms}</strong> Habitaciones
-          </span>
-          <span className="dash-health-pill">
-            <span className="material-symbol" aria-hidden="true">verified</span>
-            <span>{operationalHealth}% Óptimo</span>
-          </span>
-        </div>
-      </div>
-
-      {/* 2. ROW OF 4 SMALL KPI CARDS */}
-      <section className="dash-kpis-grid" aria-label="Métricas clave de operación">
-        {/* KPI 1: Ocupación */}
-        <article className="dash-small-card dash-kpi-card">
-          <div className="dash-kpi-top">
-            <span className="dash-kpi-label">Ocupación</span>
-            <span className="dash-kpi-icon-pill coral"><span className="material-symbol" aria-hidden="true">hotel</span></span>
-          </div>
-          <div className="dash-kpi-center">
-            <div className="dash-kpi-number-wrap">
-              <strong>{occupancyRate}%</strong>
-              <span>{occupiedCount} de {totalRooms} habs</span>
-            </div>
-            <div className="dash-kpi-ring" aria-hidden="true">
-              <svg viewBox="0 0 36 36" className="kpi-ring-svg">
-                <circle cx="18" cy="18" r="14" fill="none" stroke="#fce4e8" strokeWidth="3.5" />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  fill="none"
-                  stroke="#f05d72"
-                  strokeWidth="3.5"
-                  strokeDasharray={`${(occupancyRate / 100) * 87.96} 87.96`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 18 18)"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="dash-kpi-footer">
-            <span className="dash-kpi-trend">Capacidad: {occupiedCount}/{totalRooms} habs</span>
-          </div>
-        </article>
-
-        {/* KPI 2: Disponibles */}
-        <article className="dash-small-card dash-kpi-card">
-          <div className="dash-kpi-top">
-            <span className="dash-kpi-label">Disponibles / Listas</span>
-            <span className="dash-kpi-icon-pill mint"><span className="material-symbol" aria-hidden="true">door_open</span></span>
-          </div>
-          <div className="dash-kpi-center">
-            <div className="dash-kpi-number-wrap">
-              <strong>{freeCount}</strong>
-              <span>{freeRate}% listas check-in</span>
-            </div>
-            <div className="dash-kpi-ring" aria-hidden="true">
-              <svg viewBox="0 0 36 36" className="kpi-ring-svg">
-                <circle cx="18" cy="18" r="14" fill="none" stroke="#d5ede7" strokeWidth="3.5" />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  fill="none"
-                  stroke="#26b7a6"
-                  strokeWidth="3.5"
-                  strokeDasharray={`${(freeRate / 100) * 87.96} 87.96`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 18 18)"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="dash-kpi-footer">
-            <span className="dash-kpi-trend green">Entrega Inmediata</span>
-          </div>
-        </article>
-
-        {/* KPI 3: Rotación / Aseo */}
-        <article className="dash-small-card dash-kpi-card">
-          <div className="dash-kpi-top">
-            <span className="dash-kpi-label">En Rotación</span>
-            <span className="dash-kpi-icon-pill purple"><span className="material-symbol" aria-hidden="true">cleaning_services</span></span>
-          </div>
-          <div className="dash-kpi-center">
-            <div className="dash-kpi-number-wrap">
-              <strong>{turnoverCount}</strong>
-              <span>{pendingCount} por asear · {cleaningCount} en curso</span>
-            </div>
-            <div className="dash-kpi-ring" aria-hidden="true">
-              <svg viewBox="0 0 36 36" className="kpi-ring-svg">
-                <circle cx="18" cy="18" r="14" fill="none" stroke="#ede7fa" strokeWidth="3.5" />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  fill="none"
-                  stroke="#8d73ff"
-                  strokeWidth="3.5"
-                  strokeDasharray={`${(turnoverRate / 100) * 87.96} 87.96`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 18 18)"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="dash-kpi-footer">
-            <span className={`dash-kpi-trend ${pendingCount > 0 ? "amber" : ""}`}>
-              {pendingCount > 0 ? `${pendingCount} pendientes` : "Sin retrasos"}
+          <div className="dash-topbar-chips">
+            <span className="meta-chip green">
+              <span className="pulse" />
+              <strong>{totalSpaces}</strong> Espacios
             </span>
-          </div>
-        </article>
-
-        {/* KPI 4: Personal en Turno */}
-        <article className="dash-small-card dash-kpi-card">
-          <div className="dash-kpi-top">
-            <span className="dash-kpi-label">Personal Activo</span>
-            <span className="dash-kpi-icon-pill sage"><span className="material-symbol" aria-hidden="true">badge</span></span>
-          </div>
-          <div className="dash-kpi-center">
-            <div className="dash-kpi-number-wrap">
-              <strong>{activeStaffCount} <small style={{ fontSize: 13, color: "#64748b" }}>/ {state.staff.length}</small></strong>
-              <span>Carga: {roomsPerActiveStaff} hab / camarista</span>
-            </div>
-            <div className="dash-kpi-ring" aria-hidden="true">
-              <svg viewBox="0 0 36 36" className="kpi-ring-svg">
-                <circle cx="18" cy="18" r="14" fill="none" stroke="#e0e8ee" strokeWidth="3.5" />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  fill="none"
-                  stroke="#3d6c80"
-                  strokeWidth="3.5"
-                  strokeDasharray={`${state.staff.length > 0 ? (activeStaffCount / state.staff.length) * 87.96 : 0} 87.96`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 18 18)"
-                />
-              </svg>
-            </div>
-          </div>
-          <div className="dash-kpi-footer">
-            <span className="dash-kpi-trend">
-              {activeStaffCount > 0 ? "Turno activo hoy" : "Sin personal activo"}
+            <span className="meta-chip">
+              <span className="material-symbol" style={{ color: "#10b981", fontSize: 16 }} aria-hidden="true">verified</span>
+              <strong>{operationalHealth}%</strong> Óptimo
             </span>
+            <time className="meta-chip" dateTime={today}>{formatDateOnly(new Date())}</time>
+          </div>
+        </div>
+
+        {/* Riel de filtro rápido */}
+        <nav className="dash-filter-strip" aria-label="Filtro rápido">
+          {filterOptions.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              className={`filter-pill ${statusFilter === opt.key ? "active" : ""}`}
+              onClick={() => setStatusFilter(statusFilter === opt.key && opt.key !== "all" ? "all" : opt.key)}
+            >
+              {opt.color && <span className="pill-dot" style={{ background: opt.color }} aria-hidden="true" />}
+              <span>{opt.label}</span>
+              <strong>{opt.count}</strong>
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      {/* 2. POWER CARDS ILUSTRATIVAS (3 Columnas de Impacto Directo) */}
+      <section className="dash-visual-deck" aria-label="Resumen visual operativo">
+        {/* Card 1: Radar Visual de Ocupación */}
+        <article className="vcard">
+          <div className="vcard-head">
+            <span>Ocupación y Capacidad</span>
+            <Link to="/app/habitaciones">Ver todas <span className="material-symbol" aria-hidden="true">arrow_forward</span></Link>
+          </div>
+          <div className="radar-donut-row">
+            <div className="donut-svg-wrap" aria-hidden="true">
+              <svg viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r={donutRadius} fill="none" stroke="var(--border-hairline)" strokeWidth="4" />
+                {occStroke > 0 && (
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r={donutRadius}
+                    fill="none"
+                    stroke="var(--st-occupied)"
+                    strokeWidth="4"
+                    strokeDasharray={`${occStroke} ${donutCircumference}`}
+                    strokeLinecap="round"
+                  />
+                )}
+              </svg>
+              <div className="donut-center-label">
+                {occupancyRate}%
+                <span>Ocupado</span>
+              </div>
+            </div>
+            <div className="donut-stats-grid">
+              <div className="donut-stat-item">
+                <div className="donut-stat-num" style={{ color: "var(--st-occupied)" }}>
+                  <span className="pill-dot" style={{ background: "var(--st-occupied)" }} /> {occupiedCount}
+                </div>
+                <div className="donut-stat-lbl">Ocupadas</div>
+              </div>
+              <div className="donut-stat-item">
+                <div className="donut-stat-num" style={{ color: "var(--st-free)" }}>
+                  <span className="pill-dot" style={{ background: "var(--st-free)" }} /> {freeCount}
+                </div>
+                <div className="donut-stat-lbl">Libres</div>
+              </div>
+              <div className="donut-stat-item">
+                <div className="donut-stat-num" style={{ color: "var(--st-cleaning)" }}>
+                  <span className="pill-dot" style={{ background: "var(--st-cleaning)" }} /> {cleaningCount}
+                </div>
+                <div className="donut-stat-lbl">En Limpieza</div>
+              </div>
+              <div className="donut-stat-item">
+                <div className="donut-stat-num" style={{ color: "var(--st-finished)" }}>
+                  <span className="pill-dot" style={{ background: "var(--st-finished)" }} /> {finishedCount}
+                </div>
+                <div className="donut-stat-lbl">Listas</div>
+              </div>
+            </div>
           </div>
         </article>
-      </section>
 
-      {/* 3. MATRIZ DE HABITACIONES (100% DE ANCHO EN DESKTOP) */}
-      <section className="dash-matrix-section">
-        {/* Card A: Pure Graphical Room Matrix */}
-        <article className="dash-small-card dash-matrix-canvas-card">
-          <div className="matrix-header-compact">
-            <div className="matrix-title-badge">
-              <span className="matrix-icon-box" aria-hidden="true">
-                <span className="material-symbol" style={{ fontSize: 16 }}>grid_view</span>
-              </span>
-              <span>Habitaciones del Hotel</span>
-              <span className="matrix-live-pill">
-                <span className="dashboard-pulse-dot" style={{ width: 6, height: 6 }} aria-hidden="true" />
-                {occupancyRate}% Ocupado
-              </span>
-            </div>
-
-            <div className="matrix-stepper-wrap" role="tablist" aria-label="Filtrar por piso">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={selectedFloor === "all"}
-                className={`matrix-stepper-btn ${selectedFloor === "all" ? "active" : ""}`}
-                onClick={() => setSelectedFloor("all")}
-                title="Todos los pisos"
-              >
-                Todos
-              </button>
-              {Object.keys(floors).map((fl) => (
-                <button
-                  key={fl}
-                  type="button"
-                  role="tab"
-                  aria-selected={selectedFloor === fl}
-                  className={`matrix-stepper-btn ${selectedFloor === fl ? "active" : ""}`}
-                  onClick={() => setSelectedFloor(fl)}
-                  title={fl}
-                >
-                  {fl}
-                </button>
-              ))}
-            </div>
+        {/* Card 2: Camaristas en Turno */}
+        <article className="vcard">
+          <div className="vcard-head">
+            <span>Personal Activo Hoy</span>
+            <Link to="/app/personal">Turnos <span className="material-symbol" aria-hidden="true">arrow_forward</span></Link>
           </div>
-
-          <div className="matrix-spatial-body">
-            {(() => {
-              const currentFloorRooms = selectedFloor === "all"
-                ? roomIds
-                : (floors[selectedFloor] || []);
-
-              const renderPod = (roomId: string) => {
-                const st = state.rooms[roomId] || "free";
-                const isMatch = matrixFilterFn(roomId);
-                const isDimmed = !isMatch;
-                const isHovered = hoveredRoom === roomId;
-                const guest = state.guests[roomId];
-                const cleaner = state.assignedCleanings[roomId]?.staffName;
-                const plan = state.servicePlans[roomId];
-                const isVip = isVipRoom(plan);
-                const isCommonArea = state.spaceTypes[roomId] === "zona_comun";
-                const roomType = state.roomTypes[roomId] || detectRoomType(roomId);
-
-                let dynamicLabel = "Libre";
-                if (st === "occupied") {
-                  dynamicLabel = guest ? guest.split(" ")[0] : "Ocupada";
-                } else if (st === "cleaning") {
-                  dynamicLabel = cleaner ? cleaner.split(" ")[0] : "Limpieza";
-                } else if (st === "pending") {
-                  dynamicLabel = "Aseo";
-                } else if (st === "finished") {
-                  dynamicLabel = "Lista";
-                }
-
-                let subtext = isCommonArea ? "Zona Común" : (roomType === "doble" ? "Doble" : "Estándar");
-                if (st === "occupied" && isVip) subtext = "Suite VIP";
-                else if (st === "cleaning" && cleaner) subtext = cleaner.split(" ")[0];
+          <div className="staff-chips-stack">
+            {activeStaff.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-muted)", padding: "10px 0", textAlign: "center" }}>
+                Sin asistencias abiertas hoy.
+              </p>
+            ) : (
+              activeStaff.slice(0, 3).map((person) => {
+                const assigned = Object.entries(state.assignedCleanings).filter(
+                  ([rid, a]) => a.staffId === person.id && state.rooms[rid] !== undefined,
+                );
+                const currentCleaning = assigned.find(([rid]) => state.rooms[rid] === "cleaning")?.[0];
+                const initials = person.name.split(" ").map((n) => n[0]).slice(0, 2).join("");
 
                 return (
-                  <div
-                    key={roomId}
-                    className={`matrix-room-pod status-${st} ${isDimmed ? "is-dimmed" : ""} ${isCommonArea ? "is-common-area" : ""}`}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Habitación ${roomId}, ${statusLabels[st] || st}`}
-                    onClick={() => navigate(`/app/habitaciones?room=${encodeURIComponent(roomId)}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate(`/app/habitaciones?room=${encodeURIComponent(roomId)}`);
-                      }
-                    }}
-                    onMouseEnter={() => setHoveredRoom(roomId)}
-                    onMouseLeave={() => setHoveredRoom(null)}
-                  >
-                    <div className="matrix-pod-head">
-                      <span className="matrix-pod-num" title={roomId}>{roomId}</span>
-                      <div className="matrix-pod-indicators">
-                        {isVip && <span className="matrix-pod-vip-tag" title="Habitación VIP">★ VIP</span>}
-                        <span className={`matrix-pod-beacon status-${st}`} aria-hidden="true" />
-                      </div>
+                  <div className="staff-chip-row" key={person.id}>
+                    <div className="staff-chip-left">
+                      <div className="staff-avatar-dot">{initials}</div>
+                      <span>{person.name}</span>
                     </div>
-
-                    <div className="matrix-pod-foot">
-                      <span className={`matrix-pod-status-pill status-${st}`} title={dynamicLabel}>
-                        {dynamicLabel}
+                    {currentCleaning ? (
+                      <Link to={`/app/habitaciones?room=${encodeURIComponent(currentCleaning)}`} className="staff-chip-task">
+                        Hab {currentCleaning}
+                      </Link>
+                    ) : (
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                        {assigned.length > 0 ? `${assigned.length} asignadas` : "En guardia"}
                       </span>
-                      <span className="matrix-pod-subtext">{subtext}</span>
-                    </div>
-
-                    {/* Tooltip on hover */}
-                    {isHovered && (
-                      <div className="matrix-tile-tooltip" role="tooltip" style={{ zIndex: 50 }}>
-                        <div className="matrix-tooltip-head">
-                          <div className="matrix-tooltip-title">
-                            <MinimalVectorIcon status={st} isVip={isVip} />
-                            <strong style={{ fontFamily: "Space Grotesk, sans-serif" }}>Habitación {roomId}</strong>
-                          </div>
-                          <span className={`status-pill status-${st}`}>{statusLabels[st]}</span>
-                        </div>
-                        <div className="matrix-tooltip-body">
-                          <div><small>Huésped:</small> <span>{guest || "Sin registro"}</span></div>
-                          <div><small>Aseador:</small> <span>{cleaner || "Sin asignar"}</span></div>
-                          {plan && <div><small>Plan:</small> <span>{plan}</span></div>}
-                          <div className="matrix-tooltip-hint">
-                            <MinimalArrowLink style={{ opacity: 1, transform: "none" }} />
-                            <span>Clic para gestionar</span>
-                          </div>
-                        </div>
-                      </div>
                     )}
                   </div>
                 );
-              };
-
-              if (selectedFloor === "all") {
-                const floorEntries = Object.entries(floors);
-                if (floorEntries.length > 1) {
-                  return (
-                    <div className="matrix-wings-stage">
-                      {floorEntries.map(([flName, flRooms]) => (
-                        <div key={flName} className="matrix-floor-group">
-                          <div className="matrix-floor-group-header">
-                            <span className="matrix-floor-group-title">{flName}</span>
-                            <span className="matrix-floor-group-count">{flRooms.length} habs</span>
-                          </div>
-                          <div className="matrix-pod-row">
-                            {flRooms.map(renderPod)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-              }
-
-              if (currentFloorRooms.length === 0) {
-                return (
-                  <div className="matrix-empty-compact">
-                    <p>No hay espacios registrados en este piso.</p>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="matrix-wings-stage">
-                  <div className="matrix-pod-row">
-                    {currentFloorRooms.map(renderPod)}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          <div className="matrix-footer-compact">
-            <button
-              type="button"
-              className={`matrix-capsule-btn ${matrixFilter === "all" ? "active" : ""}`}
-              onClick={() => setMatrixFilter("all")}
-            >
-              ● {totalRooms}
-            </button>
-            <button
-              type="button"
-              className={`matrix-capsule-btn ${matrixFilter === "free" ? "active" : ""}`}
-              onClick={() => setMatrixFilter(matrixFilter === "free" ? "all" : "free")}
-            >
-              <span className="matrix-room-dot" style={{ background: "#10b981" }} />
-              {freeOnlyCount} Libres
-            </button>
-            <button
-              type="button"
-              className={`matrix-capsule-btn ${matrixFilter === "occupied" ? "active" : ""}`}
-              onClick={() => setMatrixFilter(matrixFilter === "occupied" ? "all" : "occupied")}
-            >
-              <span className="matrix-room-dot" style={{ background: "#f43f5e" }} />
-              {occupiedCount} Ocupadas
-            </button>
-            <button
-              type="button"
-              className={`matrix-capsule-btn ${matrixFilter === "pending" ? "active" : ""}`}
-              onClick={() => setMatrixFilter(matrixFilter === "pending" ? "all" : "pending")}
-            >
-              <span className="matrix-room-dot" style={{ background: "#f59e0b" }} />
-              {pendingCount} Aseo
-            </button>
-            <button
-              type="button"
-              className={`matrix-capsule-btn ${matrixFilter === "cleaning" ? "active" : ""}`}
-              onClick={() => setMatrixFilter(matrixFilter === "cleaning" ? "all" : "cleaning")}
-            >
-              <span className="matrix-room-dot" style={{ background: "#8b5cf6" }} />
-              {cleaningCount} En Ruta
-            </button>
-            <button
-              type="button"
-              className={`matrix-capsule-btn ${matrixFilter === "finished" ? "active" : ""}`}
-              onClick={() => setMatrixFilter(matrixFilter === "finished" ? "all" : "finished")}
-            >
-              <span className="matrix-room-dot" style={{ background: "#06b6d4" }} />
-              {finishedCount} Listas
-            </button>
-          </div>
-        </article>
-      </section>
-
-      {/* 4. FILA INFERIOR: 4 TARJETAS DE TELEMETRÍA (CAPACIDAD + FLUJO + PLANES + AGENDA) */}
-      <section className="dash-bottom-grid">
-        {/* Card B: Pure Graphical Capacity Radar (Interactive Telemetry) */}
-        <article className="dash-small-card dash-radar-card dash-card-bottom">
-          <div className="dash-card-header radar-header-compact">
-            <div className="dash-card-header-left radar-title">
-              <div className="dash-card-header-icon">
-                <span className="material-symbol" aria-hidden="true">pie_chart</span>
-              </div>
-              <div>
-                <p className="dash-card-eyebrow">Ocupación y Flujo</p>
-                <h2 className="dash-card-title">Capacidad</h2>
-              </div>
-            </div>
-            <span className="dash-card-badge">
-              {occupiedCount} / {totalRooms}
-            </span>
-          </div>
-
-          <div className="radar-body-compact">
-            <div className="radar-donut-stage">
-              <svg viewBox="0 0 140 140" className="radar-donut-svg">
-                <circle cx="70" cy="70" r={donutRadius} fill="none" stroke="#edf2ef" strokeWidth="14" />
-                {occStroke > 0 && (
-                  <circle
-                    cx="70"
-                    cy="70"
-                    r={donutRadius}
-                    fill="none"
-                    stroke="#f05d72"
-                    strokeWidth="14"
-                    strokeDasharray={`${occStroke} ${donutCircumference - occStroke}`}
-                    strokeDashoffset={-donutCircumference * 0.25}
-                    strokeLinecap="round"
-                    style={{ cursor: "pointer", transition: "stroke-width 0.2s" }}
-                    onClick={() => setMatrixFilter(matrixFilter === "occupied" ? "all" : "occupied")}
-                  />
-                )}
-                {freeStroke > 0 && (
-                  <circle
-                    cx="70"
-                    cy="70"
-                    r={donutRadius}
-                    fill="none"
-                    stroke="#26b7a6"
-                    strokeWidth="14"
-                    strokeDasharray={`${freeStroke} ${donutCircumference - freeStroke}`}
-                    strokeDashoffset={-(donutCircumference * 0.25 + occStroke)}
-                    strokeLinecap="round"
-                    style={{ cursor: "pointer", transition: "stroke-width 0.2s" }}
-                    onClick={() => setMatrixFilter(matrixFilter === "free" ? "all" : "free")}
-                  />
-                )}
-                {turnStroke > 0 && (
-                  <circle
-                    cx="70"
-                    cy="70"
-                    r={donutRadius}
-                    fill="none"
-                    stroke="#8d73ff"
-                    strokeWidth="14"
-                    strokeDasharray={`${turnStroke} ${donutCircumference - turnStroke}`}
-                    strokeDashoffset={-(donutCircumference * 0.25 + occStroke + freeStroke)}
-                    strokeLinecap="round"
-                    style={{ cursor: "pointer", transition: "stroke-width 0.2s" }}
-                    onClick={() => setMatrixFilter(matrixFilter === "cleaning" ? "all" : "cleaning")}
-                  />
-                )}
-              </svg>
-              <div className="radar-donut-center">
-                <span className="radar-donut-percent">{occupancyRate}%</span>
-                <span className="radar-donut-sub">Ocupación</span>
-              </div>
-            </div>
-
-            <div className="radar-interactive-pills" role="tablist" aria-label="Filtro rápido radar">
-              <button
-                type="button"
-                className={`radar-stat-pill pill-occ ${matrixFilter === "occupied" ? "active" : ""}`}
-                onClick={() => setMatrixFilter(matrixFilter === "occupied" ? "all" : "occupied")}
-              >
-                <div className="radar-stat-pill-left">
-                  <span className="dash-donut-dot coral" />
-                  <span>{occupiedCount} Ocupadas</span>
-                </div>
-                <span className="radar-stat-pill-rate">{occupancyRate}%</span>
-              </button>
-              <button
-                type="button"
-                className={`radar-stat-pill pill-free ${matrixFilter === "free" ? "active" : ""}`}
-                onClick={() => setMatrixFilter(matrixFilter === "free" ? "all" : "free")}
-              >
-                <div className="radar-stat-pill-left">
-                  <span className="dash-donut-dot mint" />
-                  <span>{freeCount} Libres</span>
-                </div>
-                <span className="radar-stat-pill-rate">{freeRate}%</span>
-              </button>
-              <button
-                type="button"
-                className={`radar-stat-pill pill-turn ${matrixFilter === "cleaning" ? "active" : ""}`}
-                onClick={() => setMatrixFilter(matrixFilter === "cleaning" ? "all" : "cleaning")}
-              >
-                <div className="radar-stat-pill-left">
-                  <span className="dash-donut-dot purple" />
-                  <span>{turnoverCount} Limpieza</span>
-                </div>
-                <span className="radar-stat-pill-rate">{turnoverRate}%</span>
-              </button>
-            </div>
-          </div>
-        </article>
-
-        {/* Card 1: Hourly Operational Load */}
-        <article className="dash-small-card dash-card-bottom">
-          <div className="dash-card-header">
-            <div className="dash-card-header-left">
-              <div className="dash-card-header-icon">
-                <span className="material-symbol" aria-hidden="true">query_builder</span>
-              </div>
-              <div>
-                <p className="dash-card-eyebrow">Flujo de Operación</p>
-                <h2 className="dash-card-title">Carga Horaria</h2>
-              </div>
-            </div>
-            <span className="dash-card-badge">Turnos de Hoy</span>
-          </div>
-
-          <div className="dash-card-bottom-body">
-            <div className="activity-bars-container" style={{ margin: 0 }}>
-              {activityHours.blocks.map((block) => {
-                const heightPct = Math.max(16, Math.round((block.count / activityHours.maxCount) * 100));
-                return (
-                  <div className="activity-bar-column" key={block.label}>
-                    <div className="activity-bar-track" style={{ height: 95 }}>
-                      <div
-                        className="activity-bar-fill"
-                        style={{ height: `${heightPct}%` }}
-                      >
-                        <span className="activity-bar-val">{block.count}</span>
-                      </div>
-                    </div>
-                    <div className="activity-bar-info">
-                      <strong className="activity-bar-name" style={{ fontSize: 10 }}>{block.name}</strong>
-                      <span className="activity-bar-label" style={{ fontSize: 9 }}>{block.label}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="dash-card-bottom-footer">
-            <span className="material-symbol" aria-hidden="true" style={{ fontSize: 13 }}>insights</span>
-            <span>Basado en <strong>{state.events.length} eventos</strong> registrados.</span>
-          </div>
-        </article>
-
-        {/* Card 2: Service Plans Spectrum */}
-        <article className="dash-small-card dash-card-bottom">
-          <div className="dash-card-header">
-            <div className="dash-card-header-left">
-              <div className="dash-card-header-icon">
-                <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-              </div>
-              <div>
-                <p className="dash-card-eyebrow">Protocolos y Servicios</p>
-                <h2 className="dash-card-title">Planes de Limpieza</h2>
-              </div>
-            </div>
-            <Link className="text-link" to="/app/habitaciones" style={{ fontSize: 11 }}>
-              Ver <span className="material-symbol" aria-hidden="true" style={{ fontSize: 13 }}>arrow_forward</span>
-            </Link>
-          </div>
-
-          <div className="dash-card-bottom-body">
-            <div className="service-stacked-bar" aria-label="Distribución de protocolos" style={{ height: 14, marginBottom: 12 }}>
-              {serviceDistribution.semPct > 0 && (
-                <div
-                  className="stacked-slice slice-semanal"
-                  style={{ width: `${serviceDistribution.semPct}%` }}
-                  title={`Semanal: ${serviceDistribution.semanal} habs (${serviceDistribution.semPct}%)`}
-                />
-              )}
-              {serviceDistribution.menPct > 0 && (
-                <div
-                  className="stacked-slice slice-mensual"
-                  style={{ width: `${serviceDistribution.menPct}%` }}
-                  title={`Mensual: ${serviceDistribution.mensual} habs (${serviceDistribution.menPct}%)`}
-                />
-              )}
-              {serviceDistribution.prePct > 0 && (
-                <div
-                  className="stacked-slice slice-premium"
-                  style={{ width: `${serviceDistribution.prePct}%` }}
-                  title={`Premium: ${serviceDistribution.premium} habs (${serviceDistribution.prePct}%)`}
-                />
-              )}
-              {serviceDistribution.othPct > 0 && (
-                <div
-                  className="stacked-slice slice-other"
-                  style={{ width: `${serviceDistribution.othPct}%` }}
-                  title={`Estándar / Sin plan: ${serviceDistribution.other} habs (${serviceDistribution.othPct}%)`}
-                />
-              )}
-            </div>
-
-            <div className="service-pills-row" style={{ gap: 6, flexWrap: "wrap" }}>
-              <span className="service-pill-item" style={{ fontSize: 10.5, padding: "3px 7px" }}>
-                <span className="pill-dot sem" /> Semanal: <strong>{serviceDistribution.semanal}</strong> ({serviceDistribution.semPct}%)
-              </span>
-              <span className="service-pill-item" style={{ fontSize: 10.5, padding: "3px 7px" }}>
-                <span className="pill-dot men" /> Mensual: <strong>{serviceDistribution.mensual}</strong> ({serviceDistribution.menPct}%)
-              </span>
-              <span className="service-pill-item" style={{ fontSize: 10.5, padding: "3px 7px" }}>
-                <span className="pill-dot pre" /> Premium: <strong>{serviceDistribution.premium}</strong> ({serviceDistribution.prePct}%)
-              </span>
-            </div>
-          </div>
-
-          <div className="dash-card-bottom-footer">
-            <span>Total de habitaciones cubiertas</span>
-            <strong>{totalRooms} activas</strong>
-          </div>
-        </article>
-
-        {/* Card 3: Critical Agenda */}
-        <article className="dash-small-card dash-card-bottom">
-          <div className="dash-card-header">
-            <div className="dash-card-header-left">
-              <div className="dash-card-header-icon">
-                <span className="material-symbol" aria-hidden="true">event_available</span>
-              </div>
-              <div>
-                <p className="dash-card-eyebrow">Agenda Crítica</p>
-                <h2 className="dash-card-title">Próximos Aseos</h2>
-              </div>
-            </div>
-            <span className="dash-card-badge" style={{ color: overdueCount > 0 ? "#b91c1c" : "#166534" }}>
-              {overdueCount > 0 ? `${overdueCount} vencidas` : upcomingCount > 0 ? `${upcomingCount} en 7d` : "Al día"}
-            </span>
-          </div>
-
-          <div className="dash-card-bottom-body">
-            {scheduledRooms.length === 0 ? (
-              <p className="empty-state-compact" style={{ fontSize: 11, textAlign: "center", margin: 0 }}>
-                Sin fechas de aseo programadas para los próximos días.
-              </p>
-            ) : (
-              <ul className="critical-schedule-items" style={{ margin: 0, padding: 0 }}>
-                {scheduledRooms.slice(0, 3).map((room) => {
-                  const isOverdue = room.date < today && room.status !== "finished";
-                  const isToday = room.date === today;
-                  return (
-                    <li className={`critical-item ${isOverdue ? "is-overdue" : ""}`} key={room.roomId} style={{ padding: "6px 0" }}>
-                      <div className="critical-room-col">
-                        <strong style={{ fontSize: 12 }}>Hab. {room.roomId}</strong>
-                        <span style={{ fontSize: 10 }}>{room.cleaner}</span>
-                      </div>
-                      <div className="critical-date-col">
-                        <span className={`critical-tag ${isOverdue ? "tag-overdue" : isToday ? "tag-today" : "tag-normal"}`} style={{ fontSize: 9 }}>
-                          {isOverdue ? "Vencida" : isToday ? "Hoy" : "Próxima"}
-                        </span>
-                        <time dateTime={room.date} style={{ fontSize: 10 }}>{room.date}</time>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              })
             )}
           </div>
+        </article>
 
-          <div className="dash-card-bottom-footer">
-            <Link className="text-link" to="/app/habitaciones" style={{ fontSize: 11 }}>
-              Ver todas las fechas <span className="material-symbol" aria-hidden="true" style={{ fontSize: 12 }}>arrow_forward</span>
-            </Link>
-            <span>{scheduledRooms.length} en total</span>
+        {/* Card 3: Urgencias Directas */}
+        <article className="vcard">
+          <div className="vcard-head">
+            <span>Atención Inmediata</span>
+            <Link to="/app/limpiezas">Ir a Aseos <span className="material-symbol" aria-hidden="true">arrow_forward</span></Link>
+          </div>
+          <div className="urgency-list">
+            {overdueRooms.length === 0 && dueTodayRooms.length === 0 && unassignedPendingSpaces.length === 0 ? (
+              <div className="urgency-pill green">
+                <span className="material-symbol" style={{ fontSize: 16 }} aria-hidden="true">check_circle</span>
+                <span>Toda la rotación al día</span>
+              </div>
+            ) : (
+              <>
+                {overdueRooms.slice(0, 2).map((r) => (
+                  <Link to="/app/limpiezas" className="urgency-pill red" key={r.roomId}>
+                    <span>Hab {r.roomId} · {r.cleaner}</span>
+                    <span className="urgency-tag" style={{ color: "#be123c" }}>Vencida</span>
+                  </Link>
+                ))}
+                {dueTodayRooms.slice(0, 2).map((r) => (
+                  <Link to="/app/limpiezas" className="urgency-pill amber" key={r.roomId}>
+                    <span>Hab {r.roomId} · {r.cleaner}</span>
+                    <span className="urgency-tag" style={{ color: "#b45309" }}>Entrega Hoy</span>
+                  </Link>
+                ))}
+                {unassignedPendingSpaces.slice(0, 1).map((id) => (
+                  <Link to="/app/limpiezas" className="urgency-pill amber" key={id}>
+                    <span>Espacio {id}</span>
+                    <span className="urgency-tag" style={{ color: "#b45309" }}>Sin Asignar</span>
+                  </Link>
+                ))}
+              </>
+            )}
           </div>
         </article>
       </section>
+
+      {/* 3. TABLERO VISUAL DE HABITACIONES (Grid Ultra Ilustrativo) */}
+      <section className="dash-fleet-board" aria-label="Distribución por pisos">
+        <div className="board-header">
+          <h2 className="board-title">Distribución por Pisos</h2>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Clic en cualquier espacio para gestionarlo</span>
+        </div>
+
+        {Object.entries(floors).map(([flName, flRooms]) => {
+          const visibleRooms = statusFilter === "all"
+            ? flRooms
+            : flRooms.filter((id) => state.rooms[id] === statusFilter);
+
+          if (visibleRooms.length === 0) return null;
+
+          return (
+            <div className="floor-row" key={flName}>
+              <span className="floor-badge">{flName}</span>
+              <div className="room-nodes-track">
+                {visibleRooms.map((roomId) => {
+                  const st = state.rooms[roomId] || "free";
+                  const isCommon = state.spaceTypes[roomId] === "zona_comun";
+                  const guest = state.guests[roomId];
+                  const cleaner = state.assignedCleanings[roomId]?.staffName;
+
+                  let guestInitial = "";
+                  if (st === "occupied" && guest) guestInitial = guest.split(" ")[0];
+                  else if (st === "cleaning" && cleaner) guestInitial = cleaner.split(" ")[0];
+
+                  return (
+                    <Link
+                      key={roomId}
+                      to={`/app/habitaciones?room=${encodeURIComponent(roomId)}`}
+                      className={`room-tile ${st}`}
+                      title={`${isCommon ? "Área común" : "Habitación"} ${roomId} (${statusLabels[st]})`}
+                    >
+                      {isCommon && (
+                        <span className="material-symbol" style={{ fontSize: 13, color: "#2563eb" }} aria-hidden="true">
+                          {getStructureIcon(roomId)}
+                        </span>
+                      )}
+                      <span>{roomId}</span>
+                      {guestInitial && <span className="room-tile-guest">{guestInitial}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      {/* 4. MINI FEED DE MOVIMIENTOS RECIENTES */}
+      <footer className="mini-feed-strip">
+        <span style={{ fontWeight: 700, fontSize: 11, textTransform: "uppercase", color: "var(--th-text-muted)", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 4 }}>
+          <span className="material-symbol" style={{ fontSize: 14 }} aria-hidden="true">history</span> En Vivo:
+        </span>
+        <div className="feed-items-row">
+          {recentEvents.length === 0 ? (
+            <span style={{ color: "var(--text-muted)", fontSize: 11 }}>Sin eventos recientes</span>
+          ) : (
+            recentEvents.map((ev, i) => (
+              <div className="feed-point" key={i}>
+                <span
+                  className="pill-dot"
+                  style={{
+                    background:
+                      ev.status === "finished"
+                        ? "var(--st-finished)"
+                        : ev.status === "cleaning"
+                        ? "var(--st-cleaning)"
+                        : ev.status === "occupied"
+                        ? "var(--st-occupied)"
+                        : "var(--accent)",
+                  }}
+                  aria-hidden="true"
+                />
+                <span>
+                  {ev.action} <strong>Hab {ev.room}</strong> {ev.guest ? `(${ev.guest.split(" ")[0]})` : ""}
+                </span>
+                <time dateTime={ev.time}>{formatDate(ev.time).split(",")[1] || formatDate(ev.time)}</time>
+              </div>
+            ))
+          )}
+        </div>
+        <Link to="/app/historial" style={{ fontSize: 11, color: "var(--accent)", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}>
+          Ver historial →
+        </Link>
+      </footer>
     </div>
   );
 }
@@ -1006,8 +503,6 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
   const assignment = state.assignedCleanings[roomId];
   const roomFloor = state.floors[roomId] || detectFloor(roomId);
   const roomSpaceType = state.spaceTypes[roomId] || detectSpaceType(roomId);
-  const initialRoomType = (state.roomTypes[roomId] || detectRoomType(roomId)) as "normal" | "doble";
-  const initialDoubleNumber = state.doubleNumbers?.[roomId] || (initialRoomType === "doble" ? roomId : "");
   const roomCleaningTime = state.cleaningTimes?.[roomId] ?? 30;
 
   const [status, setStatus] = useState(roomStatus);
@@ -1019,8 +514,6 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
   const [cleaningType, setCleaningType] = useState(assignment?.cleaningType ?? "");
   const [piso, setPiso] = useState(roomFloor);
   const [tipoEspacio, setTipoEspacio] = useState<"habitacion" | "zona_comun">(roomSpaceType);
-  const [tipoHabitacion, setTipoHabitacion] = useState<"normal" | "doble">(initialRoomType);
-  const [numeroDoble, setNumeroDoble] = useState(initialDoubleNumber);
   const [tiempoLimpieza, setTiempoLimpieza] = useState<number>(roomCleaningTime);
 
   const [error, setError] = useState<string | null>(null);
@@ -1030,6 +523,28 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
   const [isEditing, setIsEditing] = useState(false);
 
   const isCommonArea = tipoEspacio === "zona_comun";
+
+  const registeredFloors = useMemo(() => {
+    const set = new Set<string>();
+    if (state?.floors) {
+      for (const id of Object.keys(state.floors)) {
+        const isCommon = state.spaceTypes[id] === "zona_comun";
+        const f = state.floors[id]?.trim() || detectFloor(id, undefined, isCommon);
+        if (f && f.toLowerCase() !== "sin piso") {
+          set.add(f);
+        }
+      }
+    }
+    if (piso && piso.trim()) {
+      set.add(piso.trim());
+    }
+    if (set.size === 0) {
+      set.add("Piso 1");
+      set.add("Piso 2");
+      set.add("Piso 3");
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [state?.floors, state?.spaceTypes, piso]);
 
   function handleCancel() {
     setStatus(roomStatus);
@@ -1041,8 +556,6 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
     setCleaningType(assignment?.cleaningType ?? "");
     setPiso(roomFloor);
     setTipoEspacio(roomSpaceType);
-    setTipoHabitacion(initialRoomType);
-    setNumeroDoble(initialDoubleNumber);
     setTiempoLimpieza(roomCleaningTime);
     setError(null);
     setSuccess(null);
@@ -1059,11 +572,9 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
     setCleaningType(assignment?.cleaningType ?? "");
     setPiso(roomFloor);
     setTipoEspacio(roomSpaceType);
-    setTipoHabitacion(initialRoomType);
-    setNumeroDoble(initialDoubleNumber);
     setTiempoLimpieza(roomCleaningTime);
     setIsEditing(false);
-  }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, roomScheduledCleaningDate, assignment?.staffId, assignment?.cleaningType, roomFloor, roomSpaceType, initialRoomType, initialDoubleNumber, roomCleaningTime]);
+  }, [roomId, roomStatus, roomGuest, roomServicePlan, roomCleaningDetails, roomScheduledCleaningDate, assignment?.staffId, assignment?.cleaningType, roomFloor, roomSpaceType, roomCleaningTime]);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1082,8 +593,8 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
         assignedCleaningType: staffId ? cleaningType.trim() || null : null,
         piso: piso.trim() || null,
         tipo_espacio: tipoEspacio,
-        tipo_habitacion: tipoEspacio === "habitacion" ? tipoHabitacion : "normal",
-        numero_doble: tipoEspacio === "habitacion" && tipoHabitacion === "doble" ? (numeroDoble.trim() || roomId) : null,
+        tipo_habitacion: "normal",
+        numero_doble: null,
         tiempo_limpieza: tiempoLimpieza > 0 ? tiempoLimpieza : 30,
       });
 
@@ -1182,31 +693,26 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
         <div className="room-editor-title">
           <span className="room-editor-icon">
             <span className="material-symbol" aria-hidden="true">
-              {isEditing ? "edit" : isCommonArea ? "domain" : "bed"}
+              {isEditing ? "edit" : isCommonArea ? getStructureIcon(roomId) : "bed"}
             </span>
           </span>
           <div>
-            <p className="eyebrow">{isCommonArea ? "Zona Común" : `Habitación · ${piso || "Sin piso"}`}</p>
+            <p className="eyebrow">{isCommonArea ? `Área Compartida · ${piso || "Sin piso"}` : `Habitación · ${piso || "Sin piso"}`}</p>
             <h2>{roomId}</h2>
           </div>
           <span className={`status-pill status-${status}`}>{statusLabels[status]}</span>
-          {!isCommonArea && tipoHabitacion === "doble" && (
-            <span className="room-tag-badge room-tag-double">
-              <span className="material-symbol" style={{ fontSize: "14px" }}>bed</span>
-              Habitación Doble {numeroDoble && numeroDoble !== roomId ? `(${numeroDoble})` : ""}
-            </span>
-          )}
-          {isCommonArea ? (
-            <span className="room-tag-badge room-tag-common">
-              <span className="material-symbol" style={{ fontSize: "14px" }}>domain</span>
-              Zona Común
-            </span>
-          ) : piso ? (
+          {piso && (
             <span className="room-tag-badge room-tag-floor">
               <span className="material-symbol" style={{ fontSize: "14px" }}>layers</span>
               {piso}
             </span>
-          ) : null}
+          )}
+          {isCommonArea && (
+            <span className="room-tag-badge room-tag-common">
+              <span className="material-symbol" style={{ fontSize: "14px" }}>{getStructureIcon(roomId)}</span>
+              Área Compartida
+            </span>
+          )}
         </div>
       </header>
       <form className="form-grid room-editor-form" onSubmit={handleSave}>
@@ -1218,47 +724,22 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
             onChange={(e) => setTipoEspacio(e.target.value as "habitacion" | "zona_comun")}
           >
             <option value="habitacion">Habitación</option>
-            <option value="zona_comun">Zona Común</option>
+            <option value="zona_comun">Área Compartida</option>
           </select>
         </label>
-        {!isCommonArea && (
-          <label>
-            Tipo de habitación
-            <select
-              disabled={!isEditing || saving}
-              value={tipoHabitacion}
-              onChange={(e) => {
-                const next = e.target.value as "normal" | "doble";
-                setTipoHabitacion(next);
-                if (next === "doble" && !numeroDoble) {
-                  setNumeroDoble(roomId);
-                }
-              }}
-            >
-              <option value="normal">Habitación Normal</option>
-              <option value="doble">Habitación Doble (ej. 1.1, 1.2)</option>
-            </select>
-          </label>
-        )}
-        {!isCommonArea && tipoHabitacion === "doble" && (
-          <label>
-            Sub-número / Designación Doble
-            <input
-              disabled={!isEditing || saving}
-              value={numeroDoble}
-              placeholder="Ej. 1.1, 1.2, Habitación 1.1"
-              onChange={(event) => setNumeroDoble(event.target.value)}
-            />
-          </label>
-        )}
         <label>
           Piso / Ubicación
-          <input
+          <select
             disabled={!isEditing || saving}
             value={piso}
-            placeholder={isCommonArea ? "Ej. Planta Baja, Terraza" : "Ej. Piso 1, Piso 2"}
             onChange={(event) => setPiso(event.target.value)}
-          />
+          >
+            {registeredFloors.map((fl) => (
+              <option key={fl} value={fl}>
+                {fl}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           Estado
@@ -1269,10 +750,12 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
             ))}
           </select>
         </label>
-        <label>
-          {isCommonArea ? "Responsable / Observación" : "Huésped"}
-          <input disabled={!isEditing || saving} value={guest} onChange={(event) => setGuest(event.target.value)} />
-        </label>
+        {!isCommonArea && (
+          <label>
+            Huésped
+            <input disabled={!isEditing || saving} value={guest} onChange={(event) => setGuest(event.target.value)} />
+          </label>
+        )}
         <label>
           Servicio de limpieza
           <select
@@ -1348,7 +831,8 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
                 }}
               >
                 <span className="material-symbol" aria-hidden="true">edit</span>
-                Editar {isCommonArea ? "zona común" : "habitación"}
+                <span className="editor-btn-text-full">Editar {isCommonArea ? "zona común" : "habitación"}</span>
+                <span className="editor-btn-text-mobile">Editar</span>
               </button>
               <button
                 type="button"
@@ -1361,7 +845,8 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
                 }}
               >
                 <span className="material-symbol" aria-hidden="true">delete</span>
-                Eliminar {isCommonArea ? "zona común" : "habitación"}
+                <span className="editor-btn-text-full">Eliminar {isCommonArea ? "zona común" : "habitación"}</span>
+                <span className="editor-btn-text-mobile">Eliminar</span>
               </button>
             </div>
           ) : (
@@ -1408,7 +893,7 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
                   warning
                 </span>
                 <h3 id="delete-room-title" style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                  ¿Eliminar {isCommonArea ? "zona común" : "habitación"} "{roomId}"?
+                  ¿Eliminar {isCommonArea ? "área compartida" : "habitación"} "{roomId}"?
                 </h3>
               </div>
               <button
@@ -1425,7 +910,7 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
             <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
               <p style={{ margin: 0, fontSize: "13px", color: "#4b5563", lineHeight: 1.5 }}>
                 Esta acción es <strong>irreversible</strong>. Se eliminarán permanentemente las limpiezas, registros e historiales vinculados a{" "}
-                <strong>{isCommonArea ? `la zona común "${roomId}"` : `la habitación "${roomId}"`}</strong>.
+                <strong>{isCommonArea ? `el área compartida "${roomId}"` : `la habitación "${roomId}"`}</strong>.
               </p>
 
               <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>
@@ -1519,11 +1004,19 @@ function RoomPickerCard({
 }) {
   const navigate = useNavigate();
   const { state } = useHotelData();
-  const isDoubleRoom = !isCommonArea && (state.roomTypes[roomId] === "doble" || detectRoomType(roomId) === "doble");
+  const isEffectiveCommonArea =
+    Boolean(isCommonArea) ||
+    state.spaceTypes[roomId] === "zona_comun" ||
+    detectSpaceType(roomId, state.spaceTypes[roomId]) === "zona_comun";
+
   const photoIndex = Array.from(roomId).reduce(
     (total, character) => total + character.charCodeAt(0),
     0,
   ) % roomPhotos.length;
+
+  const imageSrc = isEffectiveCommonArea
+    ? getStructurePhoto(roomId)
+    : roomPhotos[photoIndex];
 
   const handleAssigneeClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
@@ -1542,90 +1035,135 @@ function RoomPickerCard({
 
   const isFree = status === "free";
   const toneClass = isFree && freeToneIndex !== undefined ? `room-picker-tone-${(freeToneIndex % 2) + 1}` : "";
+  const cleaningDuration = state.cleaningTimes?.[roomId] ?? 30;
 
   return (
-    <button className={`room-picker-card room-picker-card-${status} ${toneClass}`.trim()} onClick={onSelect} type="button">
+    <button
+      className={`room-picker-card room-picker-card-${status} ${toneClass}`.trim()}
+      onClick={onSelect}
+      type="button"
+      aria-label={`${isEffectiveCommonArea ? "Área común" : "Habitación"} ${roomId}, ${statusLabels[status] || status}`}
+    >
+      {/* 1. Carril Multimedia Izquierdo Compacto con Chip de Piso */}
       <span className="room-picker-art">
         <img
-          alt={isCommonArea ? `Zona común ${roomId}` : `Habitación ${roomId}`}
+          alt={isEffectiveCommonArea ? `Zona común ${roomId}` : `Habitación ${roomId}`}
           className="room-picker-image"
-          src={roomPhotos[photoIndex]}
+          src={imageSrc}
           loading="lazy"
           decoding="async"
         />
-        <span className={`status-pill status-${status}`}>
-          <span className="room-status-dot" />
-          {statusLabels[status]}
-        </span>
+        {floor && (
+          <span className="room-picker-art-floor" title={`Ubicación: ${floor}`}>
+            {floor}
+          </span>
+        )}
       </span>
+
+      {/* 2. Bloque Central de Datos Reales */}
       <span className="room-picker-main">
+        {/* Fila 1: Habitación / Área y Píldora de Estado */}
         <span className="room-picker-heading">
           <span className="room-picker-room-name">
             <strong>{roomId}</strong>
-            {isDoubleRoom && (
-              <span className="room-tag-badge room-tag-double" title="Habitación Doble">
-                <span className="material-symbol" style={{ fontSize: "13px" }}>bed</span>
-                Doble
-              </span>
+            <span className="room-picker-category-label">
+              {isEffectiveCommonArea ? "Área Común" : "Habitación"}
+            </span>
+          </span>
+          <span className={`status-pill status-${status}`}>
+            <span className="room-status-dot" />
+            <span>{statusLabels[status]}</span>
+            {status === "finished" && (
+              <span className="material-symbol room-status-check">check_circle</span>
             )}
-            {isCommonArea ? (
-              <span className="room-tag-badge room-tag-common">
-                <span className="material-symbol" style={{ fontSize: "13px" }}>domain</span>
-                Zona Común
-              </span>
-            ) : floor ? (
-              <span className="room-tag-badge room-tag-floor">
-                <span className="material-symbol" style={{ fontSize: "13px" }}>layers</span>
-                {floor}
-              </span>
-            ) : null}
           </span>
-          <span className="material-symbol room-picker-arrow" aria-hidden="true">arrow_forward</span>
         </span>
+
+        {/* Fila 2: Huésped (SOLO si ocupada) o Estado Operativo del Espacio */}
         <span className="room-picker-details">
-          <span className="room-picker-meta">
-            <span className="material-symbol" aria-hidden="true">
-              {isCommonArea ? "location_on" : "person"}
+          {status === "occupied" && guest ? (
+            <span className="room-picker-guest-row">
+              <span className="material-symbol" aria-hidden="true">person</span>
+              <strong className="room-picker-guest-name" title={guest}>{guest}</strong>
             </span>
-            <span className="room-picker-meta-copy">
-              <strong>{guest || (isCommonArea ? "Área Compartida" : "Sin huésped")}</strong>
+          ) : isEffectiveCommonArea ? (
+            <span className="room-picker-guest-row">
+              <span className="material-symbol" aria-hidden="true">{getStructureIcon(roomId)}</span>
+              <span className="room-picker-common-label">Área Compartida</span>
             </span>
-          </span>
-          <span className="room-picker-secondary">
-            <span className="room-picker-service">
+          ) : status === "free" ? (
+            <span className="room-picker-free-status">
+              <span className="material-symbol" aria-hidden="true">check_circle</span>
+              <span>Disponible</span>
+            </span>
+          ) : status === "cleaning" ? (
+            <span className="room-picker-cleaning-status">
               <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-              {servicePlan || "Sin servicio"}
+              <span>En limpieza</span>
             </span>
-            {cleanerName && (
-              <span
-                className="room-picker-assignee"
-                title={`Ver ficha del personal: ${cleanerName}`}
-                role="button"
-                tabIndex={0}
-                onClick={handleAssigneeClick}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    handleAssigneeClick(e);
-                  }
-                }}
-              >
+          ) : status === "pending" ? (
+            <span className="room-picker-pending-status">
+              <span className="material-symbol" aria-hidden="true">pending_actions</span>
+              <span>Requiere aseo</span>
+            </span>
+          ) : (
+            <span className="room-picker-finished-status">
+              <span className="material-symbol" aria-hidden="true">verified</span>
+              <span>Inspeccionada</span>
+            </span>
+          )}
+
+          {servicePlan && (
+            <span className="room-picker-service-tag" title={`Plan: ${servicePlan}`}>
+              {servicePlan}
+            </span>
+          )}
+        </span>
+
+        {/* Fila 3: Personal Asignado / Tiempo de Aseo y Micro-Acción */}
+        <span className="room-picker-footer">
+          <span
+            className={`room-picker-assignee${cleanerName ? "" : " room-picker-assignee-empty"}`}
+            title={cleanerName ? `Ver ficha de personal: ${cleanerName}` : "Sin personal asignado"}
+            role={cleanerName ? "button" : undefined}
+            tabIndex={cleanerName ? 0 : undefined}
+            onClick={cleanerName ? handleAssigneeClick : undefined}
+            onKeyDown={cleanerName ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                handleAssigneeClick(e);
+              }
+            } : undefined}
+          >
+            {cleanerName ? (
+              <>
                 <ModernAvatar3D
                   name={cleanerName}
-                  size={18}
+                  size={16}
                   className="room-picker-assignee-avatar"
                   alt={`Avatar 3D de ${cleanerName}`}
                 />
-                <span>{cleanerName}</span>
+                <span className="room-picker-assignee-name">{cleanerName}</span>
+              </>
+            ) : status === "pending" ? (
+              <span className="room-picker-unassigned-tag">
+                <span className="material-symbol" aria-hidden="true">person_off</span>
+                <span>Sin camarero</span>
+              </span>
+            ) : (
+              <span className="room-picker-time-tag">
+                <span className="material-symbol" aria-hidden="true">schedule</span>
+                <span>{cleaningDuration} min</span>
               </span>
             )}
           </span>
+          <span className="material-symbol room-picker-arrow" aria-hidden="true">chevron_right</span>
         </span>
       </span>
     </button>
   );
 }
 
-function CreateRoomModal({
+function CreateSpaceOrFloorModal({
   isOpen,
   onClose,
   onCreated,
@@ -1633,101 +1171,140 @@ function CreateRoomModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (roomId: string) => void;
+  onCreated: (targetIdOrFloor: string) => void;
   existingFloors: string[];
 }) {
   const { session } = useHotelAuth();
-  const [spaceType, setSpaceType] = useState<"habitacion" | "zona_comun">("habitacion");
-
-  // Habitación
-  const [selectedFloor, setSelectedFloor] = useState(existingFloors[0] || "Piso 1");
-  const [isCustomFloor, setIsCustomFloor] = useState(false);
-  const [customFloor, setCustomFloor] = useState("");
-  const [roomNumber, setRoomNumber] = useState("");
-  const [roomType, setRoomType] = useState<"normal" | "doble">("normal");
-  const [roomStatus, setRoomStatus] = useState<RoomStatus>("free");
-  const [guest, setGuest] = useState("");
-  const [servicePlan, setServicePlan] = useState("");
-
-  // Zona Común
-  const [commonFloor, setCommonFloor] = useState("Planta Baja");
-  const [customCommonFloor, setCustomCommonFloor] = useState("");
-  const [isCustomCommonFloor, setIsCustomCommonFloor] = useState(false);
-  const [commonName, setCommonName] = useState("");
-  const [commonStatus, setCommonStatus] = useState<RoomStatus>("free");
-
-  // Tiempo estimado de limpieza (en minutos)
-  const [cleaningDuration, setCleaningDuration] = useState<number>(30);
-
+  const { state } = useHotelData();
+  const [createMode, setCreateMode] = useState<"floor" | "single">("floor");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const commonFloorSuggestions = [
-    "Planta Baja",
-    "Piso 1",
-    "Piso 2",
-    "Piso 3",
-    "Terraza",
-    "Sótano",
-    "General",
-  ];
+  // Modo 1: Crear Piso con sus Áreas Compartidas
+  const [floorName, setFloorName] = useState("");
+  const [selectedStructures, setSelectedStructures] = useState<string[]>([]);
+  const [customStructureInput, setCustomStructureInput] = useState("");
 
-  const commonSuggestions = [
-    "Lobby Principal",
-    "Piscina",
-    "Restaurante",
-    "Gimnasio",
-    "Lavandería",
-    "Pasillo Piso 1",
-    "Pasillo Piso 2",
-    "Terraza Bar",
-    "Spa",
-  ];
+  // Pisos registrados en el sistema
+  const registeredFloors = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of existingFloors) {
+      const trimmed = f.trim();
+      if (trimmed) set.add(trimmed);
+    }
+    if (state?.floors) {
+      for (const id of Object.keys(state.floors)) {
+        const isCommon = state.spaceTypes[id] === "zona_comun";
+        const f = state.floors[id]?.trim() || detectFloor(id, undefined, isCommon);
+        if (f && f.toLowerCase() !== "sin piso") {
+          set.add(f);
+        }
+      }
+    }
+    if (set.size === 0) {
+      set.add("Piso 1");
+      set.add("Piso 2");
+      set.add("Piso 3");
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [existingFloors, state?.floors, state?.spaceTypes]);
 
-  const effectiveFloor =
-    spaceType === "habitacion"
-      ? (isCustomFloor ? customFloor.trim() : selectedFloor)
-      : (isCustomCommonFloor ? customCommonFloor.trim() : commonFloor);
+  // Modo 2: Crear Habitación Individual
+  const [selectedFloor, setSelectedFloor] = useState<string>("");
+  const [singleName, setSingleName] = useState("");
 
-  async function handleSubmit(e: FormEvent) {
+  useEffect(() => {
+    if (isOpen) {
+      if (!selectedFloor || !registeredFloors.includes(selectedFloor)) {
+        setSelectedFloor(registeredFloors[0] || "Piso 1");
+      }
+    }
+  }, [isOpen, registeredFloors, selectedFloor]);
+
+  const toggleStructure = (name: string) => {
+    setSelectedStructures((prev) =>
+      prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name],
+    );
+  };
+
+  const handleAddCustom = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = customStructureInput.trim();
+    if (!clean) return;
+    if (!selectedStructures.includes(clean)) {
+      setSelectedStructures((prev) => [...prev, clean]);
+    }
+    setCustomStructureInput("");
+  };
+
+  // Submit Piso
+  async function handleSubmitFloor(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const targetId = spaceType === "habitacion" ? roomNumber.trim() : commonName.trim();
-    if (!targetId) {
-      setError(
-        spaceType === "habitacion"
-          ? "Por favor escribe el número de la habitación."
-          : "Por favor escribe el nombre de la zona común.",
-      );
+    const cleanFloor = floorName.trim();
+    if (!cleanFloor) {
+      setError("Por favor escribe el nombre del piso.");
       return;
     }
-
-    if (spaceType === "habitacion" && roomType === "doble") {
-      if (!/^\d+(\.\d+)$/.test(targetId)) {
-        setError("Las habitaciones dobles requieren formato con punto (ej. 1.1 o 1.2).");
-        return;
-      }
+    if (selectedStructures.length === 0) {
+      setError("Selecciona al menos un área compartida para este piso.");
+      return;
     }
 
     setSaving(true);
     try {
-      await createRoom({
-        id: targetId,
-        piso: effectiveFloor || (spaceType === "habitacion" ? "Piso 1" : "General"),
-        tipo_espacio: spaceType,
-        tipo_habitacion: spaceType === "habitacion" ? roomType : "normal",
-        numero_doble: spaceType === "habitacion" && roomType === "doble" ? targetId : null,
-        estado: spaceType === "habitacion" ? roomStatus : commonStatus,
-        guest: spaceType === "habitacion" ? guest.trim() || null : null,
-        plan: spaceType === "habitacion" ? servicePlan.trim() || null : null,
-        tiempo_limpieza: cleaningDuration > 0 ? cleaningDuration : 30,
+      await createFloorWithStructures({
+        floorName: cleanFloor,
+        structures: selectedStructures.map((name) => ({
+          name,
+          type: detectSpaceType(name),
+          cleaningDuration: 30,
+        })),
         actor: session?.user?.email ?? "Administrador",
       });
 
-      onCreated(targetId);
+      onCreated(cleanFloor);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear el espacio.");
+      setError(err instanceof Error ? err.message : "Error al crear el piso.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Submit Habitación Individual
+  async function handleSubmitSingle(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const targetName = singleName.trim();
+    if (!targetName) {
+      setError("Por favor escribe el número o nombre de la habitación.");
+      return;
+    }
+
+    const finalFloor = selectedFloor.trim() || registeredFloors[0] || "Piso 1";
+    if (!finalFloor) {
+      setError("Por favor selecciona el piso.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const spaceType = detectSpaceType(targetName);
+      const roomType = spaceType === "habitacion" ? detectRoomType(targetName) : "normal";
+      await createRoom({
+        id: targetName,
+        piso: finalFloor,
+        tipo_espacio: spaceType,
+        tipo_habitacion: roomType,
+        tiempo_limpieza: 30,
+        actor: session?.user?.email ?? "Administrador",
+      });
+
+      onCreated(targetName);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al crear la habitación.");
     } finally {
       setSaving(false);
     }
@@ -1741,17 +1318,17 @@ function CreateRoomModal({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="create-space-modal-title"
+      aria-labelledby="minimal-modal-title"
     >
-      <div className="matrix-modal-dialog create-space-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="compact-modal-header">
-          <div className="compact-modal-title">
-            <span className="material-symbol" style={{ color: "#2563eb", fontSize: "20px" }}>
-              {spaceType === "habitacion" ? "bed" : "deck"}
+      <div className="minimal-modal-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="minimal-modal-header">
+          <div className="minimal-modal-title">
+            <span className="material-symbol" style={{ color: "#2563eb", fontSize: "22px" }}>
+              {createMode === "floor" ? "layers" : "bed"}
             </span>
-            <h3 id="create-space-modal-title">
-              {spaceType === "habitacion" ? "Nueva Habitación" : "Nueva Zona Común"}
-            </h3>
+            <h2 id="minimal-modal-title">
+              {createMode === "floor" ? "Crear Piso con Áreas Compartidas" : "Crear Habitación Individual"}
+            </h2>
           </div>
           <button
             type="button"
@@ -1763,274 +1340,196 @@ function CreateRoomModal({
           </button>
         </div>
 
-        {error && <p className="form-error" role="alert" style={{ margin: "4px 0" }}>{error}</p>}
-
-        <div className="compact-space-tabs">
+        {/* Selector de Modo Simple */}
+        <div className="minimal-type-selector">
           <button
             type="button"
-            className={`compact-space-tab ${spaceType === "habitacion" ? "active" : ""}`}
-            onClick={() => setSpaceType("habitacion")}
+            className={`minimal-type-btn ${createMode === "floor" ? "active" : ""}`}
+            onClick={() => {
+              setCreateMode("floor");
+              setError(null);
+            }}
           >
-            <span className="material-symbol" style={{ fontSize: "17px" }}>bedroom_parent</span>
-            Habitación
+            <span className="material-symbol" style={{ fontSize: "18px" }}>layers</span>
+            Piso con Áreas Compartidas
           </button>
           <button
             type="button"
-            className={`compact-space-tab ${spaceType === "zona_comun" ? "active" : ""}`}
-            onClick={() => setSpaceType("zona_comun")}
+            className={`minimal-type-btn ${createMode === "single" ? "active" : ""}`}
+            onClick={() => {
+              setCreateMode("single");
+              setError(null);
+            }}
           >
-            <span className="material-symbol" style={{ fontSize: "17px" }}>deck</span>
-            Zona Común
+            <span className="material-symbol" style={{ fontSize: "18px" }}>bed</span>
+            Habitación Individual
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="compact-space-form">
-          {spaceType === "habitacion" ? (
-            <div className="compact-form-grid">
-              {/* Columna Izquierda */}
-              <div className="compact-col">
-                <div className="compact-field">
-                  <label>Piso o Nivel</label>
-                  <select
-                    value={isCustomFloor ? "custom" : selectedFloor}
-                    onChange={(e) => {
-                      if (e.target.value === "custom") {
-                        setIsCustomFloor(true);
-                      } else {
-                        setIsCustomFloor(false);
-                        setSelectedFloor(e.target.value);
-                        if (roomType === "doble") {
-                          const base = e.target.value.match(/\d+/)?.[0] || "1";
-                          setRoomNumber(`${base}.1`);
-                        }
-                      }
-                    }}
-                  >
-                    {existingFloors.map((fl) => (
-                      <option key={fl} value={fl}>{fl}</option>
-                    ))}
-                    <option value="custom">+ Otro piso personalizado...</option>
-                  </select>
-                  {isCustomFloor && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ej. Piso 4, Terraza"
-                      value={customFloor}
-                      onChange={(e) => setCustomFloor(e.target.value)}
-                      style={{ marginTop: "4px" }}
-                    />
-                  )}
-                </div>
-
-                <div className="compact-field">
-                  <label>Tipo de Habitación</label>
-                  <div className="compact-type-switch">
-                    <button
-                      type="button"
-                      className={`compact-type-btn ${roomType === "normal" ? "active" : ""}`}
-                      onClick={() => {
-                        setRoomType("normal");
-                        if (roomNumber.includes(".")) {
-                          const base = (isCustomFloor ? customFloor : selectedFloor).match(/\d+/)?.[0] || "1";
-                          setRoomNumber(`${base}01`);
-                        }
-                      }}
-                    >
-                      <span className="material-symbol">single_bed</span> Normal
-                    </button>
-                    <button
-                      type="button"
-                      className={`compact-type-btn ${roomType === "doble" ? "active" : ""}`}
-                      onClick={() => {
-                        setRoomType("doble");
-                        if (!roomNumber.includes(".")) {
-                          const base = (isCustomFloor ? customFloor : selectedFloor).match(/\d+/)?.[0] || "1";
-                          setRoomNumber(`${base}.1`);
-                        }
-                      }}
-                    >
-                      <span className="material-symbol">bed</span> Doble
-                    </button>
-                  </div>
-                </div>
-
-                <div className="compact-field">
-                  <label>{roomType === "doble" ? "Número (ej. 1.1 o 1.2)" : "Número de Habitación"}</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={roomType === "doble" ? "Ej. 1.1 o 1.2" : "Ej. 101, 201"}
-                    value={roomNumber}
-                    onChange={(e) => setRoomNumber(e.target.value)}
-                  />
-                  {roomType === "doble" && (
-                    <small className="field-hint">Formato decimal obligatorio (ej. 1.1, 1.2)</small>
-                  )}
-                </div>
-              </div>
-
-              {/* Columna Derecha */}
-              <div className="compact-col">
-                <div className="compact-field">
-                  <label>Estado Inicial</label>
-                  <select
-                    value={roomStatus}
-                    onChange={(e) => setRoomStatus(e.target.value as RoomStatus)}
-                  >
-                    <option value="free">Libre (disponible)</option>
-                    <option value="occupied">Ocupada</option>
-                    <option value="pending">Por atender / Pendiente</option>
-                    <option value="cleaning">En Limpieza</option>
-                  </select>
-                </div>
-
-                <div className="compact-field">
-                  <label>Huésped (opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Nombre del huésped"
-                    value={guest}
-                    onChange={(e) => setGuest(e.target.value)}
-                  />
-                </div>
-
-                <div className="compact-field">
-                  <label>Plan de Limpieza (opcional)</label>
-                  <select
-                    value={servicePlan}
-                    onChange={(e) => setServicePlan(e.target.value)}
-                  >
-                    <option value="">Sin servicio asignado</option>
-                    {cleaningServicePlans.map((plan) => (
-                      <option key={plan} value={plan}>{plan}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="compact-field">
-                  <label>Tiempo estimado de limpieza</label>
-                  <select
-                    value={cleaningDuration}
-                    onChange={(e) => setCleaningDuration(parseInt(e.target.value, 10) || 30)}
-                  >
-                    {CLEANING_DURATION_OPTIONS.map((mins) => (
-                      <option key={mins} value={mins}>
-                        {mins} min ({(mins / 60).toFixed(1)} h)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="compact-form-grid">
-              {/* Columna Izquierda Zona Común */}
-              <div className="compact-col">
-                <div className="compact-field">
-                  <label>Ubicación / Piso</label>
-                  <select
-                    value={isCustomCommonFloor ? "custom" : commonFloor}
-                    onChange={(e) => {
-                      if (e.target.value === "custom") {
-                        setIsCustomCommonFloor(true);
-                      } else {
-                        setIsCustomCommonFloor(false);
-                        setCommonFloor(e.target.value);
-                      }
-                    }}
-                  >
-                    {commonFloorSuggestions.map((fl) => (
-                      <option key={fl} value={fl}>{fl}</option>
-                    ))}
-                    <option value="custom">+ Otra ubicación...</option>
-                  </select>
-                  {isCustomCommonFloor && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ej. Terraza Norte, Jardín"
-                      value={customCommonFloor}
-                      onChange={(e) => setCustomCommonFloor(e.target.value)}
-                      style={{ marginTop: "4px" }}
-                    />
-                  )}
-                </div>
-
-                <div className="compact-field">
-                  <label>Nombre de la Zona Común</label>
-                  <input
-                    list="common-suggestions-list"
-                    type="text"
-                    required
-                    placeholder="Ej. Lobby Principal, Piscina..."
-                    value={commonName}
-                    onChange={(e) => setCommonName(e.target.value)}
-                  />
-                  <datalist id="common-suggestions-list">
-                    {commonSuggestions.map((sug) => (
-                      <option key={sug} value={sug} />
-                    ))}
-                  </datalist>
-                </div>
-              </div>
-
-              {/* Columna Derecha Zona Común */}
-              <div className="compact-col">
-                <div className="compact-field">
-                  <label>Estado Inicial</label>
-                  <select
-                    value={commonStatus}
-                    onChange={(e) => setCommonStatus(e.target.value as RoomStatus)}
-                  >
-                    <option value="free">Libre / Habilitado</option>
-                    <option value="cleaning">En Limpieza</option>
-                    <option value="pending">Pendiente de Aseo</option>
-                  </select>
-                </div>
-
-                <div className="compact-field">
-                  <label>Tiempo estimado de limpieza</label>
-                  <select
-                    value={cleaningDuration}
-                    onChange={(e) => setCleaningDuration(parseInt(e.target.value, 10) || 30)}
-                  >
-                    {CLEANING_DURATION_OPTIONS.map((mins) => (
-                      <option key={mins} value={mins}>
-                        {mins} min ({(mins / 60).toFixed(1)} h)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="compact-modal-footer">
-            <button
-              type="button"
-              className="button button-secondary button-small"
-              onClick={onClose}
-              disabled={saving}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="button button-primary button-small"
-              disabled={saving}
-            >
-              <span className="material-symbol" aria-hidden="true">
-                {saving ? "hourglass_top" : "check"}
-              </span>
-              {saving
-                ? "Guardando..."
-                : spaceType === "habitacion"
-                ? "Crear Habitación"
-                : "Crear Zona Común"}
-            </button>
+        {error && (
+          <div style={{ padding: "0 22px", marginTop: "10px" }}>
+            <p className="form-error" role="alert" style={{ margin: 0 }}>{error}</p>
           </div>
-        </form>
+        )}
+
+        {/* FORMULARIO MODO 1: PISO */}
+        {createMode === "floor" ? (
+          <form onSubmit={handleSubmitFloor} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+            <div className="minimal-modal-body">
+              <div className="minimal-field">
+                <label>Nombre del Piso</label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Ej. Piso 1, Piso 2, Sótano, Roof top, Terraza..."
+                  value={floorName}
+                  onChange={(e) => setFloorName(e.target.value)}
+                />
+              </div>
+
+              <div className="minimal-structures-wrap">
+                <label style={{ fontSize: "13px", fontWeight: "600", color: "#334155" }}>
+                  Áreas compartidas de este piso ({selectedStructures.length} seleccionadas):
+                </label>
+                <div className="minimal-chips-grid">
+                  {HOTEL_STRUCTURE_CATALOG.map((item) => {
+                    const isSelected = selectedStructures.includes(item.name);
+                    return (
+                      <button
+                        key={item.name}
+                        type="button"
+                        className={`minimal-struct-chip ${isSelected ? "selected" : ""}`}
+                        onClick={() => toggleStructure(item.name)}
+                      >
+                        <span className="material-symbol" style={{ fontSize: "16px" }}>
+                          {isSelected ? "check" : item.icon}
+                        </span>
+                        {item.name}
+                      </button>
+                    );
+                  })}
+                  {/* Chips personalizados adicionales */}
+                  {selectedStructures
+                    .filter((s) => !HOTEL_STRUCTURE_CATALOG.some((cat) => cat.name === s))
+                    .map((custom) => (
+                      <button
+                        key={custom}
+                        type="button"
+                        className="minimal-struct-chip selected"
+                        onClick={() => toggleStructure(custom)}
+                      >
+                        <span className="material-symbol" style={{ fontSize: "16px" }}>check</span>
+                        {custom}
+                      </button>
+                    ))}
+                </div>
+
+                {/* Agregar otra estructura personalizada */}
+                <div className="minimal-custom-add">
+                  <input
+                    type="text"
+                    placeholder="Escribe otra área compartida (ej. Cuarto de basuras 2, Balcón...)"
+                    value={customStructureInput}
+                    onChange={(e) => setCustomStructureInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddCustom(e);
+                      }
+                    }}
+                    style={{ flex: 1, padding: "8px 12px", fontSize: "13px", border: "1.5px solid #cbd5e1", borderRadius: "8px" }}
+                  />
+                  <button
+                    type="button"
+                    className="button button-secondary button-small"
+                    onClick={handleAddCustom}
+                  >
+                    <span className="material-symbol">add</span>
+                    Añadir
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="minimal-modal-footer">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={onClose}
+                disabled={saving}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="button button-primary"
+                disabled={saving || !floorName.trim() || selectedStructures.length === 0}
+              >
+                <span className="material-symbol" aria-hidden="true">
+                  {saving ? "hourglass_top" : "check"}
+                </span>
+                {saving
+                  ? "Guardando..."
+                  : `Crear Piso (${selectedStructures.length} espacios)`}
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* FORMULARIO MODO 2: ESPACIO INDIVIDUAL */
+          <form onSubmit={handleSubmitSingle} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+            <div className="minimal-modal-body">
+              <div className="minimal-field">
+                <label htmlFor="minimal-floor-select">Piso o Ubicación</label>
+                <select
+                  id="minimal-floor-select"
+                  required
+                  value={selectedFloor}
+                  onChange={(e) => setSelectedFloor(e.target.value)}
+                >
+                  {registeredFloors.map((fl) => (
+                    <option key={fl} value={fl}>
+                      {fl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="minimal-field">
+                <label>Número o Nombre de la Habitación</label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Ej. 101, 102, 204..."
+                  value={singleName}
+                  onChange={(e) => setSingleName(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="minimal-modal-footer">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={onClose}
+                disabled={saving}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="button button-primary"
+                disabled={saving || !singleName.trim()}
+              >
+                <span className="material-symbol" aria-hidden="true">
+                  {saving ? "hourglass_top" : "check"}
+                </span>
+                {saving ? "Guardando..." : "Crear Habitación"}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -2043,7 +1542,7 @@ export function RoomsPage() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(roomParam);
   const [search, setSearch] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
-  const [roomTypeFilter, setRoomTypeFilter] = useState<"all" | "normal" | "doble">("all");
+  const [spaceCategoryFilter, setSpaceCategoryFilter] = useState<"all" | "habitacion" | "zona_comun">("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
@@ -2072,9 +1571,10 @@ export function RoomsPage() {
   const availableFloors = useMemo(() => {
     const set = new Set<string>();
     for (const id of roomIds) {
-      if (state.spaceTypes[id] !== "zona_comun") {
-        const f = state.floors[id] || detectFloor(id);
-        if (f) set.add(f);
+      const isCommon = state.spaceTypes[id] === "zona_comun";
+      const f = state.floors[id]?.trim() || detectFloor(id, undefined, isCommon);
+      if (f && f.toLowerCase() !== "zonas comunes" && f.toLowerCase() !== "áreas comunes") {
+        set.add(f);
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -2084,38 +1584,30 @@ export function RoomsPage() {
     return roomIds.filter((id) => state.spaceTypes[id] === "zona_comun").length;
   }, [roomIds, state.spaceTypes]);
 
-  const doubleRoomsCount = useMemo(() => {
-    return roomIds.filter(
-      (id) => state.spaceTypes[id] !== "zona_comun" && (state.roomTypes[id] === "doble" || detectRoomType(id) === "doble"),
-    ).length;
-  }, [roomIds, state.roomTypes, state.spaceTypes]);
-
-  const normalRoomsCount = useMemo(() => {
-    return roomIds.filter(
-      (id) => state.spaceTypes[id] !== "zona_comun" && (state.roomTypes[id] !== "doble" && detectRoomType(id) !== "doble"),
-    ).length;
-  }, [roomIds, state.roomTypes, state.spaceTypes]);
+  const roomsCount = useMemo(() => {
+    return roomIds.filter((id) => state.spaceTypes[id] !== "zona_comun").length;
+  }, [roomIds, state.spaceTypes]);
 
   const visibleRoomIds = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return roomIds.filter((roomId) => {
       const isCommonArea = state.spaceTypes[roomId] === "zona_comun";
       const roomFloor = state.floors[roomId] || detectFloor(roomId, undefined, isCommonArea);
-      const isDouble = !isCommonArea && (state.roomTypes[roomId] === "doble" || detectRoomType(roomId) === "doble");
 
       if (selectedFilter === "zonas_comunes" && !isCommonArea) {
         return false;
       }
       if (selectedFilter !== "all" && selectedFilter !== "zonas_comunes") {
-        if (isCommonArea || roomFloor !== selectedFilter) {
+        if (roomFloor !== selectedFilter) {
           return false;
         }
       }
 
-      if (!isCommonArea) {
-        if (roomTypeFilter === "doble" && !isDouble) return false;
-        if (roomTypeFilter === "normal" && isDouble) return false;
-      } else if (roomTypeFilter !== "all") {
+      // Filtro de categoría de espacio: Todas / Habitaciones / Estructuras y Comunes
+      if (spaceCategoryFilter === "habitacion" && isCommonArea) {
+        return false;
+      }
+      if (spaceCategoryFilter === "zona_comun" && !isCommonArea) {
         return false;
       }
 
@@ -2125,23 +1617,10 @@ export function RoomsPage() {
         state.servicePlans[roomId] ?? "",
         state.assignedCleanings[roomId]?.staffName ?? "",
         roomFloor,
-        isCommonArea ? "zona comun común" : (isDouble ? "doble habitacion suite 1.1 1.2" : "normal estándar individual"),
+        isCommonArea ? "zona comun común estructura" : "habitacion estándar normal",
       ].some((value) => value.toLocaleLowerCase().includes(query));
     });
-  }, [roomIds, search, selectedFilter, roomTypeFilter, state.assignedCleanings, state.floors, state.guests, state.roomTypes, state.servicePlans, state.spaceTypes]);
-
-  const roomSummary = [
-    { label: "Libres", icon: "door_open", includes: (status: RoomStatus) => status === "free" },
-    { label: "Ocupadas", icon: "bed", includes: (status: RoomStatus) => status === "occupied" },
-    {
-      label: "Por atender",
-      icon: "cleaning_services",
-      includes: (status: RoomStatus) => status === "pending" || status === "cleaning",
-    },
-  ].map((item) => ({
-    ...item,
-    count: Object.values(state.rooms).filter(item.includes).length,
-  }));
+  }, [roomIds, search, selectedFilter, spaceCategoryFilter, state.assignedCleanings, state.floors, state.guests, state.servicePlans, state.spaceTypes]);
 
   const legacyRoomCount = useMemo(() => {
     try {
@@ -2164,31 +1643,37 @@ export function RoomsPage() {
     }
   }, []);
 
-  function handleRoomCreated(newRoomId: string) {
-    refresh().then(() => {
-      handleSelectRoom(newRoomId);
-    });
-  }
+  const isViewingRoom = Boolean(selectedRoom && (loading || roomIds.includes(selectedRoom)));
 
   return (
     <div className="page-stack rooms-page">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Inventario</p>
-          <h1>Habitaciones y Espacios</h1>
-          <p className="page-description">Control de pisos, habitaciones y zonas comunes del hotel.</p>
+      <div className="rooms-compact-header">
+        <div className="rooms-compact-title-wrap">
+          <h1 className="rooms-compact-title">
+            <span className="rooms-title-full">Habitaciones y Espacios</span>
+            <span className="rooms-title-mobile">Habitaciones</span>
+          </h1>
+          <span className="rooms-compact-badge">
+            <span className="rooms-badge-count">{roomIds.length}</span>
+            <span className="rooms-badge-suffix"> registrados</span>
+          </span>
         </div>
-        <div className="room-heading-actions">
-          <button
-            type="button"
-            className="button button-primary"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            <span className="material-symbol" aria-hidden="true">domain_add</span>
-            Nueva habitación / Zona común
-          </button>
-        </div>
+        {!isViewingRoom && (
+          <div className="room-heading-actions">
+            <button
+              type="button"
+              className="button button-primary rooms-create-btn"
+              onClick={() => setIsCreateModalOpen(true)}
+              title="Crear un nuevo espacio, habitación o piso completo con sus áreas compartidas"
+            >
+              <span className="material-symbol" aria-hidden="true">add_circle</span>
+              <span className="rooms-create-text-full">Nuevo Espacio / Piso</span>
+              <span className="rooms-create-text-mobile">Nuevo</span>
+            </button>
+          </div>
+        )}
       </div>
+
       {error && <p className="form-error" role="alert">{error}</p>}
       {loading && roomIds.length === 0 ? (
         <p className="empty-state">Cargando habitaciones…</p>
@@ -2217,115 +1702,104 @@ export function RoomsPage() {
         </section>
       ) : (
         <section className="room-selection">
-          {/* Pestañas de Filtro por Piso y Zonas Comunes */}
-          <div className="room-filter-tabs-wrapper">
-            <div className="room-filter-tabs" role="tablist" aria-label="Filtrar por piso o zonas comunes">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={selectedFilter === "all"}
-                className={`room-filter-tab ${selectedFilter === "all" ? "is-active" : ""}`}
-                onClick={() => setSelectedFilter("all")}
-              >
-                <span className="material-symbol" aria-hidden="true">dashboard</span>
-                <span>Todos los espacios</span>
-                <span className="room-filter-tab-count">{roomIds.length}</span>
-              </button>
-
-              {availableFloors.map((floor) => {
-                const count = roomIds.filter(
-                  (id) => state.spaceTypes[id] !== "zona_comun" && (state.floors[id] || detectFloor(id)) === floor,
-                ).length;
-                return (
+          {/* Barra de Control Unificada y Ultra Compacta */}
+          <div className="rooms-unified-toolbar">
+            <div className="rooms-toolbar-main-row">
+              {/* Buscador Rápido */}
+              <div className="rooms-compact-search">
+                <span className="material-symbol" aria-hidden="true">search</span>
+                <input
+                  aria-label="Buscar habitación o espacio"
+                  autoComplete="off"
+                  placeholder="Buscar habitación, zona, huésped..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search && (
                   <button
-                    key={floor}
+                    type="button"
+                    className="rooms-search-clear"
+                    aria-label="Limpiar búsqueda"
+                    onClick={() => setSearch("")}
+                  >
+                    <span className="material-symbol" aria-hidden="true">close</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Categoría de Espacio (Segmented control) */}
+              <div className="rooms-category-segmented" role="group" aria-label="Filtrar por categoría">
+                <button
+                  type="button"
+                  className={`rooms-segmented-item ${spaceCategoryFilter === "all" ? "is-active" : ""}`}
+                  onClick={() => setSpaceCategoryFilter("all")}
+                >
+                  Todos <span className="segmented-count">{roomIds.length}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`rooms-segmented-item ${spaceCategoryFilter === "habitacion" ? "is-active" : ""}`}
+                  onClick={() => setSpaceCategoryFilter("habitacion")}
+                >
+                  <span className="material-symbol" aria-hidden="true">bedroom_parent</span>
+                  <span className="cat-label-full">Habitaciones</span>
+                  <span className="cat-label-mobile">Cuartos</span>
+                  <span className="segmented-count">{roomsCount}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`rooms-segmented-item ${spaceCategoryFilter === "zona_comun" ? "is-active" : ""}`}
+                  onClick={() => setSpaceCategoryFilter("zona_comun")}
+                >
+                  <span className="material-symbol" aria-hidden="true">apartment</span>
+                  <span className="cat-label-full">Áreas Compartidas</span>
+                  <span className="cat-label-mobile">Comunes</span>
+                  <span className="segmented-count">{commonAreasCount}</span>
+                </button>
+              </div>
+
+              {/* Contador de resultados */}
+              <div className="rooms-compact-count">
+                {visibleRoomIds.length} {visibleRoomIds.length === 1 ? "espacio" : "espacios"}
+              </div>
+            </div>
+
+            {/* Fila de Pisos Compacta */}
+            {availableFloors.length > 0 && (
+              <div className="rooms-floors-compact-row" role="tablist" aria-label="Filtrar por piso">
+                <span className="rooms-floors-hint">Piso:</span>
+                <div className="rooms-floors-chips-scroll">
+                  <button
                     type="button"
                     role="tab"
-                    aria-selected={selectedFilter === floor}
-                    className={`room-filter-tab ${selectedFilter === floor ? "is-active" : ""}`}
-                    onClick={() => setSelectedFilter(floor)}
+                    aria-selected={selectedFilter === "all"}
+                    className={`rooms-floor-chip ${selectedFilter === "all" ? "is-active" : ""}`}
+                    onClick={() => setSelectedFilter("all")}
                   >
-                    <span className="material-symbol" aria-hidden="true">layers</span>
-                    <span>{floor}</span>
-                    <span className="room-filter-tab-count">{count}</span>
+                    Todos
                   </button>
-                );
-              })}
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={selectedFilter === "zonas_comunes"}
-                className={`room-filter-tab ${selectedFilter === "zonas_comunes" ? "is-active" : ""}`}
-                onClick={() => setSelectedFilter("zonas_comunes")}
-              >
-                <span className="material-symbol" aria-hidden="true">domain</span>
-                <span>Zonas Comunes</span>
-                <span className="room-filter-tab-count">{commonAreasCount}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Sub-filtro de tipo de habitación: Todas / Normales / Dobles */}
-          <div className="room-type-filter-wrapper">
-            <span className="room-type-filter-label">Tipo de habitación:</span>
-            <div className="room-subfilter-chips" role="group" aria-label="Filtrar por tipo de habitación">
-              <button
-                type="button"
-                className={`subfilter-chip ${roomTypeFilter === "all" ? "is-active" : ""}`}
-                onClick={() => setRoomTypeFilter("all")}
-              >
-                Todas ({roomIds.length})
-              </button>
-              <button
-                type="button"
-                className={`subfilter-chip ${roomTypeFilter === "normal" ? "is-active" : ""}`}
-                onClick={() => setRoomTypeFilter("normal")}
-                title="Filtrar habitaciones estándar / normales"
-              >
-                <span className="material-symbol" aria-hidden="true" style={{ fontSize: "14px" }}>single_bed</span>
-                Normales ({normalRoomsCount})
-              </button>
-              <button
-                type="button"
-                className={`subfilter-chip subfilter-chip-double ${roomTypeFilter === "doble" ? "is-active" : ""}`}
-                onClick={() => setRoomTypeFilter("doble")}
-                title="Filtrar habitaciones dobles con sub-número decimal (ej. 1.1, 1.2)"
-              >
-                <span className="material-symbol" aria-hidden="true" style={{ fontSize: "14px" }}>bed</span>
-                Dobles ({doubleRoomsCount})
-              </button>
-            </div>
-          </div>
-
-          <div className="room-selection-toolbar">
-            <div className="room-selection-controls">
-              <label className="search-field">
-                <span className="search-input-wrap">
-                  <span className="material-symbol" aria-hidden="true">search</span>
-                  <input
-                    aria-label="Buscar habitación o espacio"
-                    autoComplete="off"
-                    placeholder="Habitación, zona común, huésped o personal..."
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                  {search && (
-                    <button
-                      type="button"
-                      className="search-clear-button"
-                      aria-label="Limpiar búsqueda"
-                      onClick={() => setSearch("")}
-                    >
-                      <span className="material-symbol" aria-hidden="true">close</span>
-                    </button>
-                  )}
-                </span>
-              </label>
-            </div>
-            <p className="room-results-count">
-              {visibleRoomIds.length} {visibleRoomIds.length === 1 ? "espacio" : "espacios"}
-            </p>
+                  {availableFloors.map((floor) => {
+                    const count = roomIds.filter(
+                      (id) => (state.floors[id] || detectFloor(id, undefined, state.spaceTypes[id] === "zona_comun")) === floor,
+                    ).length;
+                    return (
+                      <button
+                        key={floor}
+                        type="button"
+                        role="tab"
+                        aria-selected={selectedFilter === floor}
+                        className={`rooms-floor-chip ${selectedFilter === floor ? "is-active" : ""}`}
+                        onClick={() => setSelectedFilter(floor)}
+                      >
+                        <span className="material-symbol" aria-hidden="true">layers</span>
+                        <span>{floor}</span>
+                        <span className="floor-count-bubble">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           {visibleRoomIds.length === 0 ? (
             <p className="empty-state">No hay espacios que coincidan con la búsqueda o filtro seleccionado.</p>
@@ -2357,24 +1831,22 @@ export function RoomsPage() {
               })()}
             </div>
           )}
-          <section className="room-summary room-selection-summary" aria-label="Estado de habitaciones">
-            {roomSummary.map((item) => (
-              <div className="room-summary-item" key={item.label}>
-                <span className="material-symbol" aria-hidden="true">{item.icon}</span>
-                <span>{item.label}</span>
-                <strong>{item.count}</strong>
-              </div>
-            ))}
-            <span className="room-summary-total">{roomIds.length} espacios</span>
-          </section>
         </section>
       )}
 
-      <CreateRoomModal
+      <CreateSpaceOrFloorModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onCreated={handleRoomCreated}
-        existingFloors={availableFloors.length > 0 ? availableFloors : ["Piso 1", "Piso 2", "Piso 3"]}
+        onCreated={(targetIdOrFloor) => {
+          refresh().then(() => {
+            if (availableFloors.includes(targetIdOrFloor)) {
+              setSelectedFilter(targetIdOrFloor);
+            } else {
+              handleSelectRoom(targetIdOrFloor);
+            }
+          });
+        }}
+        existingFloors={availableFloors}
       />
     </div>
   );
@@ -4317,6 +3789,8 @@ export function StaffPage() {
   );
 }
 
+type CleanerTab = "jornada" | "nomina" | "perfil";
+
 export function CleanerPortal() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -4328,6 +3802,12 @@ export function CleanerPortal() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyRoom, setBusyRoom] = useState<string | null>(null);
+
+  // Tabs: Jornada, Nómina, Mi Perfil
+  const [activeTab, setActiveTab] = useState<CleanerTab>("jornada");
+  const [roomFilter, setRoomFilter] = useState<"all" | "cleaning" | "pending" | "finished">("all");
+  const [payrollView, setPayrollView] = useState<"rooms" | "shifts">("rooms");
+
   const [startedRooms, setStartedRooms] = useState<Set<string>>(() => {
     try {
       const saved = sessionStorage.getItem("cleaner_started_rooms");
@@ -4337,12 +3817,69 @@ export function CleanerPortal() {
     }
   });
 
+  const [roomStartTimes, setRoomStartTimes] = useState<Record<string, number>>(() => {
+    try {
+      const saved = sessionStorage.getItem("cleaner_room_start_times");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [shiftStart] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem("cleaner_shift_start");
+      if (saved) return Number(saved);
+      const now = Date.now();
+      sessionStorage.setItem("cleaner_shift_start", String(now));
+      return now;
+    } catch {
+      return Date.now();
+    }
+  });
+
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  function formatTimer(ms: number) {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    if (hrs > 0) {
+      return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+
+  function formatPlanName(plan: string | null | undefined): string {
+    if (!plan) return "Servicio de Limpieza";
+    const clean = plan.trim();
+    const lower = clean.toLowerCase();
+    if (lower === "profunda" || lower === "limpieza profunda") {
+      return "Servicio de Limpieza";
+    }
+    if (lower.startsWith("servicio")) return clean;
+    return `Servicio de Limpieza (${clean})`;
+  }
+
   function markRoomStarted(roomId: string) {
+    const currentTime = Date.now();
     setStartedRooms((prev) => {
       const next = new Set(prev);
       next.add(roomId);
       try {
         sessionStorage.setItem("cleaner_started_rooms", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+    setRoomStartTimes((prev) => {
+      const next = { ...prev, [roomId]: currentTime };
+      try {
+        sessionStorage.setItem("cleaner_room_start_times", JSON.stringify(next));
       } catch {}
       return next;
     });
@@ -4354,6 +3891,14 @@ export function CleanerPortal() {
       next.delete(roomId);
       try {
         sessionStorage.setItem("cleaner_started_rooms", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+    setRoomStartTimes((prev) => {
+      const next = { ...prev };
+      delete next[roomId];
+      try {
+        sessionStorage.setItem("cleaner_room_start_times", JSON.stringify(next));
       } catch {}
       return next;
     });
@@ -4471,8 +4016,11 @@ export function CleanerPortal() {
     }
     try {
       sessionStorage.removeItem("cleaner_started_rooms");
+      sessionStorage.removeItem("cleaner_room_start_times");
+      sessionStorage.removeItem("cleaner_shift_start");
     } catch {}
     setStartedRooms(new Set());
+    setRoomStartTimes({});
     setProfile(null);
     setRooms([]);
     setHistory([]);
@@ -4481,6 +4029,45 @@ export function CleanerPortal() {
     setError(null);
     setLoading(false);
   }
+
+  // Room status derivations
+  const finishedRooms = useMemo(
+    () => rooms.filter((r) => r.estado === "finalizado" || statusFromDb(r.estado) === "finished"),
+    [rooms]
+  );
+  const activeRooms = useMemo(
+    () => rooms.filter((r) => !finishedRooms.includes(r) && startedRooms.has(r.id_habitacion)),
+    [rooms, finishedRooms, startedRooms]
+  );
+  const pendingRooms = useMemo(
+    () => rooms.filter((r) => !finishedRooms.includes(r) && !startedRooms.has(r.id_habitacion)),
+    [rooms, finishedRooms, startedRooms]
+  );
+
+  const progressPercent = rooms.length > 0 ? Math.round((finishedRooms.length / rooms.length) * 100) : 0;
+
+  const filteredRooms = useMemo(() => {
+    if (roomFilter === "cleaning") return activeRooms;
+    if (roomFilter === "pending") return pendingRooms;
+    if (roomFilter === "finished") return finishedRooms;
+    return rooms;
+  }, [rooms, roomFilter, activeRooms, pendingRooms, finishedRooms]);
+
+  // Financial / Payroll derivations
+  const RATE_PER_ROOM = 18000; // COP
+  const totalEarnings = history.length * RATE_PER_ROOM;
+  const totalHoursEstimated = (history.length * 0.45).toFixed(1);
+
+  // Group history by date (YYYY-MM-DD)
+  const historyByDate = useMemo(() => {
+    const map: Record<string, CleanerHistoryItem[]> = {};
+    for (const item of history) {
+      const d = item.creado_en ? item.creado_en.split("T")[0] : "Reciente";
+      if (!map[d]) map[d] = [];
+      map[d].push(item);
+    }
+    return map;
+  }, [history]);
 
   return (
     <main className="auth-page cleaner-auth-page">
@@ -4499,127 +4086,437 @@ export function CleanerPortal() {
           <button className="button button-primary" disabled={loading}>{loading ? "Validando…" : "Ingresar"}</button>
         </form>
       ) : (
-        <section className="cleaner-page page-stack">
-          <div className="page-heading">
-            <div>
-              <p className="eyebrow">Tu jornada</p>
-              <h1>Hola, {profile.nombre}</h1>
-              <p className="page-description">Estas son las habitaciones asignadas para hoy.</p>
+        <section className="cleaner-page cleaner-portal-shell page-stack">
+          {/* Top Bar */}
+          <div className="cleaner-portal-topbar">
+            <div className="cleaner-user-strip">
+              <ModernAvatar3D name={profile.nombre} size={44} className="cleaner-head-avatar" />
+              <div>
+                <div className="cleaner-tagline">
+                  <span className="cleaner-shift-dot" />
+                  Turno Activo · {formatTimer(now - shiftStart)}
+                </div>
+                <h1 className="cleaner-user-name">{profile.nombre}</h1>
+              </div>
             </div>
-            <button className="button button-refresh" disabled={loading} onClick={() => void signOut()}>
-              <span className="material-symbol" aria-hidden="true">logout</span> Cerrar sesión
+
+            {/* Desktop & Tablet Navigation */}
+            <div className="cleaner-desktop-nav" role="tablist" aria-label="Secciones del portal de aseo">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "jornada"}
+                className={`cleaner-desktop-tab ${activeTab === "jornada" ? "is-active" : ""}`}
+                onClick={() => setActiveTab("jornada")}
+              >
+                <span className="material-symbol">cleaning_services</span>
+                <span>Jornada</span>
+                {activeRooms.length > 0 && <span className="cleaner-desktop-badge">{activeRooms.length}</span>}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "nomina"}
+                className={`cleaner-desktop-tab ${activeTab === "nomina" ? "is-active" : ""}`}
+                onClick={() => setActiveTab("nomina")}
+              >
+                <span className="material-symbol">payments</span>
+                <span>Nómina e Historial</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "perfil"}
+                className={`cleaner-desktop-tab ${activeTab === "perfil" ? "is-active" : ""}`}
+                onClick={() => setActiveTab("perfil")}
+              >
+                <span className="material-symbol">person</span>
+                <span>Mi Perfil</span>
+              </button>
+            </div>
+
+            <button className="button button-refresh cleaner-top-logout" disabled={loading} onClick={() => void signOut()} title="Cerrar sesión">
+              <span className="material-symbol" aria-hidden="true">logout</span>
+              <span>Salir</span>
             </button>
           </div>
-          {error && <p className="form-error" role="alert">{error}</p>}
-          {rooms.length === 0 ? (
-            <p className="empty-state">No tienes habitaciones asignadas actualmente.</p>
-          ) : (
-            <section className="room-grid">
-              {rooms.map((room) => {
-                const isFinished = room.estado === "finalizado" || statusFromDb(room.estado) === "finished";
-                const isCleaning = !isFinished && startedRooms.has(room.id_habitacion);
-                const displayStatus: RoomStatus = isFinished
-                  ? "finished"
-                  : isCleaning
-                  ? "cleaning"
-                  : "pending";
 
-                return (
-                  <article className="room-card cleaner-room-card" key={room.id_habitacion}>
-                    <div className="room-card-heading">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="room-card-heading-title"
-                        onClick={() => navigate(`/app/habitaciones?room=${encodeURIComponent(room.id_habitacion)}`)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            navigate(`/app/habitaciones?room=${encodeURIComponent(room.id_habitacion)}`);
-                          }
-                        }}
-                        title={`Ir a habitación ${room.id_habitacion}`}
-                      >
-                        <p className="eyebrow">Habitación</p>
-                        <h2>
-                          {room.id_habitacion}
-                          <span className="material-symbol room-title-hover-icon" aria-hidden="true">open_in_new</span>
-                        </h2>
-                      </div>
-                      <span className={`status-pill status-${displayStatus}`}>
-                        {statusLabels[displayStatus] || (isCleaning ? "En limpieza" : "Por atender")}
-                      </span>
-                    </div>
-                    <dl className="details-list">
-                      <div><dt>Huésped</dt><dd>{room.nombre_huesped || "No registrado"}</dd></div>
-                      <div><dt>Plan</dt><dd>{room.plan_limpieza || "No especificado"}</dd></div>
-                      <div><dt>Detalles</dt><dd>{room.detalles_limpieza || "Sin indicaciones"}</dd></div>
-                    </dl>
-                    <div className="cleaner-card-actions">
-                      {!isCleaning && !isFinished && (
-                        <button
-                          type="button"
-                          className="button button-primary cleaner-action-btn"
-                          disabled={busyRoom === room.id_habitacion}
-                          onClick={() => void handleStart(room.id_habitacion)}
-                        >
-                          <span className="material-symbol" aria-hidden="true">play_arrow</span>
-                          {busyRoom === room.id_habitacion ? "Iniciando…" : "Iniciar Limpieza"}
-                        </button>
-                      )}
-                      {isCleaning && (
-                        <button
-                          type="button"
-                          className="button button-primary cleaner-action-btn cleaner-finish-btn"
-                          disabled={busyRoom === room.id_habitacion}
-                          onClick={() => void handleFinish(room.id_habitacion)}
-                        >
-                          <span className="material-symbol" aria-hidden="true">check_circle</span>
-                          {busyRoom === room.id_habitacion ? "Finalizando…" : "Finalizar Limpieza"}
-                        </button>
-                      )}
-                      {isFinished && (
-                        <div className="cleaner-completed-badge">
-                          <span className="material-symbol" aria-hidden="true">task_alt</span>
-                          <span>Limpieza finalizada</span>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </section>
-          )}
-          <section className="page-card cleaner-history" aria-labelledby="cleaner-history-title">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Actividad completada</p>
-                <h2 id="cleaner-history-title">Historial de habitaciones</h2>
-                <p className="muted">Habitaciones que has finalizado anteriormente.</p>
+          {error && <p className="form-error" role="alert">{error}</p>}
+
+          {/* TAB 1: JORNADA (HABITACIONES) */}
+          {activeTab === "jornada" && (
+            <div className="cleaner-tab-content">
+              {/* Responsive Controls Row (Progress & Filters) */}
+              <div className="cleaner-controls-row">
+                <div className="cleaner-progress-card">
+                  <div className="cleaner-progress-header">
+                    <span>Progreso de hoy</span>
+                    <strong>{finishedRooms.length} de {rooms.length} completadas ({progressPercent}%)</strong>
+                  </div>
+                  <div className="cleaner-progress-track">
+                    <div className="cleaner-progress-fill" style={{ width: `${progressPercent}%` }} />
+                  </div>
+                </div>
+
+                <div className="cleaner-filter-strip">
+                  <button
+                    type="button"
+                    className={`cleaner-filter-chip ${roomFilter === "all" ? "is-active" : ""}`}
+                    onClick={() => setRoomFilter("all")}
+                  >
+                    Todas ({rooms.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`cleaner-filter-chip ${roomFilter === "cleaning" ? "is-active" : ""}`}
+                    onClick={() => setRoomFilter("cleaning")}
+                  >
+                    En Curso ({activeRooms.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`cleaner-filter-chip ${roomFilter === "pending" ? "is-active" : ""}`}
+                    onClick={() => setRoomFilter("pending")}
+                  >
+                    Pendientes ({pendingRooms.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`cleaner-filter-chip ${roomFilter === "finished" ? "is-active" : ""}`}
+                    onClick={() => setRoomFilter("finished")}
+                  >
+                    Finalizadas ({finishedRooms.length})
+                  </button>
+                </div>
               </div>
-            </div>
-            {historyLoading ? (
-              <p className="empty-state">Cargando historial…</p>
-            ) : history.length === 0 ? (
-              <p className="empty-state">Aún no tienes habitaciones finalizadas.</p>
-            ) : (
-              <div className="cleaner-history-list">
-                {history.map((item) => (
-                  <article
-                    className="cleaner-history-item"
-                    key={item.id_trabajo}
+
+              {/* Active Room Hero Card */}
+              {activeRooms.length > 0 && roomFilter !== "pending" && roomFilter !== "finished" && (
+                <div className="cleaner-active-hero-card">
+                  <div className="cleaner-active-hero-header">
+                    <span className="cleaner-active-badge">
+                      <span className="cleaner-pulse-beacon" />
+                      EN LIMPIEZA AHORA
+                    </span>
+                    <span className="cleaner-active-timer">
+                      <small>Tiempo</small>
+                      <strong>{formatTimer(now - (roomStartTimes[activeRooms[0].id_habitacion] || now))}</strong>
+                    </span>
+                  </div>
+
+                  <div className="cleaner-active-hero-body">
+                    <div className="cleaner-active-room-title">
+                      <h2>Hab. {activeRooms[0].id_habitacion}</h2>
+                      <span className="cleaner-service-pill">Servicio de Limpieza</span>
+                    </div>
+                    <div className="cleaner-active-meta">
+                      <span className="material-symbol">person</span>
+                      <span>Huésped: <strong>{activeRooms[0].nombre_huesped || "Sin huésped registrado"}</strong></span>
+                    </div>
+                    {activeRooms[0].detalles_limpieza && (
+                      <div className="cleaner-active-note">
+                        <span className="material-symbol">info</span>
+                        <span>{activeRooms[0].detalles_limpieza}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="button button-primary cleaner-action-btn cleaner-finish-btn"
+                    disabled={busyRoom === activeRooms[0].id_habitacion}
+                    onClick={() => void handleFinish(activeRooms[0].id_habitacion)}
                   >
                     <span className="material-symbol" aria-hidden="true">check_circle</span>
-                    <div className="cleaner-history-room">
-                      <strong>Habitación {item.id_habitacion}</strong>
-                      <span>{item.tipo_limpieza || "Tipo de limpieza no especificado"}</span>
+                    <span>{busyRoom === activeRooms[0].id_habitacion ? "Finalizando…" : "Finalizar Servicio de Limpieza"}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Room Grid / List */}
+              {filteredRooms.length === 0 ? (
+                <p className="empty-state">No hay habitaciones asignadas en esta categoría.</p>
+              ) : (
+                <section className="room-grid cleaner-room-grid">
+                  {filteredRooms.map((room) => {
+                    const isFinished = room.estado === "finalizado" || statusFromDb(room.estado) === "finished";
+                    const isCleaning = !isFinished && startedRooms.has(room.id_habitacion);
+                    const displayStatus: RoomStatus = isFinished ? "finished" : isCleaning ? "cleaning" : "pending";
+
+                    return (
+                      <article className="room-card cleaner-room-card" key={room.id_habitacion}>
+                        <div className="room-card-heading">
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className="room-card-heading-title"
+                            onClick={() => navigate(`/app/habitaciones?room=${encodeURIComponent(room.id_habitacion)}`)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                navigate(`/app/habitaciones?room=${encodeURIComponent(room.id_habitacion)}`);
+                              }
+                            }}
+                            title={`Ir a habitación ${room.id_habitacion}`}
+                          >
+                            <p className="eyebrow">Habitación</p>
+                            <h2>
+                              {room.id_habitacion}
+                              <span className="material-symbol room-title-hover-icon" aria-hidden="true">open_in_new</span>
+                            </h2>
+                          </div>
+                          <span className={`status-pill status-${displayStatus}`}>
+                            {statusLabels[displayStatus] || (isCleaning ? "En limpieza" : "Por atender")}
+                          </span>
+                        </div>
+                        <dl className="details-list">
+                          <div>
+                            <dt>Huésped</dt>
+                            <dd>{room.nombre_huesped || "No registrado"}</dd>
+                          </div>
+                          <div>
+                            <dt>Plan</dt>
+                            <dd>
+                              <strong style={{ color: "#065f46" }}>{formatPlanName(room.plan_limpieza)}</strong>
+                            </dd>
+                          </div>
+                          {room.detalles_limpieza && (
+                            <div>
+                              <dt>Detalles</dt>
+                              <dd>{room.detalles_limpieza}</dd>
+                            </div>
+                          )}
+                        </dl>
+                        <div className="cleaner-card-actions">
+                          {!isCleaning && !isFinished && (
+                            <button
+                              type="button"
+                              className="button button-primary cleaner-action-btn"
+                              disabled={busyRoom === room.id_habitacion}
+                              onClick={() => void handleStart(room.id_habitacion)}
+                            >
+                              <span className="material-symbol" aria-hidden="true">play_arrow</span>
+                              {busyRoom === room.id_habitacion ? "Iniciando…" : "Iniciar Limpieza"}
+                            </button>
+                          )}
+                          {isCleaning && (
+                            <button
+                              type="button"
+                              className="button button-primary cleaner-action-btn cleaner-finish-btn"
+                              disabled={busyRoom === room.id_habitacion}
+                              onClick={() => void handleFinish(room.id_habitacion)}
+                            >
+                              <span className="material-symbol" aria-hidden="true">check_circle</span>
+                              <span>{busyRoom === room.id_habitacion ? "Finalizando…" : "Finalizar Servicio de Limpieza"}</span>
+                            </button>
+                          )}
+                          {isFinished && (
+                            <div className="cleaner-completed-badge">
+                              <span className="material-symbol" aria-hidden="true">task_alt</span>
+                              <span>Servicio finalizado</span>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </section>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: HISTORIAL Y NÓMINA (RESPONSIVE TABLET & DESKTOP) */}
+          {activeTab === "nomina" && (
+            <div className="cleaner-tab-content cleaner-payroll-layout">
+              {/* Financial Hero Sidebar */}
+              <div className="cleaner-payroll-sidebar">
+                <div className="cleaner-payroll-hero">
+                  <div className="cleaner-payroll-eyebrow">Compensación y Turnos · Periodo Quincenal</div>
+                  <div className="cleaner-payroll-amount">
+                    ${totalEarnings.toLocaleString("es-CO")} <small>COP</small>
+                  </div>
+                  <div className="cleaner-payroll-grid">
+                    <div className="cleaner-payroll-col">
+                      <span>Habitaciones</span>
+                      <strong>{history.length}</strong>
                     </div>
-                    <time dateTime={item.creado_en}>{formatDate(item.creado_en)}</time>
-                  </article>
-                ))}
+                    <div className="cleaner-payroll-col">
+                      <span>Horas Est.</span>
+                      <strong>{totalHoursEstimated}h</strong>
+                    </div>
+                    <div className="cleaner-payroll-col">
+                      <span>Turnos</span>
+                      <strong>{Object.keys(historyByDate).length} días</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="cleaner-payroll-info-card hide-on-mobile">
+                  <div className="cleaner-section-label">
+                    <span className="material-symbol">info</span>
+                    <span>Políticas de Liquidación</span>
+                  </div>
+                  <p className="cleaner-payroll-info-text">
+                    La tarifa base por espacio estándar es de <strong>$18.000 COP</strong>. Los pagos se consolidan quincenalmente los días 15 y 30 de cada mes.
+                  </p>
+                </div>
               </div>
-            )}
-          </section>
+
+              {/* Detailed Lists Column */}
+              <div className="cleaner-payroll-main">
+                {/* Sub-switcher */}
+                <div className="cleaner-payroll-switcher">
+                  <button
+                    type="button"
+                    className={payrollView === "rooms" ? "is-active" : ""}
+                    onClick={() => setPayrollView("rooms")}
+                  >
+                    Habitaciones ({history.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={payrollView === "shifts" ? "is-active" : ""}
+                    onClick={() => setPayrollView("shifts")}
+                  >
+                    Turnos Diarios ({Object.keys(historyByDate).length})
+                  </button>
+                </div>
+
+                {historyLoading ? (
+                  <p className="empty-state">Cargando registros de nómina…</p>
+                ) : history.length === 0 ? (
+                  <p className="empty-state">Aún no hay habitaciones o turnos registrados en este periodo.</p>
+                ) : payrollView === "rooms" ? (
+                  <div className="cleaner-history-list cleaner-history-grid">
+                    {history.map((item) => (
+                      <article className="cleaner-history-item" key={item.id_trabajo}>
+                        <span className="material-symbol" aria-hidden="true" style={{ color: "#10b981" }}>check_circle</span>
+                        <div className="cleaner-history-room">
+                          <strong>Habitación {item.id_habitacion}</strong>
+                          <span>{formatPlanName(item.tipo_limpieza)}</span>
+                        </div>
+                        <div className="cleaner-history-payout">
+                          <strong>+${RATE_PER_ROOM.toLocaleString("es-CO")} COP</strong>
+                          <time dateTime={item.creado_en}>{formatDate(item.creado_en)}</time>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="cleaner-shifts-list cleaner-shifts-grid">
+                    {Object.entries(historyByDate).map(([dateStr, items]) => (
+                      <div className="cleaner-shift-day-card" key={dateStr}>
+                        <div className="cleaner-shift-day-head">
+                          <span className="material-symbol">event_available</span>
+                          <div>
+                            <strong>{dateStr}</strong>
+                            <small>{items.length} habitaciones limpiadas</small>
+                          </div>
+                        </div>
+                        <div className="cleaner-shift-day-amount">
+                          +${(items.length * RATE_PER_ROOM).toLocaleString("es-CO")} COP
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: MI PERFIL (RESPONSIVE TABLET & DESKTOP) */}
+          {activeTab === "perfil" && (
+            <div className="cleaner-tab-content cleaner-profile-layout">
+              {/* Profile Sidebar */}
+              <div className="cleaner-profile-sidebar">
+                <div className="cleaner-profile-hero">
+                  <ModernAvatar3D name={profile.nombre} size={84} className="cleaner-large-avatar" />
+                  <h2 className="cleaner-profile-name">{profile.nombre}</h2>
+                  <p className="cleaner-profile-role">Personal de Aseo y Camarera</p>
+                  <div className="cleaner-profile-beacon">
+                    <span className="cleaner-pulse-beacon" />
+                    Turno Activo en Sede Central
+                  </div>
+                </div>
+
+                {/* Logout Button */}
+                <button
+                  type="button"
+                  className="button cleaner-logout-full-btn"
+                  onClick={() => void signOut()}
+                  disabled={loading}
+                >
+                  <span className="material-symbol">logout</span>
+                  <span>Cerrar Sesión</span>
+                </button>
+              </div>
+
+              {/* Profile Main Content */}
+              <div className="cleaner-profile-main">
+                {/* 3D Avatar Style Picker */}
+                <div className="cleaner-avatar-picker-section">
+                  <div className="cleaner-section-label">
+                    <span className="material-symbol">palette</span>
+                    <span>Estilo de Avatar</span>
+                  </div>
+                  <Avatar3DStylePicker variant="minimal" />
+                </div>
+
+                {/* Personal Information (Read-only) */}
+                <div className="cleaner-profile-details">
+                  <div className="cleaner-section-label">
+                    <span className="material-symbol">badge</span>
+                    <span>Información Laboral</span>
+                  </div>
+                  <div className="cleaner-detail-row">
+                    <span>Nombre</span>
+                    <strong>{profile.nombre}</strong>
+                  </div>
+                  <div className="cleaner-detail-row">
+                    <span>Correo / Acceso</span>
+                    <strong>{email || "Cuenta de aseo"}</strong>
+                  </div>
+                  <div className="cleaner-detail-row">
+                    <span>Código Empleado</span>
+                    <strong style={{ fontFamily: "monospace" }}>EMP-{profile.id_personal.slice(0, 8).toUpperCase()}</strong>
+                  </div>
+                  <div className="cleaner-detail-row">
+                    <span>Estado</span>
+                    <strong style={{ color: "#10b981" }}>Activo y Autorizado</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Navigation Bar */}
+          <nav className="cleaner-bottom-nav" aria-label="Navegación del portal de aseo">
+            <button
+              type="button"
+              className={`cleaner-nav-tab ${activeTab === "jornada" ? "is-active" : ""}`}
+              onClick={() => setActiveTab("jornada")}
+            >
+              <span className="material-symbol">cleaning_services</span>
+              <span>Jornada</span>
+              {activeRooms.length > 0 && <span className="cleaner-nav-badge">{activeRooms.length}</span>}
+            </button>
+            <button
+              type="button"
+              className={`cleaner-nav-tab ${activeTab === "nomina" ? "is-active" : ""}`}
+              onClick={() => setActiveTab("nomina")}
+            >
+              <span className="material-symbol">payments</span>
+              <span>Nómina</span>
+            </button>
+            <button
+              type="button"
+              className={`cleaner-nav-tab ${activeTab === "perfil" ? "is-active" : ""}`}
+              onClick={() => setActiveTab("perfil")}
+            >
+              <span className="material-symbol">person</span>
+              <span>Mi Perfil</span>
+            </button>
+          </nav>
         </section>
       )}
     </main>
