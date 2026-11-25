@@ -982,6 +982,7 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
 function RoomPickerCard({
   roomId,
   status,
+  guest,
   servicePlan,
   cleanerName,
   cleanerId,
@@ -1074,19 +1075,23 @@ function RoomPickerCard({
           </span>
         </span>
 
-        {/* Fila 2: Piso y Servicio de Limpieza */}
-        <span className="room-picker-details">
-          {floor && (
-            <span className="room-picker-floor-item" title={`Piso: ${floor}`}>
-              <span className="material-symbol" aria-hidden="true">layers</span>
-              <span>{floor}</span>
-            </span>
-          )}
-          <span className="room-picker-service-tag" title="Servicio de Limpieza">
-            <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-            <span>{servicePlan || "Servicio de Limpieza"}</span>
+        {/* Fila 2: Huésped (si ocupada) y Servicio de Limpieza (solo si establecido) */}
+        {((status === "occupied" && Boolean(guest)) || Boolean(servicePlan)) && (
+          <span className="room-picker-details">
+            {status === "occupied" && guest && (
+              <span className="room-picker-guest-row" title={`Huésped: ${guest}`}>
+                <span className="material-symbol" aria-hidden="true">person</span>
+                <strong className="room-picker-guest-name">{guest}</strong>
+              </span>
+            )}
+            {servicePlan && (
+              <span className="room-picker-service-tag" title={`Plan: ${servicePlan}`}>
+                <span className="material-symbol" aria-hidden="true">cleaning_services</span>
+                <span>{servicePlan}</span>
+              </span>
+            )}
           </span>
-        </span>
+        )}
 
         {/* Fila 3: Personal Asignado */}
         <span className="room-picker-footer">

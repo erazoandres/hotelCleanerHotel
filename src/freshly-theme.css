@@ -2008,6 +2008,45 @@ textarea {
     min-height: 0 !important;
   }
 
+  .rooms-compact-header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    position: relative !important;
+    margin-bottom: 2px !important;
+  }
+
+  .rooms-compact-header .rooms-compact-title-wrap {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    position: static !important;
+  }
+
+  .rooms-compact-header .rooms-compact-title {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .rooms-compact-header .room-heading-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex: 0 0 auto !important;
+    margin-left: auto !important;
+    position: static !important;
+    width: auto !important;
+  }
+
   .rooms-unified-toolbar {
     height: auto !important;
     min-height: 0 !important;
