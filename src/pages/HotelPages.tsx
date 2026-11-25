@@ -982,7 +982,6 @@ function RoomCard({ roomId, onDelete }: { roomId: string; onDelete?: () => void 
 function RoomPickerCard({
   roomId,
   status,
-  guest,
   servicePlan,
   cleanerName,
   cleanerId,
@@ -993,7 +992,7 @@ function RoomPickerCard({
 }: {
   roomId: string;
   status: RoomStatus;
-  guest: string;
+  guest?: string;
   servicePlan: string;
   cleanerName: string;
   cleanerId?: string | null;
@@ -1035,7 +1034,6 @@ function RoomPickerCard({
 
   const isFree = status === "free";
   const toneClass = isFree && freeToneIndex !== undefined ? `room-picker-tone-${(freeToneIndex % 2) + 1}` : "";
-  const cleaningDuration = state.cleaningTimes?.[roomId] ?? 30;
 
   return (
     <button
@@ -1044,7 +1042,7 @@ function RoomPickerCard({
       type="button"
       aria-label={`${isEffectiveCommonArea ? "Área común" : "Habitación"} ${roomId}, ${statusLabels[status] || status}`}
     >
-      {/* 1. Carril Multimedia Izquierdo Compacto con Chip de Piso */}
+      {/* 1. Carril Multimedia con Chip de Piso */}
       <span className="room-picker-art">
         <img
           alt={isEffectiveCommonArea ? `Zona común ${roomId}` : `Habitación ${roomId}`}
@@ -1054,77 +1052,47 @@ function RoomPickerCard({
           decoding="async"
         />
         {floor && (
-          <span className="room-picker-art-floor" title={`Ubicación: ${floor}`}>
+          <span className="room-picker-art-floor" title={`Piso / Ubicación: ${floor}`}>
             {floor}
           </span>
         )}
       </span>
 
-      {/* 2. Bloque Central de Datos Reales */}
+      {/* 2. Bloque Central de Información */}
       <span className="room-picker-main">
-        {/* Fila 1: Habitación / Área y Píldora de Estado */}
+        {/* Fila 1: # Habitación y Estado */}
         <span className="room-picker-heading">
           <span className="room-picker-room-name">
             <strong>{roomId}</strong>
-            <span className="room-picker-category-label">
-              {isEffectiveCommonArea ? "Área Común" : "Habitación"}
-            </span>
           </span>
           <span className={`status-pill status-${status}`}>
             <span className="room-status-dot" />
-            <span>{statusLabels[status]}</span>
+            <span>{statusLabels[status] || status}</span>
             {status === "finished" && (
-              <span className="material-symbol room-status-check">check_circle</span>
+              <span className="material-symbol room-status-check" aria-hidden="true">check_circle</span>
             )}
           </span>
         </span>
 
-        {/* Fila 2: Huésped (SOLO si ocupada) o Estado Operativo del Espacio */}
+        {/* Fila 2: Piso y Servicio de Limpieza */}
         <span className="room-picker-details">
-          {status === "occupied" && guest ? (
-            <span className="room-picker-guest-row">
-              <span className="material-symbol" aria-hidden="true">person</span>
-              <strong className="room-picker-guest-name" title={guest}>{guest}</strong>
-            </span>
-          ) : isEffectiveCommonArea ? (
-            <span className="room-picker-guest-row">
-              <span className="material-symbol" aria-hidden="true">{getStructureIcon(roomId)}</span>
-              <span className="room-picker-common-label">Área Compartida</span>
-            </span>
-          ) : status === "free" ? (
-            <span className="room-picker-free-status">
-              <span className="material-symbol" aria-hidden="true">check_circle</span>
-              <span>Disponible</span>
-            </span>
-          ) : status === "cleaning" ? (
-            <span className="room-picker-cleaning-status">
-              <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-              <span>En limpieza</span>
-            </span>
-          ) : status === "pending" ? (
-            <span className="room-picker-pending-status">
-              <span className="material-symbol" aria-hidden="true">pending_actions</span>
-              <span>Requiere aseo</span>
-            </span>
-          ) : (
-            <span className="room-picker-finished-status">
-              <span className="material-symbol" aria-hidden="true">verified</span>
-              <span>Inspeccionada</span>
+          {floor && (
+            <span className="room-picker-floor-item" title={`Piso: ${floor}`}>
+              <span className="material-symbol" aria-hidden="true">layers</span>
+              <span>{floor}</span>
             </span>
           )}
-
-          {servicePlan && (
-            <span className="room-picker-service-tag" title={`Plan: ${servicePlan}`}>
-              {servicePlan}
-            </span>
-          )}
+          <span className="room-picker-service-tag" title="Servicio de Limpieza">
+            <span className="material-symbol" aria-hidden="true">cleaning_services</span>
+            <span>{servicePlan || "Servicio de Limpieza"}</span>
+          </span>
         </span>
 
-        {/* Fila 3: Personal Asignado / Tiempo de Aseo y Micro-Acción */}
+        {/* Fila 3: Personal Asignado */}
         <span className="room-picker-footer">
           <span
             className={`room-picker-assignee${cleanerName ? "" : " room-picker-assignee-empty"}`}
-            title={cleanerName ? `Ver ficha de personal: ${cleanerName}` : "Sin personal asignado"}
+            title={cleanerName ? `Personal asignado: ${cleanerName}` : "Sin personal asignado"}
             role={cleanerName ? "button" : undefined}
             tabIndex={cleanerName ? 0 : undefined}
             onClick={cleanerName ? handleAssigneeClick : undefined}
@@ -1144,19 +1112,13 @@ function RoomPickerCard({
                 />
                 <span className="room-picker-assignee-name">{cleanerName}</span>
               </>
-            ) : status === "pending" ? (
+            ) : (
               <span className="room-picker-unassigned-tag">
                 <span className="material-symbol" aria-hidden="true">person_off</span>
-                <span>Sin camarero</span>
-              </span>
-            ) : (
-              <span className="room-picker-time-tag">
-                <span className="material-symbol" aria-hidden="true">schedule</span>
-                <span>{cleaningDuration} min</span>
+                <span>Sin asignar</span>
               </span>
             )}
           </span>
-          <span className="material-symbol room-picker-arrow" aria-hidden="true">chevron_right</span>
         </span>
       </span>
     </button>
@@ -2464,12 +2426,21 @@ export function HistoryPage() {
       <div className="history-hero-header">
         <div className="history-hero-info">
           <div className="history-hero-title-row">
-            <span className="history-hero-icon" aria-hidden="true">
-              <span className="material-symbol">history</span>
-            </span>
-            <div>
-              <p className="history-hero-eyebrow">Auditoría &amp; Registro Operativo</p>
-              <h1 className="history-hero-title">Historial de Movimientos</h1>
+            <div className="history-title-group">
+              <span className="history-hero-icon" aria-hidden="true">
+                <span className="material-symbol">history</span>
+              </span>
+              <div>
+                <p className="history-hero-eyebrow">Auditoría &amp; Registro Operativo</p>
+                <h1 className="history-hero-title">
+                  <span className="history-title-full">Historial de Movimientos</span>
+                  <span className="history-title-mobile">Historial</span>
+                </h1>
+              </div>
+            </div>
+            <div className="history-mobile-total-badge" aria-label={`Total de ${counts.all} registros`}>
+              <span className="material-symbol" aria-hidden="true">receipt_long</span>
+              <span>{counts.all} reg.</span>
             </div>
           </div>
           <p className="history-hero-desc">
