@@ -1869,6 +1869,19 @@ html[data-theme="dark"] .rooms-page .room-picker-guest-row .material-symbol {
   white-space: nowrap !important;
 }
 
+.rooms-page .room-picker-item-label {
+  font-weight: 500 !important;
+  opacity: 0.72 !important;
+  font-size: 10px !important;
+  margin-right: 2px !important;
+  white-space: nowrap !important;
+}
+
+.rooms-page .room-picker-service-value {
+  font-weight: 600 !important;
+  font-size: 9.5px !important;
+}
+
 .rooms-page .room-picker-service-tag {
   display: inline-flex !important;
   align-items: center !important;
@@ -1882,7 +1895,7 @@ html[data-theme="dark"] .rooms-page .room-picker-guest-row .material-symbol {
   padding: 1.5px 6px !important;
   border-radius: 4px !important;
   white-space: nowrap !important;
-  max-width: 140px !important;
+  max-width: 165px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   flex-shrink: 0 !important;

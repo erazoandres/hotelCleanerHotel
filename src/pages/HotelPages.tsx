@@ -1064,7 +1064,7 @@ function RoomPickerCard({
         {/* Fila 1: # Habitación y Estado */}
         <span className="room-picker-heading">
           <span className="room-picker-room-name">
-            <strong>{roomId}</strong>
+            <strong>{roomId.startsWith("#") ? roomId : `#${roomId}`}</strong>
           </span>
           <span className={`status-pill status-${status}`}>
             <span className="room-status-dot" />
@@ -1081,19 +1081,22 @@ function RoomPickerCard({
             {guest?.trim() ? (
               <span className="room-picker-guest-row" title={`Huésped: ${guest.trim()}`}>
                 <span className="material-symbol" aria-hidden="true">person</span>
+                <span className="room-picker-item-label">Huésped:</span>
                 <strong className="room-picker-guest-name">{guest.trim()}</strong>
               </span>
             ) : status === "occupied" ? (
               <span className="room-picker-guest-row" title="Habitación ocupada">
                 <span className="material-symbol" aria-hidden="true">person</span>
+                <span className="room-picker-item-label">Huésped:</span>
                 <strong className="room-picker-guest-name">Ocupada</strong>
               </span>
             ) : null}
 
             {servicePlan?.trim() && (
-              <span className="room-picker-service-tag" title={`Plan: ${servicePlan.trim()}`}>
+              <span className="room-picker-service-tag" title={`Servicio: ${servicePlan.trim()}`}>
                 <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-                <span>{servicePlan.trim()}</span>
+                <span className="room-picker-item-label">Servicio:</span>
+                <strong className="room-picker-service-value">{servicePlan.trim()}</strong>
               </span>
             )}
           </span>
@@ -1121,11 +1124,13 @@ function RoomPickerCard({
                   className="room-picker-assignee-avatar"
                   alt={`Avatar 3D de ${cleanerName}`}
                 />
-                <span className="room-picker-assignee-name">{cleanerName}</span>
+                <span className="room-picker-item-label">Personal:</span>
+                <strong className="room-picker-assignee-name">{cleanerName}</strong>
               </>
             ) : (
               <span className="room-picker-unassigned-tag">
                 <span className="material-symbol" aria-hidden="true">person_off</span>
+                <span className="room-picker-item-label">Personal:</span>
                 <span>Sin asignar</span>
               </span>
             )}
