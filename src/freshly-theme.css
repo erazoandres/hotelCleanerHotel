@@ -1850,7 +1850,15 @@ textarea {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-  max-width: 130px !important;
+  max-width: 170px !important;
+}
+
+html[data-theme="dark"] .rooms-page .room-picker-guest-name {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .rooms-page .room-picker-guest-row .material-symbol {
+  color: #94a3b8 !important;
 }
 
 .rooms-page .room-picker-common-label {

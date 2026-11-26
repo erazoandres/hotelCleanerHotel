@@ -547,7 +547,14 @@ export async function fetchRemoteState(): Promise<RemoteHotelState> {
   for (const room of rooms ?? []) {
     state.rooms[room.id_habitacion] =
       statusFromDatabase[room.estado] ?? "unknown";
-    if (room.nombre_huesped) state.guests[room.id_habitacion] = room.nombre_huesped;
+    if (room.nombre_huesped?.trim()) {
+      state.guests[room.id_habitacion] = room.nombre_huesped.trim();
+    } else {
+      const recentGuestEvent = eventRows.find((e) => e.id_habitacion === room.id_habitacion && e.nombre_huesped?.trim());
+      if (recentGuestEvent?.nombre_huesped?.trim()) {
+        state.guests[room.id_habitacion] = recentGuestEvent.nombre_huesped.trim();
+      }
+    }
     if (room.plan_limpieza) state.servicePlans[room.id_habitacion] = room.plan_limpieza;
     if (room.detalles_limpieza) {
       state.cleaningDetails[room.id_habitacion] = room.detalles_limpieza;

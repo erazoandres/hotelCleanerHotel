@@ -1075,19 +1075,25 @@ function RoomPickerCard({
           </span>
         </span>
 
-        {/* Fila 2: Huésped (si ocupada) y Servicio de Limpieza (solo si establecido) */}
-        {((status === "occupied" && Boolean(guest)) || Boolean(servicePlan)) && (
+        {/* Fila 2: Huésped y Servicio de Limpieza */}
+        {(Boolean(guest?.trim()) || status === "occupied" || Boolean(servicePlan?.trim())) && (
           <span className="room-picker-details">
-            {status === "occupied" && guest && (
-              <span className="room-picker-guest-row" title={`Huésped: ${guest}`}>
+            {guest?.trim() ? (
+              <span className="room-picker-guest-row" title={`Huésped: ${guest.trim()}`}>
                 <span className="material-symbol" aria-hidden="true">person</span>
-                <strong className="room-picker-guest-name">{guest}</strong>
+                <strong className="room-picker-guest-name">{guest.trim()}</strong>
               </span>
-            )}
-            {servicePlan && (
-              <span className="room-picker-service-tag" title={`Plan: ${servicePlan}`}>
+            ) : status === "occupied" ? (
+              <span className="room-picker-guest-row" title="Habitación ocupada">
+                <span className="material-symbol" aria-hidden="true">person</span>
+                <strong className="room-picker-guest-name">Ocupada</strong>
+              </span>
+            ) : null}
+
+            {servicePlan?.trim() && (
+              <span className="room-picker-service-tag" title={`Plan: ${servicePlan.trim()}`}>
                 <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-                <span>{servicePlan}</span>
+                <span>{servicePlan.trim()}</span>
               </span>
             )}
           </span>
