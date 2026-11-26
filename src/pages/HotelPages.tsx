@@ -4067,6 +4067,66 @@ export function StaffPage() {
   );
 }
 
+function formatFriendlyDateTime(value: string | null | undefined): string {
+  if (!value) return "Sin fecha";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  const timeStr = new Intl.DateTimeFormat("es", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+
+  if (isToday) return `Hoy · ${timeStr}`;
+  if (isYesterday) return `Ayer · ${timeStr}`;
+
+  return new Intl.DateTimeFormat("es", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+function formatShiftDateHeader(dateStr: string): string {
+  if (dateStr === "Reciente") return "Registros Recientes";
+  const date = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  const formatted = new Intl.DateTimeFormat("es", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+
+  const capitalized = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  if (isToday) return `Hoy — ${capitalized}`;
+  if (isYesterday) return `Ayer — ${capitalized}`;
+  return capitalized;
+}
+
+function formatTimeOnly(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("es", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
 type CleanerTab = "jornada" | "nomina" | "perfil";
 
 export function CleanerPortal() {
@@ -4081,10 +4141,13 @@ export function CleanerPortal() {
   const [loading, setLoading] = useState(false);
   const [busyRoom, setBusyRoom] = useState<string | null>(null);
 
-  // Tabs: Jornada, Nómina, Mi Perfil
+  // Tabs: Jornada, Nómina/Historial, Mi Perfil
   const [activeTab, setActiveTab] = useState<CleanerTab>("jornada");
   const [roomFilter, setRoomFilter] = useState<"all" | "cleaning" | "pending" | "finished">("all");
-  const [payrollView, setPayrollView] = useState<"rooms" | "shifts">("rooms");
+  const [payrollView, setPayrollView] = useState<"rooms" | "shifts" | "table">("rooms");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyPeriod, setHistoryPeriod] = useState<"all" | "today" | "week" | "biweek">("all");
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(() => new Set());
 
   const [startedRooms, setStartedRooms] = useState<Set<string>>(() => {
     try {
@@ -4191,8 +4254,68 @@ export function CleanerPortal() {
     setHistory(completedRooms);
   }
 
+  function loadDemoSession() {
+    const now = new Date();
+    const todayIso = now.toISOString();
+    const yesterdayIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const threeDaysAgoIso = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const sixDaysAgoIso = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString();
+
+    const demoProfile: CleanerProfile = {
+      id_personal: "DEMO-ASEADOR-01",
+      nombre: "Ana Torres",
+    };
+
+    const demoHistory: CleanerHistoryItem[] = [
+      { id_trabajo: 1042, id_habitacion: "101", tipo_limpieza: "Salida", creado_en: todayIso },
+      { id_trabajo: 1041, id_habitacion: "105", tipo_limpieza: "Estadía", creado_en: todayIso },
+      { id_trabajo: 1038, id_habitacion: "204", tipo_limpieza: "Profunda", creado_en: yesterdayIso },
+      { id_trabajo: 1037, id_habitacion: "208", tipo_limpieza: "Retoque", creado_en: yesterdayIso },
+      { id_trabajo: 1031, id_habitacion: "302", tipo_limpieza: "Salida", creado_en: threeDaysAgoIso },
+      { id_trabajo: 1025, id_habitacion: "107", tipo_limpieza: "Profunda", creado_en: sixDaysAgoIso },
+    ];
+
+    const demoRooms: CleanerRoom[] = [
+      {
+        id_habitacion: "103",
+        estado: "pendiente",
+        nombre_huesped: "Carlos Mendoza",
+        plan_limpieza: "Semanal",
+        detalles_limpieza: "Preparar cama y toallas de repuesto.",
+        tipo_limpieza_asignada: "Salida",
+        fecha_limpieza_programada: todayIso,
+      },
+      {
+        id_habitacion: "104",
+        estado: "limpieza",
+        nombre_huesped: "Elena Soto",
+        plan_limpieza: "Mensual",
+        detalles_limpieza: "Cambio de sábanas y reposición de amenities.",
+        tipo_limpieza_asignada: "Estadía",
+        fecha_limpieza_programada: todayIso,
+      },
+      {
+        id_habitacion: "201",
+        estado: "finalizado",
+        nombre_huesped: "Mateo Silva",
+        plan_limpieza: "Estándar",
+        detalles_limpieza: "Habitación entregada limpia y desinfectada.",
+        tipo_limpieza_asignada: "General",
+        fecha_limpieza_programada: todayIso,
+      },
+    ];
+
+    setProfile(demoProfile);
+    setRooms(demoRooms);
+    setHistory(demoHistory);
+  }
+
   useEffect(() => {
     let active = true;
+    if (typeof window !== "undefined" && window.location.search.includes("demo")) {
+      loadDemoSession();
+      return;
+    }
     setHistoryLoading(true);
     void getCleanerProfile()
       .then(async (currentProfile) => {
@@ -4333,19 +4456,94 @@ export function CleanerPortal() {
 
   // Financial / Payroll derivations
   const RATE_PER_ROOM = 18000; // COP
-  const totalEarnings = history.length * RATE_PER_ROOM;
-  const totalHoursEstimated = (history.length * 0.45).toFixed(1);
 
-  // Group history by date (YYYY-MM-DD)
-  const historyByDate = useMemo(() => {
-    const map: Record<string, CleanerHistoryItem[]> = {};
+  // Counts by period for filter chips
+  const periodCounts = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const isFirstHalf = now.getDate() <= 15;
+
+    let today = 0;
+    let week = 0;
+    let biweek = 0;
+
     for (const item of history) {
+      if (!item.creado_en) continue;
+      if (item.creado_en.startsWith(todayStr)) today++;
+      const itemDate = new Date(item.creado_en);
+      if (!Number.isNaN(itemDate.getTime())) {
+        if (itemDate >= sevenDaysAgo) week++;
+        const isSameMonth = itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+        if (isSameMonth && (isFirstHalf ? itemDate.getDate() <= 15 : itemDate.getDate() > 15)) {
+          biweek++;
+        }
+      }
+    }
+    return { today, week, biweek };
+  }, [history]);
+
+  // Filtered history based on period and search query
+  const filteredHistory = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const isFirstHalf = now.getDate() <= 15;
+
+    return history.filter((item) => {
+      // Search query
+      if (historySearch.trim()) {
+        const q = historySearch.toLowerCase().trim();
+        const matchesRoom = item.id_habitacion.toLowerCase().includes(q);
+        const matchesType = (item.tipo_limpieza || "").toLowerCase().includes(q);
+        const matchesId = item.id_trabajo.toString().includes(q);
+        if (!matchesRoom && !matchesType && !matchesId) return false;
+      }
+
+      // Period filter
+      if (historyPeriod === "today") {
+        return Boolean(item.creado_en && item.creado_en.startsWith(todayStr));
+      }
+      if (historyPeriod === "week") {
+        const itemDate = new Date(item.creado_en);
+        return !Number.isNaN(itemDate.getTime()) && itemDate >= sevenDaysAgo;
+      }
+      if (historyPeriod === "biweek") {
+        const itemDate = new Date(item.creado_en);
+        if (Number.isNaN(itemDate.getTime())) return false;
+        const isSameMonth = itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+        return isSameMonth && (isFirstHalf ? itemDate.getDate() <= 15 : itemDate.getDate() > 15);
+      }
+
+      return true;
+    });
+  }, [history, historySearch, historyPeriod]);
+
+  const totalFilteredEarnings = filteredHistory.length * RATE_PER_ROOM;
+  const filteredHoursEstimated = (filteredHistory.length * 0.45).toFixed(1);
+
+  // Group filtered history by date
+  const filteredHistoryByDate = useMemo(() => {
+    const map: Record<string, CleanerHistoryItem[]> = {};
+    for (const item of filteredHistory) {
       const d = item.creado_en ? item.creado_en.split("T")[0] : "Reciente";
       if (!map[d]) map[d] = [];
       map[d].push(item);
     }
     return map;
-  }, [history]);
+  }, [filteredHistory]);
+
+  const toggleDayExpansion = (dayKey: string) => {
+    setExpandedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(dayKey)) {
+        next.delete(dayKey);
+      } else {
+        next.add(dayKey);
+      }
+      return next;
+    });
+  };
 
   return (
     <main className={!profile ? "auth-page cleaner-auth-page" : "cleaner-app-viewport"}>
@@ -4362,6 +4560,14 @@ export function CleanerPortal() {
           <label>Contraseña<input autoComplete="current-password" required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button button-primary" disabled={loading}>{loading ? "Validando…" : "Ingresar"}</button>
+          <button
+            type="button"
+            className="text-link"
+            style={{ marginTop: 8, fontSize: 13, textAlign: "center", cursor: "pointer" }}
+            onClick={loadDemoSession}
+          >
+            Ver vista previa / demostración
+          </button>
         </form>
       ) : (
         <div className="cleaner-portal-shell">
@@ -4398,8 +4604,9 @@ export function CleanerPortal() {
                 className={`cleaner-desktop-tab ${activeTab === "nomina" ? "is-active" : ""}`}
                 onClick={() => setActiveTab("nomina")}
               >
-                <span className="material-symbol">payments</span>
-                <span>Nómina e Historial</span>
+                <span className="material-symbol">history</span>
+                <span>Historial y Nómina</span>
+                {history.length > 0 && <span className="cleaner-desktop-badge">{history.length}</span>}
               </button>
               <button
                 type="button"
@@ -4603,101 +4810,420 @@ export function CleanerPortal() {
             </div>
           )}
 
-          {/* TAB 2: HISTORIAL Y NÓMINA (RESPONSIVE TABLET & DESKTOP) */}
+          {/* TAB 2: HISTORIAL Y NÓMINA (REDISEÑO MODERNO & ORGANIZADO) */}
           {activeTab === "nomina" && (
-            <div className="cleaner-tab-content cleaner-payroll-layout">
-              {/* Financial Hero Sidebar */}
-              <div className="cleaner-payroll-sidebar">
-                <div className="cleaner-payroll-hero">
-                  <div className="cleaner-payroll-eyebrow">Compensación y Turnos · Periodo Quincenal</div>
-                  <div className="cleaner-payroll-amount">
-                    ${totalEarnings.toLocaleString("es-CO")} <small>COP</small>
+            <div className="cleaner-tab-content cleaner-history-hub">
+              {/* 1. Header Banner / Resumen */}
+              <div className="cleaner-history-header-card">
+                <div className="cleaner-history-header-copy">
+                  <div className="cleaner-history-tagline">
+                    <span className="material-symbol" aria-hidden="true">verified</span>
+                    <span>Trazabilidad y Liquidación Quincenal</span>
                   </div>
-                  <div className="cleaner-payroll-grid">
-                    <div className="cleaner-payroll-col">
-                      <span>Habitaciones</span>
-                      <strong>{history.length}</strong>
-                    </div>
-                    <div className="cleaner-payroll-col">
-                      <span>Horas Est.</span>
-                      <strong>{totalHoursEstimated}h</strong>
-                    </div>
-                    <div className="cleaner-payroll-col">
-                      <span>Turnos</span>
-                      <strong>{Object.keys(historyByDate).length} días</strong>
-                    </div>
-                  </div>
+                  <h2 className="cleaner-history-title">Historial de Aseo y Nómina</h2>
+                  <p className="cleaner-history-subtitle">
+                    Control cronológico de habitaciones limpiadas, honorarios devengados y registro de cada jornada.
+                  </p>
                 </div>
 
-                <div className="cleaner-payroll-info-card hide-on-mobile">
-                  <div className="cleaner-section-label">
-                    <span className="material-symbol">info</span>
-                    <span>Políticas de Liquidación</span>
+                <div className="cleaner-history-header-badge">
+                  <span className="material-symbol" aria-hidden="true">payments</span>
+                  <div>
+                    <small>Tarifa por servicio</small>
+                    <strong>${RATE_PER_ROOM.toLocaleString("es-CO")} COP</strong>
                   </div>
-                  <p className="cleaner-payroll-info-text">
-                    La tarifa base por espacio estándar es de <strong>$18.000 COP</strong>. Los pagos se consolidan quincenalmente los días 15 y 30 de cada mes.
-                  </p>
                 </div>
               </div>
 
-              {/* Detailed Lists Column */}
-              <div className="cleaner-payroll-main">
-                {/* Sub-switcher */}
-                <div className="cleaner-payroll-switcher">
+              {/* 2. KPI Cards Grid (4 Metrics) */}
+              <div className="cleaner-history-kpis-grid">
+                <div className="cleaner-history-kpi-card is-primary-kpi">
+                  <div className="cleaner-history-kpi-top">
+                    <span className="cleaner-history-kpi-icon">
+                      <span className="material-symbol" aria-hidden="true">account_balance_wallet</span>
+                    </span>
+                    <span className="cleaner-history-kpi-badge">Acumulado</span>
+                  </div>
+                  <div className="cleaner-history-kpi-label">Liquidación Estimada</div>
+                  <div className="cleaner-history-kpi-val">
+                    ${totalFilteredEarnings.toLocaleString("es-CO")} <small>COP</small>
+                  </div>
+                  <div className="cleaner-history-kpi-sub">
+                    {historyPeriod !== "all" || historySearch.trim()
+                      ? `Filtrado (${filteredHistory.length} servicios)`
+                      : "Periodo quincenal activo"}
+                  </div>
+                </div>
+
+                <div className="cleaner-history-kpi-card">
+                  <div className="cleaner-history-kpi-top">
+                    <span className="cleaner-history-kpi-icon">
+                      <span className="material-symbol" aria-hidden="true">task_alt</span>
+                    </span>
+                    <span className="cleaner-history-kpi-badge">Completadas</span>
+                  </div>
+                  <div className="cleaner-history-kpi-label">Habitaciones Atendidas</div>
+                  <div className="cleaner-history-kpi-val">
+                    {filteredHistory.length} <small>/ {history.length} tot.</small>
+                  </div>
+                  <div className="cleaner-history-kpi-sub">
+                    100% validadas en sistema
+                  </div>
+                </div>
+
+                <div className="cleaner-history-kpi-card">
+                  <div className="cleaner-history-kpi-top">
+                    <span className="cleaner-history-kpi-icon">
+                      <span className="material-symbol" aria-hidden="true">schedule</span>
+                    </span>
+                    <span className="cleaner-history-kpi-badge">Labor</span>
+                  </div>
+                  <div className="cleaner-history-kpi-label">Tiempo Estimado</div>
+                  <div className="cleaner-history-kpi-val">
+                    {filteredHoursEstimated} <small>horas</small>
+                  </div>
+                  <div className="cleaner-history-kpi-sub">
+                    ~27 minutos promedio por habitación
+                  </div>
+                </div>
+
+                <div className="cleaner-history-kpi-card">
+                  <div className="cleaner-history-kpi-top">
+                    <span className="cleaner-history-kpi-icon">
+                      <span className="material-symbol" aria-hidden="true">calendar_month</span>
+                    </span>
+                    <span className="cleaner-history-kpi-badge">Jornadas</span>
+                  </div>
+                  <div className="cleaner-history-kpi-label">Días con Actividad</div>
+                  <div className="cleaner-history-kpi-val">
+                    {Object.keys(filteredHistoryByDate).length} <small>días</small>
+                  </div>
+                  <div className="cleaner-history-kpi-sub">
+                    Promedio {(filteredHistory.length / (Object.keys(filteredHistoryByDate).length || 1)).toFixed(1)} hab/día
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Controls & Filter Ribbon */}
+              <div className="cleaner-history-toolbar">
+                {/* Search Input */}
+                <div className="cleaner-history-search-box">
+                  <span className="material-symbol cleaner-history-search-icon" aria-hidden="true">search</span>
+                  <input
+                    type="text"
+                    placeholder="Buscar habitación, servicio o # folio..."
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    className="cleaner-history-search-input"
+                    aria-label="Buscar en historial de aseo"
+                  />
+                  {historySearch && (
+                    <button
+                      type="button"
+                      className="cleaner-history-search-clear"
+                      onClick={() => setHistorySearch("")}
+                      title="Borrar búsqueda"
+                      aria-label="Borrar búsqueda"
+                    >
+                      <span className="material-symbol" aria-hidden="true">close</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Period Filter Chips */}
+                <div className="cleaner-history-filter-strip" role="group" aria-label="Filtrar por periodo">
                   <button
                     type="button"
-                    className={payrollView === "rooms" ? "is-active" : ""}
-                    onClick={() => setPayrollView("rooms")}
+                    className={`cleaner-history-chip ${historyPeriod === "all" ? "is-active" : ""}`}
+                    onClick={() => setHistoryPeriod("all")}
                   >
-                    Habitaciones ({history.length})
+                    <span>Todos</span>
+                    <span className="cleaner-chip-count">{history.length}</span>
                   </button>
                   <button
                     type="button"
-                    className={payrollView === "shifts" ? "is-active" : ""}
-                    onClick={() => setPayrollView("shifts")}
+                    className={`cleaner-history-chip ${historyPeriod === "today" ? "is-active" : ""}`}
+                    onClick={() => setHistoryPeriod("today")}
                   >
-                    Turnos Diarios ({Object.keys(historyByDate).length})
+                    <span>Hoy</span>
+                    <span className="cleaner-chip-count">{periodCounts.today}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`cleaner-history-chip ${historyPeriod === "week" ? "is-active" : ""}`}
+                    onClick={() => setHistoryPeriod("week")}
+                  >
+                    <span>Últimos 7 días</span>
+                    <span className="cleaner-chip-count">{periodCounts.week}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`cleaner-history-chip ${historyPeriod === "biweek" ? "is-active" : ""}`}
+                    onClick={() => setHistoryPeriod("biweek")}
+                  >
+                    <span>Esta Quincena</span>
+                    <span className="cleaner-chip-count">{periodCounts.biweek}</span>
                   </button>
                 </div>
 
-                {historyLoading ? (
-                  <p className="empty-state">Cargando registros de nómina…</p>
-                ) : history.length === 0 ? (
-                  <p className="empty-state">Aún no hay habitaciones o turnos registrados en este periodo.</p>
-                ) : payrollView === "rooms" ? (
-                  <div className="cleaner-history-list cleaner-history-grid">
-                    {history.map((item) => (
-                      <article className="cleaner-history-item" key={item.id_trabajo}>
-                        <span className="material-symbol" aria-hidden="true" style={{ color: "#10b981" }}>check_circle</span>
-                        <div className="cleaner-history-room">
-                          <strong>Habitación {item.id_habitacion}</strong>
+                {/* View Switcher: Habitaciones / Jornadas / Tabla */}
+                <div className="cleaner-history-view-switcher" role="group" aria-label="Modo de visualización">
+                  <button
+                    type="button"
+                    className={`cleaner-view-btn ${payrollView === "rooms" ? "is-active" : ""}`}
+                    onClick={() => setPayrollView("rooms")}
+                    title="Vista en tarjetas de habitación"
+                  >
+                    <span className="material-symbol" aria-hidden="true">grid_view</span>
+                    <span className="cleaner-view-btn-label">Cuartos ({filteredHistory.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`cleaner-view-btn ${payrollView === "shifts" ? "is-active" : ""}`}
+                    onClick={() => setPayrollView("shifts")}
+                    title="Vista agrupada por jornadas"
+                  >
+                    <span className="material-symbol" aria-hidden="true">event_note</span>
+                    <span className="cleaner-view-btn-label">Jornadas ({Object.keys(filteredHistoryByDate).length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`cleaner-view-btn ${payrollView === "table" ? "is-active" : ""}`}
+                    onClick={() => setPayrollView("table")}
+                    title="Vista en tabla resumida"
+                  >
+                    <span className="material-symbol" aria-hidden="true">table_rows</span>
+                    <span className="cleaner-view-btn-label">Tabla</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. Content Area according to view */}
+              {historyLoading ? (
+                <div className="cleaner-history-loading">
+                  <span className="material-symbol is-spinning" aria-hidden="true">progress_activity</span>
+                  <p>Cargando registros históricos de limpieza…</p>
+                </div>
+              ) : filteredHistory.length === 0 ? (
+                <div className="cleaner-history-empty-card">
+                  <span className="material-symbol cleaner-history-empty-icon" aria-hidden="true">
+                    {history.length === 0 ? "receipt_long" : "search_off"}
+                  </span>
+                  <h3>
+                    {history.length === 0
+                      ? "Aún no hay habitaciones registradas en este periodo"
+                      : "No se encontraron limpiezas con estos filtros"}
+                  </h3>
+                  <p>
+                    {history.length === 0
+                      ? "A medida que marques habitaciones como finalizadas en tu jornada, aparecerán aquí con su valor liquidado."
+                      : `No hay registros que coincidan con "${historySearch}" o el periodo seleccionado.`}
+                  </p>
+                  {(historySearch.trim() || historyPeriod !== "all") && (
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => {
+                        setHistorySearch("");
+                        setHistoryPeriod("all");
+                      }}
+                    >
+                      <span className="material-symbol" aria-hidden="true">restart_alt</span>
+                      <span>Restablecer filtros</span>
+                    </button>
+                  )}
+                </div>
+              ) : payrollView === "rooms" ? (
+                /* VIEW A: Grid de Tarjetas de Habitación */
+                <div className="cleaner-history-cards-grid">
+                  {filteredHistory.map((item) => (
+                    <article className="cleaner-history-card" key={item.id_trabajo}>
+                      <div className="cleaner-history-card-header">
+                        <div className="cleaner-history-room-badge">
+                          <span className="material-symbol" aria-hidden="true">bed</span>
+                          <strong>Hab. {item.id_habitacion}</strong>
+                        </div>
+                        <span className="cleaner-history-status-pill">
+                          <span className="cleaner-status-dot" aria-hidden="true" />
+                          <span>Completada</span>
+                        </span>
+                      </div>
+
+                      <div className="cleaner-history-card-body">
+                        <div className="cleaner-history-plan-tag">
+                          <span className="material-symbol" aria-hidden="true">cleaning_services</span>
                           <span>{formatPlanName(item.tipo_limpieza)}</span>
                         </div>
-                        <div className="cleaner-history-payout">
-                          <strong>+${RATE_PER_ROOM.toLocaleString("es-CO")} COP</strong>
-                          <time dateTime={item.creado_en}>{formatDate(item.creado_en)}</time>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="cleaner-shifts-list cleaner-shifts-grid">
-                    {Object.entries(historyByDate).map(([dateStr, items]) => (
-                      <div className="cleaner-shift-day-card" key={dateStr}>
-                        <div className="cleaner-shift-day-head">
-                          <span className="material-symbol">event_available</span>
-                          <div>
-                            <strong>{dateStr}</strong>
-                            <small>{items.length} habitaciones limpiadas</small>
-                          </div>
-                        </div>
-                        <div className="cleaner-shift-day-amount">
-                          +${(items.length * RATE_PER_ROOM).toLocaleString("es-CO")} COP
+                        <div className="cleaner-history-ticket">
+                          <span className="material-symbol" aria-hidden="true">tag</span>
+                          <span>Folio #{item.id_trabajo.toString().padStart(4, "0")}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+
+                      <div className="cleaner-history-card-footer">
+                        <div className="cleaner-history-timestamp" title={item.creado_en}>
+                          <span className="material-symbol" aria-hidden="true">schedule</span>
+                          <time dateTime={item.creado_en}>{formatFriendlyDateTime(item.creado_en)}</time>
+                        </div>
+                        <div className="cleaner-history-amount-pill">
+                          <strong>+${RATE_PER_ROOM.toLocaleString("es-CO")}</strong>
+                          <small>COP</small>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : payrollView === "shifts" ? (
+                /* VIEW B: Agrupado por Jornadas con Accordion interactivo */
+                <div className="cleaner-shifts-grouped-list">
+                  {Object.entries(filteredHistoryByDate).map(([dateStr, items]) => {
+                    const isExpanded = expandedDays.has(dateStr);
+                    const dayEarnings = items.length * RATE_PER_ROOM;
+                    return (
+                      <div className={`cleaner-shift-group-card ${isExpanded ? "is-expanded" : ""}`} key={dateStr}>
+                        <div
+                          className="cleaner-shift-group-head"
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded={isExpanded}
+                          onClick={() => toggleDayExpansion(dateStr)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              toggleDayExpansion(dateStr);
+                            }
+                          }}
+                        >
+                          <div className="cleaner-shift-group-left">
+                            <div className="cleaner-shift-group-icon">
+                              <span className="material-symbol" aria-hidden="true">event_available</span>
+                            </div>
+                            <div>
+                              <h3 className="cleaner-shift-group-date">{formatShiftDateHeader(dateStr)}</h3>
+                              <div className="cleaner-shift-group-meta">
+                                <span>{items.length} {items.length === 1 ? "habitación atendida" : "habitaciones atendidas"}</span>
+                                <span className="cleaner-shift-bullet" aria-hidden="true">•</span>
+                                <span>Est. {(items.length * 0.45).toFixed(1)}h de labor</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="cleaner-shift-group-right">
+                            <div className="cleaner-shift-group-amount">
+                              <strong>+${dayEarnings.toLocaleString("es-CO")}</strong>
+                              <small>COP</small>
+                            </div>
+                            <button
+                              type="button"
+                              className="cleaner-shift-expand-btn"
+                              aria-label={isExpanded ? "Ocultar detalle de cuartos" : "Ver detalle de cuartos"}
+                              title={isExpanded ? "Ocultar detalle" : "Ver detalle"}
+                            >
+                              <span className="material-symbol" aria-hidden="true">
+                                {isExpanded ? "expand_less" : "expand_more"}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Detalle desplegable de las habitaciones de esa fecha */}
+                        {isExpanded && (
+                          <div className="cleaner-shift-group-body">
+                            <div className="cleaner-shift-subitems-header">
+                              <span>Habitaciones atendidas en esta jornada:</span>
+                            </div>
+                            <div className="cleaner-shift-subitems-grid">
+                              {items.map((subItem) => (
+                                <div className="cleaner-shift-subitem-card" key={subItem.id_trabajo}>
+                                  <div className="cleaner-shift-subitem-top">
+                                    <div className="cleaner-shift-subitem-room">
+                                      <span className="material-symbol" aria-hidden="true">door_front</span>
+                                      <strong>Hab. {subItem.id_habitacion}</strong>
+                                    </div>
+                                    <span className="cleaner-shift-subitem-payout">
+                                      +${RATE_PER_ROOM.toLocaleString("es-CO")} COP
+                                    </span>
+                                  </div>
+                                  <div className="cleaner-shift-subitem-bottom">
+                                    <span className="cleaner-shift-subitem-plan">
+                                      {formatPlanName(subItem.tipo_limpieza)}
+                                    </span>
+                                    <span className="cleaner-shift-subitem-time">
+                                      <span className="material-symbol" aria-hidden="true">schedule</span>
+                                      {formatTimeOnly(subItem.creado_en)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* VIEW C: Tabla Resumida para Desktop & Tablet */
+                <div className="cleaner-history-table-wrapper">
+                  <table className="cleaner-history-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Folio</th>
+                        <th scope="col">Habitación</th>
+                        <th scope="col">Servicio Realizado</th>
+                        <th scope="col">Fecha y Hora</th>
+                        <th scope="col" className="text-right">Liquidación</th>
+                        <th scope="col" className="text-center">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredHistory.map((row) => (
+                        <tr key={row.id_trabajo}>
+                          <td className="cleaner-table-cell-folio">
+                            <code>#{row.id_trabajo.toString().padStart(4, "0")}</code>
+                          </td>
+                          <td className="cleaner-table-cell-room">
+                            <div className="cleaner-table-room-badge">
+                              <span className="material-symbol" aria-hidden="true">bed</span>
+                              <strong>{row.id_habitacion}</strong>
+                            </div>
+                          </td>
+                          <td className="cleaner-table-cell-plan">
+                            <span className="cleaner-table-plan-pill">
+                              {formatPlanName(row.tipo_limpieza)}
+                            </span>
+                          </td>
+                          <td className="cleaner-table-cell-date">
+                            <time dateTime={row.creado_en}>{formatFriendlyDateTime(row.creado_en)}</time>
+                          </td>
+                          <td className="cleaner-table-cell-amount text-right">
+                            <strong>+${RATE_PER_ROOM.toLocaleString("es-CO")}</strong>
+                            <small> COP</small>
+                          </td>
+                          <td className="cleaner-table-cell-status text-center">
+                            <span className="cleaner-table-status-badge">
+                              <span className="cleaner-status-dot" aria-hidden="true" />
+                              Completada
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* 5. Policy & Information Card */}
+              <div className="cleaner-history-policies-card">
+                <div className="cleaner-policy-icon-wrap">
+                  <span className="material-symbol" aria-hidden="true">verified_user</span>
+                </div>
+                <div className="cleaner-policy-content">
+                  <h4>Políticas de Liquidación y Trazabilidad</h4>
+                  <p>
+                    La tarifa estándar por habitación completada es de <strong>$18.000 COP</strong>. Los cortes para dispersión de pagos se realizan los días <strong>15 y 30</strong> de cada mes calendario. Cada servicio completado genera un folio de registro con sello de tiempo para tu respaldo.
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -4783,8 +5309,8 @@ export function CleanerPortal() {
               className={`cleaner-nav-tab ${activeTab === "nomina" ? "is-active" : ""}`}
               onClick={() => setActiveTab("nomina")}
             >
-              <span className="material-symbol">payments</span>
-              <span>Nómina</span>
+              <span className="material-symbol">history</span>
+              <span>Historial</span>
             </button>
             <button
               type="button"
