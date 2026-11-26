@@ -141,15 +141,21 @@ body[data-theme="amber"] {
   --app-viewport-vh: calc(100vh / var(--app-zoom));
 }
 
-html {
-  zoom: var(--app-zoom);
+@media (min-width: 1024px) {
+  html {
+    zoom: var(--app-zoom);
+  }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1023px) {
   :root {
-    --app-zoom: 0.95;
-    --app-viewport-h: calc(100dvh / 0.95);
-    --app-viewport-vh: calc(100vh / 0.95);
+    --app-zoom: 1;
+    --app-viewport-h: 100dvh;
+    --app-viewport-vh: 100vh;
+  }
+
+  html {
+    zoom: 1 !important;
   }
 }
 
@@ -158,7 +164,7 @@ body {
   background-color: var(--th-bg);
   color: var(--th-text-main);
   transition: background-color 0.25s ease, color 0.25s ease;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 /* ==========================================================================

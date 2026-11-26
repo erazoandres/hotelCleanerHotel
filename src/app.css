@@ -1,7 +1,7 @@
 :root {
   font-family: "DM Sans", sans-serif;
   color: #261e3d;
-  background: #f7f5fc;
+  background: var(--th-bg, #f7f5fc);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,8 +21,8 @@
   --th-scrollbar-thumb-hover: rgba(115, 84, 245, 0.7);
   --th-scrollbar-track: transparent;
   --app-zoom: 0.9;
-  --app-viewport-h: 100dvh;
-  --app-viewport-vh: 100vh;
+  --app-viewport-h: calc(100dvh / var(--app-zoom, 1));
+  --app-viewport-vh: calc(100vh / var(--app-zoom, 1));
 }
 
 * {
@@ -50,16 +50,27 @@
 html,
 body {
   min-height: 100%;
-  min-height: 100dvh;
+  min-height: var(--app-viewport-h, 100dvh);
+  width: 100%;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
-  min-height: 100dvh;
+  min-height: var(--app-viewport-vh, 100vh);
+  min-height: var(--app-viewport-h, 100dvh);
   margin: 0;
-  background: var(--mist);
+  background: var(--th-bg, var(--mist));
   overflow-x: hidden;
+  width: 100%;
+}
+
+#root {
+  width: 100%;
+  min-height: 100%;
+  min-height: var(--app-viewport-h, 100dvh);
+  display: flex;
+  flex-direction: column;
 }
 
 button,
@@ -757,7 +768,7 @@ textarea:focus {
 .auth-page {
   display: grid;
   min-height: 100vh;
-  min-height: 100dvh;
+  min-height: var(--app-viewport-h, 100dvh);
   width: 100%;
   box-sizing: border-box;
   place-items: center;
@@ -765,7 +776,8 @@ textarea:focus {
   background:
     radial-gradient(ellipse at 10% 12%, rgb(115 84 245 / 13%), transparent 28rem),
     radial-gradient(ellipse at 90% 85%, rgb(255 116 104 / 9%), transparent 24rem),
-    var(--mist);
+    var(--th-bg, var(--mist));
+  flex: 1 0 auto;
 }
 
 .auth-card {
@@ -2173,10 +2185,12 @@ textarea:focus {
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  width: 100%;
+  min-height: var(--app-viewport-h, 100dvh);
   background:
     radial-gradient(ellipse at 15% 15%, rgb(211 194 155 / 25%), transparent 26rem),
     radial-gradient(ellipse at 94% 88%, rgb(147 170 130 / 20%), transparent 27rem),
-    #f3f0e7;
+    var(--th-bg, #f3f0e7);
 }
 
 .auth-page::before,
@@ -3575,10 +3589,12 @@ textarea:focus,
 }
 
 .auth-page {
+  width: 100%;
+  min-height: var(--app-viewport-h, 100dvh);
   background:
     radial-gradient(ellipse at 15% 15%, rgb(183 159 255 / 24%), transparent 26rem),
     radial-gradient(ellipse at 94% 88%, rgb(255 116 104 / 17%), transparent 27rem),
-    var(--mist);
+    var(--th-bg, var(--mist));
 }
 
 .auth-page::before,
@@ -9027,6 +9043,9 @@ textarea {
   .cleaner-auth-page {
     min-height: 100vh !important;
     min-height: 100dvh !important;
+    min-height: var(--app-viewport-h, 100dvh) !important;
+    width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
     box-sizing: border-box !important;
     padding: 16px 12px !important;
@@ -10309,6 +10328,7 @@ textarea {
     overflow-x: hidden !important;
     width: 100% !important;
     max-width: 100% !important;
+    min-height: var(--app-viewport-h, 100dvh) !important;
     box-sizing: border-box !important;
     background: var(--th-bg, #f8f7f4) !important;
   }

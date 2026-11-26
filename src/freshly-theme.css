@@ -9622,6 +9622,7 @@ body[data-theme="dark"] .cleaner-completed-badge {
 .cleaner-app-viewport {
   min-height: 100vh;
   min-height: 100dvh;
+  min-height: var(--app-viewport-h, calc(100dvh / var(--app-zoom, 1)));
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -9632,6 +9633,7 @@ body[data-theme="dark"] .cleaner-completed-badge {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex: 1 0 auto;
 }
 
 .cleaner-portal-shell {
@@ -10431,6 +10433,7 @@ body[data-theme="dark"] .cleaner-shift-day-amount {
     overflow-x: hidden !important;
     width: 100% !important;
     max-width: 100% !important;
+    min-height: var(--app-viewport-h, 100dvh) !important;
     box-sizing: border-box !important;
     background: var(--th-bg, #f8f7f4) !important;
     color: var(--th-text-main, #1c2420) !important;
