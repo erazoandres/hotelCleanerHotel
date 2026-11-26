@@ -7962,26 +7962,37 @@ textarea {
 .history-day-items {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 3.5px;
   width: 100%;
 }
 
-/* Modern Activity Feed Card */
+/* Modern Activity Feed Card - Ultra Compact Thin Row */
 .history-feed-card {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 11px 14px;
-  border-radius: 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  min-height: 32px;
+  border-radius: 7px;
   background: var(--th-surface, #ffffff);
   border: 1px solid var(--th-border, #e2e8f0);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.12s ease;
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .history-feed-card:hover {
   border-color: var(--th-border-focus, #cbd5e1);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.history-feed-card:active {
+  background: var(--th-surface-subtle, #f8fafc);
 }
 
 /* Left Icon Box with category-based styling */
@@ -7989,15 +8000,16 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 5px;
   flex-shrink: 0;
-  margin-top: 1px;
+  margin: 0;
 }
 
 .history-feed-icon-box .material-symbol {
-  font-size: 19px;
+  font-size: 12.5px;
 }
 
 .history-feed-icon-box.kind-created {
@@ -8051,7 +8063,6 @@ textarea {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
 }
 
 .history-feed-top-row {
@@ -8119,56 +8130,109 @@ textarea {
   margin-left: 2px;
 }
 
-/* Time indicator */
+/* Time indicator & Chevron */
 .history-feed-time {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 11px;
+  gap: 2.5px;
+  font-size: 10.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--th-text-muted, #94a3b8);
-  margin-left: auto;
+  white-space: nowrap;
 }
 
 .history-feed-time .material-symbol {
-  font-size: 13px;
+  font-size: 11.5px;
 }
 
 .history-feed-top-actions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .history-feed-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--th-text-muted, #94a3b8);
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.history-feed-chevron.chevron-rotated {
+  transform: rotate(180deg);
+  color: var(--th-accent, #255843);
+}
+
+/* Previsualización en una sola línea del texto de acción (delgada fila) */
+.history-feed-inline-action {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--th-text-secondary, #64748b);
+  padding: 0 4px;
+}
+
+.history-feed-inline-action span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fila colapsada ultra delgada: ocultar bloques multilínea */
+.history-feed-card:not(.is-expanded) .history-feed-action-text,
+.history-feed-card:not(.is-expanded) .history-feed-footer {
+  display: none !important;
+}
+
+/* Fila expandida con detalles completos */
+.history-feed-card.is-expanded {
+  align-items: flex-start !important;
+  padding: 8px 11px 9px !important;
+  border-color: var(--th-accent, #255843) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+.history-feed-card.is-expanded .history-feed-inline-action {
+  display: none !important;
+}
+
+.history-feed-full-date-chip {
   display: none;
 }
 
-.history-full-date-chip {
-  display: none;
-}
-
-/* Action Text */
+/* Action Text (detallado al expandir) */
 .history-feed-action-text {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--th-text-main, #1e293b);
   word-break: break-word;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--th-border-subtle, #f1f5f9);
 }
 
 .history-feed-action-text p {
   margin: 0;
 }
 
-/* Footer: Actor & Guest Chips */
+/* Footer: Actor & Guest Chips (al expandir) */
 .history-feed-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 1px;
+  gap: 6px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--th-border, #e2e8f0);
   flex-wrap: wrap;
 }
 
@@ -9125,7 +9189,10 @@ textarea {
   }
 
   .rooms-page .room-picker-art {
-    height: 86px !important;
+    align-self: stretch !important;
+    height: auto !important;
+    width: 82px !important;
+    min-width: 82px !important;
   }
 
   .rooms-page .room-picker-main {
@@ -9587,7 +9654,10 @@ textarea {
   }
 
   .rooms-page .room-picker-art {
-    height: 72px !important;
+    align-self: stretch !important;
+    height: auto !important;
+    width: 76px !important;
+    min-width: 76px !important;
   }
 
   .rooms-page .room-picker-art-floor {

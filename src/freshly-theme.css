@@ -1547,6 +1547,7 @@ textarea {
 .rooms-page .room-picker-card {
   display: flex !important;
   flex-direction: row !important;
+  align-items: stretch !important;
   height: auto !important;
   min-height: 112px !important;
   max-height: none !important;
@@ -1616,13 +1617,33 @@ textarea {
 /* Carril Multimedia Lateral Izquierdo */
 .rooms-page .room-picker-art {
   position: relative !important;
-  width: 76px !important;
-  min-width: 76px !important;
-  max-width: 76px !important;
-  height: 100% !important;
+  width: 82px !important;
+  min-width: 82px !important;
+  max-width: 82px !important;
+  align-self: stretch !important;
+  height: auto !important;
+  min-height: 100% !important;
   overflow: hidden !important;
-  flex: 0 0 76px !important;
-  background: #e7edf0 !important;
+  flex: 0 0 82px !important;
+  background: var(--th-surface-subtle, #1c1a2e) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.rooms-page .room-picker-fallback-box {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: rgba(124, 58, 237, 0.08) !important;
+}
+
+.rooms-page .room-picker-fallback-icon {
+  font-size: 28px !important;
+  color: var(--th-accent, #8b5cf6) !important;
+  opacity: 0.65 !important;
 }
 
 .rooms-page .room-picker-art::after {

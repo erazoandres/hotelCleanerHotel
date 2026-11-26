@@ -29,6 +29,9 @@ import {
   updateStaff,
   updateRoom,
 } from "../services/hotelRepository";
+import bedroom1 from "../assets/rooms/bedroom-01.jpg";
+import bedroom2 from "../assets/rooms/bedroom-02.jpg";
+import bedroom3 from "../assets/rooms/bedroom-03.jpg";
 import type {
   CleanerHistoryItem,
   CleanerProfile,
@@ -68,11 +71,7 @@ const editableStatuses: RoomStatus[] = [
 
 const cleaningServicePlans = ["Semanal", "Mensual", "Premium"] as const;
 const CLEANING_DURATION_OPTIONS = [30, 60, 90, 120, 150] as const;
-const roomPhotos = [
-  "/images/rooms/bedroom-01.jpg",
-  "/images/rooms/bedroom-02.jpg",
-  "/images/rooms/bedroom-03.jpg",
-] as const;
+const roomPhotos = [bedroom1, bedroom2, bedroom3];
 
 function ActionMessage({
   error,
@@ -1035,6 +1034,7 @@ function RoomPickerCard({
 
   const isFree = status === "free";
   const toneClass = isFree && freeToneIndex !== undefined ? `room-picker-tone-${(freeToneIndex % 2) + 1}` : "";
+  const [imgError, setImgError] = useState(false);
 
   return (
     <button
@@ -1045,16 +1045,32 @@ function RoomPickerCard({
     >
       {/* 1. Carril Multimedia con Chip de Piso / Tipo */}
       <span className="room-picker-art">
-        <img
-          alt={isEffectiveCommonArea ? `Zona común ${roomId}` : `Habitación ${roomId}`}
-          className="room-picker-image"
-          src={imageSrc}
-          loading="lazy"
-          decoding="async"
-        />
-        <span className="room-picker-art-floor" title={`Ubicación: ${floor || (isEffectiveCommonArea ? "Área común" : "Habitación")}`}>
-          {floor || (isEffectiveCommonArea ? "Común" : "Habitación")}
-        </span>
+        {!imgError ? (
+          <img
+            alt=""
+            aria-hidden="true"
+            className="room-picker-image"
+            src={imageSrc}
+            loading="lazy"
+            decoding="async"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <span className="room-picker-fallback-box" aria-hidden="true">
+            <span className="material-symbol room-picker-fallback-icon">
+              {isEffectiveCommonArea ? "apartment" : "bed"}
+            </span>
+          </span>
+        )}
+        {floor ? (
+          <span className="room-picker-art-floor" title={`Ubicación: ${floor}`}>
+            {floor}
+          </span>
+        ) : isEffectiveCommonArea ? (
+          <span className="room-picker-art-floor" title="Área común">
+            Común
+          </span>
+        ) : null}
       </span>
 
       {/* 2. Bloque Central de Información */}
@@ -2650,6 +2666,11 @@ export function HistoryPage() {
                             <span className={`status-pill ${item.statusPillClass}`}>
                               {item.statusLabel}
                             </span>
+                          </div>
+
+                          {/* Previsualización en línea compacta */}
+                          <div className="history-feed-inline-action" title={item.action}>
+                            <span>{item.action}</span>
                           </div>
 
                           <div className="history-feed-top-actions">
