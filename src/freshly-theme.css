@@ -1547,9 +1547,9 @@ textarea {
 .rooms-page .room-picker-card {
   display: flex !important;
   flex-direction: row !important;
-  height: 120px !important;
-  min-height: 120px !important;
-  max-height: 120px !important;
+  height: auto !important;
+  min-height: 112px !important;
+  max-height: none !important;
   width: 100% !important;
   min-width: 0 !important;
   padding: 0 !important;
@@ -1700,12 +1700,12 @@ textarea {
 
 .rooms-page .room-picker-room-name strong {
   font-family: "Space Grotesk", sans-serif !important;
-  font-size: 16.5px !important;
-  font-weight: 700 !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
   letter-spacing: -0.02em !important;
   font-feature-settings: "tnum" 1 !important;
   color: var(--th-text-main, #1c2420) !important;
-  line-height: 1 !important;
+  line-height: 1.1 !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -1869,41 +1869,102 @@ html[data-theme="dark"] .rooms-page .room-picker-guest-row .material-symbol {
   white-space: nowrap !important;
 }
 
-.rooms-page .room-picker-item-label {
-  font-weight: 500 !important;
-  opacity: 0.72 !important;
-  font-size: 10px !important;
-  margin-right: 2px !important;
-  white-space: nowrap !important;
+/* Divisor horizontal fino bajo la cabecera */
+.rooms-page .room-picker-divider {
+  display: block !important;
+  width: 100% !important;
+  height: 1px !important;
+  background: var(--th-border-subtle, rgba(255, 255, 255, 0.08)) !important;
+  margin: 5px 0 6px 0 !important;
+  border: none !important;
 }
 
-.rooms-page .room-picker-service-value {
-  font-weight: 600 !important;
-  font-size: 9.5px !important;
-}
-
-.rooms-page .room-picker-service-tag {
-  display: inline-flex !important;
-  align-items: center !important;
+/* Lista vertical limpia de campos (Huésped, Servicio, Personal) */
+.rooms-page .room-picker-fields {
+  display: flex !important;
+  flex-direction: column !important;
   gap: 3.5px !important;
-  background: var(--th-surface-subtle, #f5f2ea) !important;
-  border: 1px solid var(--th-border-subtle, #eeeae1) !important;
-  color: var(--th-gold, #c29953) !important;
-  font-size: 9.5px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.rooms-page .room-picker-field-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: baseline !important;
+  gap: 6px !important;
   font-family: "DM Sans", sans-serif !important;
-  font-weight: 600 !important;
-  padding: 1.5px 6px !important;
-  border-radius: 4px !important;
+  font-size: 11.5px !important;
+  line-height: 1.35 !important;
+  min-width: 0 !important;
   white-space: nowrap !important;
-  max-width: 165px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+}
+
+.rooms-page .room-picker-field-label {
+  color: var(--th-text-muted, #94a3b8) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  min-width: 54px !important;
   flex-shrink: 0 !important;
 }
 
-.rooms-page .room-picker-service-tag .material-symbol {
-  font-size: 11px !important;
-  color: inherit !important;
+.rooms-page .room-picker-field-value {
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.rooms-page .room-picker-guest-value {
+  color: var(--th-text-main, #ffffff) !important;
+  font-weight: 700 !important;
+}
+
+.rooms-page .room-picker-service-value {
+  color: #38bdf8 !important; /* Celeste vivo como en la captura */
+  font-weight: 600 !important;
+}
+
+.rooms-page .room-picker-staff-value {
+  color: #a5b4fc !important; /* Índigo/lila suave como en la captura */
+  font-weight: 600 !important;
+}
+
+.rooms-page .room-picker-staff-row:hover .room-picker-staff-value {
+  text-decoration: underline !important;
+}
+
+.rooms-page .room-picker-field-row.is-empty .room-picker-staff-value {
+  color: var(--th-text-muted, #64748b) !important;
+  font-weight: 500 !important;
+  font-style: italic !important;
+}
+
+html:not([data-theme="dark"]) .rooms-page .room-picker-room-name strong {
+  color: #0f172a !important;
+}
+
+html:not([data-theme="dark"]) .rooms-page .room-picker-guest-value {
+  color: #0f172a !important;
+}
+
+html:not([data-theme="dark"]) .rooms-page .room-picker-service-value {
+  color: #0284c7 !important;
+}
+
+html:not([data-theme="dark"]) .rooms-page .room-picker-staff-value {
+  color: #4f46e5 !important;
+}
+
+html:not([data-theme="dark"]) .rooms-page .room-picker-field-label {
+  color: #64748b !important;
+}
+
+html:not([data-theme="dark"]) .rooms-page .room-picker-divider {
+  background: var(--th-border, #e2e8f0) !important;
 }
 
 .rooms-page .room-picker-floor-item {

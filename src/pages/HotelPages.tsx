@@ -1043,7 +1043,7 @@ function RoomPickerCard({
       type="button"
       aria-label={`${isEffectiveCommonArea ? "Área común" : "Habitación"} ${roomId}, ${statusLabels[status] || status}`}
     >
-      {/* 1. Carril Multimedia con Chip de Piso */}
+      {/* 1. Carril Multimedia con Chip de Piso / Tipo */}
       <span className="room-picker-art">
         <img
           alt={isEffectiveCommonArea ? `Zona común ${roomId}` : `Habitación ${roomId}`}
@@ -1052,11 +1052,9 @@ function RoomPickerCard({
           loading="lazy"
           decoding="async"
         />
-        {floor && (
-          <span className="room-picker-art-floor" title={`Piso / Ubicación: ${floor}`}>
-            {floor}
-          </span>
-        )}
+        <span className="room-picker-art-floor" title={`Ubicación: ${floor || (isEffectiveCommonArea ? "Área común" : "Habitación")}`}>
+          {floor || (isEffectiveCommonArea ? "Común" : "Habitación")}
+        </span>
       </span>
 
       {/* 2. Bloque Central de Información */}
@@ -1075,37 +1073,34 @@ function RoomPickerCard({
           </span>
         </span>
 
-        {/* Fila 2: Huésped y Servicio de Limpieza */}
-        {(Boolean(guest?.trim()) || status === "occupied" || Boolean(servicePlan?.trim())) && (
-          <span className="room-picker-details">
-            {guest?.trim() ? (
-              <span className="room-picker-guest-row" title={`Huésped: ${guest.trim()}`}>
-                <span className="material-symbol" aria-hidden="true">person</span>
-                <span className="room-picker-item-label">Huésped:</span>
-                <strong className="room-picker-guest-name">{guest.trim()}</strong>
-              </span>
-            ) : status === "occupied" ? (
-              <span className="room-picker-guest-row" title="Habitación ocupada">
-                <span className="material-symbol" aria-hidden="true">person</span>
-                <span className="room-picker-item-label">Huésped:</span>
-                <strong className="room-picker-guest-name">Ocupada</strong>
-              </span>
-            ) : null}
+        {/* Línea divisoria sutil */}
+        <span className="room-picker-divider" aria-hidden="true" />
 
-            {servicePlan?.trim() && (
-              <span className="room-picker-service-tag" title={`Servicio: ${servicePlan.trim()}`}>
-                <span className="material-symbol" aria-hidden="true">cleaning_services</span>
-                <span className="room-picker-item-label">Servicio:</span>
-                <strong className="room-picker-service-value">{servicePlan.trim()}</strong>
-              </span>
-            )}
-          </span>
-        )}
+        {/* Lista Vertical de Items: Huésped, Servicio, Personal */}
+        <span className="room-picker-fields">
+          {/* Fila Huésped */}
+          {(Boolean(guest?.trim()) || status === "occupied") && (
+            <span className="room-picker-field-row" title={`Huésped: ${guest?.trim() || "Ocupada"}`}>
+              <span className="room-picker-field-label">Huésped:</span>
+              <strong className="room-picker-field-value room-picker-guest-value">
+                {guest?.trim() || "Ocupada"}
+              </strong>
+            </span>
+          )}
 
-        {/* Fila 3: Personal Asignado */}
-        <span className="room-picker-footer">
+          {/* Fila Servicio */}
+          {servicePlan?.trim() && (
+            <span className="room-picker-field-row" title={`Servicio: ${servicePlan.trim()}`}>
+              <span className="room-picker-field-label">Servicio:</span>
+              <strong className="room-picker-field-value room-picker-service-value">
+                {servicePlan.trim()}
+              </strong>
+            </span>
+          )}
+
+          {/* Fila Personal */}
           <span
-            className={`room-picker-assignee${cleanerName ? "" : " room-picker-assignee-empty"}`}
+            className={`room-picker-field-row room-picker-staff-row${cleanerName ? "" : " is-empty"}`}
             title={cleanerName ? `Personal asignado: ${cleanerName}` : "Sin personal asignado"}
             role={cleanerName ? "button" : undefined}
             tabIndex={cleanerName ? 0 : undefined}
@@ -1116,24 +1111,10 @@ function RoomPickerCard({
               }
             } : undefined}
           >
-            {cleanerName ? (
-              <>
-                <ModernAvatar3D
-                  name={cleanerName}
-                  size={16}
-                  className="room-picker-assignee-avatar"
-                  alt={`Avatar 3D de ${cleanerName}`}
-                />
-                <span className="room-picker-item-label">Personal:</span>
-                <strong className="room-picker-assignee-name">{cleanerName}</strong>
-              </>
-            ) : (
-              <span className="room-picker-unassigned-tag">
-                <span className="material-symbol" aria-hidden="true">person_off</span>
-                <span className="room-picker-item-label">Personal:</span>
-                <span>Sin asignar</span>
-              </span>
-            )}
+            <span className="room-picker-field-label">Personal:</span>
+            <strong className="room-picker-field-value room-picker-staff-value">
+              {cleanerName || "Sin asignar"}
+            </strong>
           </span>
         </span>
       </span>
